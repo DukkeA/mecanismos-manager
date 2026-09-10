@@ -1,0 +1,15 @@
+{
+ "schema_version":2,"diagram_type":"workflow",
+ "meta":{"title":"Mecanismos · Reconstrucción de unidades propias","quality_profile":"showcase"},
+ "lanes":[{"id":"inventory","label":"Inventario"},{"id":"workshop","label":"Taller"},{"id":"commercial","label":"Venta posterior"}],
+ "mainPath":["unit","internal","materials","labor","restock","sale"],
+ "nodes":[
+ {"id":"unit","lane":"inventory","col":0,"type":"database","label":"Unidad propia","sublabel":"Costo identificado"},
+ {"id":"internal","lane":"workshop","col":1,"type":"backend","label":"Orden interna","sublabel":"No genera ingresos"},
+ {"id":"materials","lane":"workshop","col":2,"type":"database","label":"Materiales","sublabel":"Consumos auditados"},
+ {"id":"labor","lane":"workshop","col":3,"type":"backend","label":"Trabajo técnico","sublabel":"Horas y revisión","width":120},
+ {"id":"restock","lane":"inventory","col":4,"type":"database","label":"Unidad reparada","sublabel":"Material y labor separados","width":130},
+ {"id":"sale","lane":"commercial","col":5,"type":"frontend","label":"Venta","sublabel":"Ingreso y garantía"}],
+ "edges":[{"from":"unit","to":"internal","label":"Retirar"},{"from":"internal","to":"materials","label":"Reconstruir"},{"from":"materials","to":"labor","label":"Registrar"},{"from":"labor","to":"restock","label":"Conforme"},{"from":"restock","to":"sale","label":"Vender después"}],
+ "cards":[{"dot":"emerald","title":"Identidad física","items":["Cada unidad conserva su historia y condición","Un casco recibido se evalúa antes de ingresar como disponible"]},{"dot":"amber","title":"Costos sin duplicación","items":["La mano de obra se imputa para análisis técnico","El resultado mensual descuenta la nómina una sola vez"]}]
+}

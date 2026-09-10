@@ -1,0 +1,15 @@
+{
+ "schema_version":2,"diagram_type":"workflow",
+ "meta":{"title":"Mecanismos · De los documentos a los indicadores","quality_profile":"showcase"},
+ "lanes":[{"id":"capture","label":"Registro"},{"id":"control","label":"Control"},{"id":"analysis","label":"Análisis"}],
+ "mainPath":["source","validate","post","allocate","reconcile","report"],
+ "nodes":[
+ {"id":"source","lane":"capture","col":0,"type":"external","label":"Documento","sublabel":"Venta, compra o gasto"},
+ {"id":"validate","lane":"control","col":1,"type":"security","label":"Validar","sublabel":"Fecha y procedencia"},
+ {"id":"post","lane":"control","col":2,"type":"database","label":"Confirmar","sublabel":"Movimiento inmutable"},
+ {"id":"allocate","lane":"control","col":3,"type":"backend","label":"Aplicar pagos","sublabel":"Abonos y anticipos"},
+ {"id":"reconcile","lane":"control","col":4,"type":"security","label":"Conciliar","sublabel":"Saldos y soportes"},
+ {"id":"report","lane":"analysis","col":5,"type":"frontend","label":"Indicadores","sublabel":"Caja y utilidad distintas","width":124}],
+ "edges":[{"from":"source","to":"validate","label":"Capturar"},{"from":"validate","to":"post","label":"Sin duplicados"},{"from":"post","to":"allocate","label":"Vincular"},{"from":"allocate","to":"reconcile","label":"Revisar"},{"from":"reconcile","to":"report","label":"Calcular"}],
+ "cards":[{"dot":"amber","title":"Historia gradual","items":["Períodos incompletos siempre identificados","El pasado no altera automáticamente los saldos de arranque"]},{"dot":"emerald","title":"Cobertura mensual","items":["Contribución frente a nómina y gastos fijos","Dinero conciliado frente a pagos pendientes"]}]
+}

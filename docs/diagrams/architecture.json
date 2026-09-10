@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": { "title": "Mecanismos Manager · Arquitectura", "quality_profile": "showcase", "viewBox": [1320, 760] },
+  "components": [
+    { "id": "team", "type": "external", "label": "Equipo del taller", "sublabel": "Admin · Office · Mechanic", "pos": [40, 340], "size": [200, 76] },
+    { "id": "app", "type": "frontend", "label": "Aplicación Next.js", "sublabel": "Web · PWA · APK privada", "pos": [370, 340], "size": [230, 76] },
+    { "id": "backend", "type": "backend", "label": "API y dominio", "sublabel": "Sesión · Permisos · Reglas", "pos": [720, 340], "size": [230, 76] },
+    { "id": "postgres", "type": "database", "label": "Supabase PostgreSQL", "sublabel": "Prisma · Esquema privado", "pos": [1080, 340], "size": [220, 76] },
+    { "id": "identity", "type": "security", "label": "Supabase Auth", "sublabel": "Google OAuth · Invitación", "pos": [720, 70], "size": [230, 76] },
+    { "id": "hosting", "type": "cloud", "label": "Vercel", "sublabel": "Alojamiento de Next.js", "pos": [370, 70], "size": [230, 76] },
+    { "id": "storage", "type": "cloud", "label": "Archivos privados", "sublabel": "Fotos · PDF · Soportes", "pos": [720, 620], "size": [230, 76] },
+    { "id": "siigo", "type": "external", "label": "Siigo", "sublabel": "Referencia y PDF manuales", "pos": [370, 620], "size": [230, 76] }
+  ],
+  "connections": [
+    { "from": "team", "to": "app", "label": "HTTPS" },
+    { "from": "app", "to": "backend", "label": "/api/v1" },
+    { "from": "backend", "to": "postgres", "label": "SQL" },
+    { "from": "backend", "to": "identity", "label": "Validar sesión", "variant": "security" },
+    { "from": "hosting", "to": "app", "label": "Servir aplicación", "labelDy": 80 },
+    { "from": "backend", "to": "storage", "label": "Acceso autorizado", "labelDy": 90 },
+    { "from": "siigo", "to": "app", "label": "Adjuntar soporte", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Registro de movimientos", "items": ["Movimientos de inventario y dinero auditables", "Ninguna credencial de PostgreSQL en el cliente"] },
+    { "dot": "amber", "title": "Límites del producto", "items": ["La APK utiliza el servidor publicado", "Siigo conserva la emisión de facturas"] }
+  ]
+}
