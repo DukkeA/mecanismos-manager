@@ -1,0 +1,5 @@
+import 'server-only';import {createClient} from '@supabase/supabase-js';import {DomainError} from '@/domain/errors';
+export const attachmentBucket='workshop-documents';
+export function storageAdmin(){const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SECRET_KEY;if(!url||!key)throw new DomainError('Falta configurar el almacenamiento privado de archivos.');return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}}).storage;}
+export async function storePrivate(path:string,content:Buffer,mime:string){const {error}=await storageAdmin().from(attachmentBucket).upload(path,content,{contentType:mime,upsert:false,cacheControl:'0'});if(error&&String(error.statusCode)!=='409'&&error.message!=='The resource already exists')throw new DomainError('No se pudo guardar el archivo. Inténtalo de nuevo.');}
+export async function readPrivate(path:string){const {data,error}=await storageAdmin().from(attachmentBucket).download(path);if(error||!data)throw new DomainError('No se pudo recuperar el archivo.');return new Uint8Array(await data.arrayBuffer());}

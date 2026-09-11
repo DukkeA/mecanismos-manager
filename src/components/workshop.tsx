@@ -1,5 +1,19 @@
 "use client";
 import { FormSheet } from "./form-sheet";
+import { ObservationHistory } from "@/features/orders/observation-history";
+import { OrderAgreement } from "@/features/commerce/order-agreement";
+import { Attachments } from "@/features/control/attachments";
+import { ControlPanel } from "@/features/control/control-panel";
+import { AssetSelector } from "@/features/control/asset-selector";
+import { CommercePanel } from "@/features/commerce/commerce-panel";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "./ui/breadcrumb";
 import { TaskBadge } from "@/features/tasks/task-status";
 
 import { useOrderCommand } from "@/features/orders/hooks";
@@ -29,7 +43,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AppSidebar, workshopSections } from "./app-sidebar";
+import { AppSidebar, workshopSections, sectionAvailable } from "./app-sidebar";
 
 import { Check, ClipboardList, Clock3, Plus } from "lucide-react";
 
@@ -115,16 +129,11 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
 
   const [creating, setCreating] = useState(false);
   const [orderPurpose, setOrderPurpose] = useState("CUSTOMER_REPAIR");
+  const [orderKind,setOrderKind]=useState("VEHICLE");
   const [orderCustomer, setOrderCustomer] = useState("");
 
   const params = useSearchParams();
-  const allowed = sections
-    .filter(
-      (s) =>
-        actor.role !== "MECHANIC" ||
-        ["Resumen", "Órdenes", "Tareas"].includes(s.label),
-    )
-    .filter((s) => actor.role === "ADMIN" || s.label !== "Equipo");
+  const allowed = sections.filter(s=>sectionAvailable(s.label,actor.role,!!demo));
   const section =
     allowed.find((s) => s.label === params.get("view"))?.label ?? "Resumen";
 
@@ -231,6 +240,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
           ? undefined
           : String(form.get("customer") ?? ""),
       reference: String(form.get("reference")),
+      assetId: String(form.get("assetId") ?? "") || undefined,
       kind: String(form.get("kind")) as "VEHICLE" | "COMPONENT",
       problem: String(form.get("problem")),
       locationId: String(form.get("locationId")),
@@ -271,7 +281,19 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
         <div className="app-topbar">
           <SidebarTrigger aria-label="Alternar menú lateral" />
           <Separator orientation="vertical" />
-          <span>Mecanismos Técnicos SAS</span>
+          <Breadcrumb aria-label="Ubicación">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <button onClick={() => navigate("Resumen")}>Taller</button>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{section}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <span className="sync-indicator">
             {query.isFetching ? "Actualizando…" : "Datos del taller"}
           </span>
@@ -294,21 +316,6 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
           )}
           <header className="workspace-header">
             <h1>{section === "Órdenes" ? "Órdenes de trabajo" : section}</h1>
-            {section === "Órdenes" && actor.role !== "MECHANIC" && (
-              <Button
-                size="default"
-                onClick={() => {
-                  setOrderPurpose("CUSTOMER_REPAIR");
-                  setOrderCustomer("");
-                  setCreating(true);
-                  setError("");
-                  setNotice("");
-                }}
-              >
-                <Plus data-icon="inline-start" />
-                Nueva orden
-              </Button>
-            )}
           </header>
 
           {query.isError && (
@@ -333,11 +340,36 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               navigate={navigate}
             />
           ) : section === "Órdenes" ? (
-            <OrdersList orders={orders} openOrder={setSelectedId} />
+            <OrdersList
+              orders={orders}
+              openOrder={setSelectedId}
+              createAction={
+                section === "Órdenes" &&
+                actor.role !== "MECHANIC" && (
+                  <Button
+                    size="default"
+                    onClick={() => {
+                      setOrderPurpose("CUSTOMER_REPAIR");
+                      setOrderCustomer("");
+                      setCreating(true);
+                      setError("");
+                      setNotice("");
+                    }}
+                  >
+                    <Plus data-icon="inline-start" />
+                    Nueva orden
+                  </Button>
+                )
+              }
+            />
           ) : section === "Tareas" ? (
             <TasksPanel role={actor.role} openOrder={setSelectedId} />
           ) : section === "Caja" ? (
             <CashPanel role={actor.role} />
+          ) : ["Cotizaciones", "Ventas", "Cartera"].includes(section) ? (
+            <CommercePanel key={section} section={section} data={operations} orders={orders} locations={locations} role={actor.role} />
+          ) : ["Compras","Control de inventario","Garantías","Activos","Rentabilidad","Control de caja"].includes(section) ? (
+            <ControlPanel key={section} data={operations} orders={orders} locations={locations} role={actor.role} resources={section==="Compras"?["purchases"]:section==="Control de inventario"?(actor.role==="ADMIN"?["reservations","transfers","counts","units"]:["reservations","transfers","units"]):section==="Garantías"?["warranties"]:section==="Activos"?["assets"]:section==="Rentabilidad"?["margins","rates"]:actor.role==="ADMIN"?["closures","recurring","coverage","audit"]:["closures","recurring"]}/>
           ) : (
             <OperationsPanel
               key={section}
@@ -398,7 +430,9 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 <p>{selected.problem}</p>
               </section>
               <Separator />
-
+              {!demo && <ControlPanel key={selected.id} data={operations} orders={orders} locations={locations} role={actor.role} resources={actor.role==="MECHANIC"?["checks"]:["checks","handovers"]} orderId={selected.id}/>}
+              {!demo && actor.role!=="MECHANIC" && <OrderAgreement orderId={selected.id}/>}
+              {!demo && <Attachments entityType="ORDER" entityId={selected.id}/>}
               <section>
                 <h3>Tareas del trabajo</h3>
                 {selected.tasks.length ? (
@@ -476,7 +510,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                     </FieldGroup>
                   </form>
                 )}
-                <ol className="observation-list">
+                {!demo?<ObservationHistory key={selected.id} orderId={selected.id}/>:<ol className="observation-list">
                   {selected.notes.map((note) => (
                     <li key={note.id}>
                       <p>{note.body}</p>
@@ -485,7 +519,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                       </small>
                     </li>
                   ))}
-                </ol>
+                </ol>}
               </section>
             </div>
           )}
@@ -555,7 +589,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                       onChange={setOrderCustomer}
                       options={[
                         { id: "", label: "Cliente nuevo / unidad propia" },
-                        ...operations.customers.map((c) => ({
+                        ...operations.customers.filter(c => !c.deletedAt).map((c) => ({
                           id: c.id,
                           label: c.name,
                         })),
@@ -587,6 +621,8 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 <Choice
                   id="kind"
                   name="kind"
+                  value={orderKind}
+                  onChange={setOrderKind}
                   options={[
                     { id: "VEHICLE", label: "Vehículo" },
                     { id: "COMPONENT", label: "Componente" },
@@ -594,6 +630,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 />
               </Field>
 
+              {!demo && orderCustomer && <AssetSelector key={orderCustomer} customerId={orderCustomer} onKind={setOrderKind}/>}
               <Field>
                 <FieldLabel htmlFor="reference">Placa o serial</FieldLabel>
                 <Input id="reference" name="reference" maxLength={20} />

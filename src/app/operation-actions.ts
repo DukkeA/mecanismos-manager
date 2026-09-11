@@ -1,4 +1,7 @@
 "use server";
+import { transferCash } from "@/server/cash-transfers";
+import { deleteContact } from "@/server/contact-service";
+import { editTask, archiveTask, addTaskNote } from "@/server/task-service";
 import { revalidatePath } from "next/cache";
 import { requireMember } from "@/server/auth";
 import { saveCustomer,saveMember,assignTask,changeTaskStatus,transitionOrder } from "@/server/operations-service";
@@ -13,11 +16,17 @@ export async function executeOperation(kind:string,input:unknown):Promise<{ok:tr
     switch(kind) {
       case "account":await createAccount(actor,input);break;
       case "obligation":await createObligation(actor,input);break;
+      case "cash-transfer":await transferCash(actor,input);break;
       case "cash":await recordCash(actor,input);break;
       case "cash-reversal":await reverseCash(actor,input);break;
+      case "customer-delete":await deleteContact(actor,"customer",input);break;
+      case "supplier-delete":await deleteContact(actor,"supplier",input);break;
       case "customer":await saveCustomer(actor,input);break;
       case "member":await saveMember(actor,input);break;
       case "task":await assignTask(actor,input);break;
+      case "task-edit":await editTask(actor,input);break;
+      case "task-archive":await archiveTask(actor,input);break;
+      case "task-note":await addTaskNote(actor,input);break;
       case "task-status":await changeTaskStatus(actor,input);break;
       case "order-status":await transitionOrder(actor,input);break;
       case "item":await saveItem(actor,input);break;

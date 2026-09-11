@@ -1,0 +1,3 @@
+# Preserve the bytes used by Archify's specification/artifact SHA-256 receipts.
+docs/diagrams/*.json text eol=lf
+docs/diagrams/*.html text eol=lf

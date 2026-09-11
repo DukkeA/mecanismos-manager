@@ -16,3 +16,4 @@ playwright-report/
 .impeccable/config.local.json
 .impeccable/questions/
 docs/diagrams/*.visual-check.*.png
+.local-backups/

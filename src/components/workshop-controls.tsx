@@ -58,6 +58,7 @@ export function Choice({
   defaultValue,
   onChange,
   required = false,
+  disabled = false,
   ...aria
 }: {
   id?: string;
@@ -68,6 +69,7 @@ export function Choice({
   defaultValue?: string;
   onChange?: (value: string) => void;
   required?: boolean;
+  disabled?: boolean;
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
 }) {
@@ -86,6 +88,7 @@ export function Choice({
         onChange?.(v === "__none" ? "" : v);
       }}
       required={required}
+      disabled={disabled}
     >
       <SelectTrigger {...aria} id={id} aria-label={label} className="w-full">
         <SelectValue placeholder="Seleccionar" />

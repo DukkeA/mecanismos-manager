@@ -1,4 +1,6 @@
 "use client";
+import { ContactActions } from "@/features/contacts/contact-actions";
+import { ItemDetail } from "@/features/inventory/item-detail";
 import { FormSheet } from "@/components/form-sheet";
 import { DataTable } from "./data-table";
 import { OperationForm, type Dialog, type Option } from "./operation-form";
@@ -107,6 +109,8 @@ export function OperationsPanel({
 
   const data: OperationsView = {
     ...source,
+    customers: source.customers.filter((c) => !c.deletedAt),
+    suppliers: source.suppliers.filter((s) => !s.deletedAt),
 
     members: source.members.filter(
       (m) =>
@@ -164,6 +168,8 @@ export function OperationsPanel({
   const [dialog, setDialog] = useState<Dialog | null>(null);
 
   const [notice, setNotice] = useState("");
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const selectedItem = source.items.find((i) => i.id === selectedItemId);
 
   const itemOptions = source.items
     .filter((i) => i.kind === "PART")
@@ -173,6 +179,10 @@ export function OperationsPanel({
 
   const itemName = (id: string) =>
     source.items.find((i) => i.id === id)?.name ?? "Repuesto";
+  const itemSearch = (id: string) => {
+    const i = source.items.find((i) => i.id === id);
+    return `${i?.code ?? ""} ${i?.reference ?? ""} ${i?.notes ?? ""}`;
+  };
 
   const locationName = (id: string) =>
     locations.find((l) => l.id === id)?.name ?? "Sede";
@@ -182,6 +192,18 @@ export function OperationsPanel({
 
   const filter = (text: string) => matches(text, search);
 
+  const deleteDialog = (
+    kind: "customer" | "supplier",
+    contact: { id: string; name: string },
+  ) =>
+    setDialog({
+      kind: `${kind}-delete`,
+      title: `Eliminar ${kind === "customer" ? "cliente" : "proveedor"}`,
+      submitLabel: "Eliminar",
+      description: `${contact.name} dejará de aparecer en las listas de selección. Sus registros anteriores se conservan.`,
+      extra: { id: contact.id },
+      fields: [{ key: "reason", label: "Motivo", type: "textarea" }],
+    });
   const customerForm: Dialog = {
     kind: "customer",
     title: "Nuevo cliente",
@@ -199,29 +221,45 @@ export function OperationsPanel({
     fields: [
       { key: "name", label: "Nombre o razón social" },
       { key: "phone", label: "Teléfono", optional: true },
+      { key: "email", label: "Correo", type: "email", optional: true },
+      { key: "address", label: "Dirección", optional: true },
     ],
   };
 
   const itemForm: Dialog = {
     kind: "item",
-    title: "Nuevo repuesto o servicio",
+    title: "Nuevo repuesto",
+    extra: { kind: "PART", unit: "unidad" },
     fields: [
-      { key: "code", label: "Referencia interna" },
-      { key: "name", label: "Nombre" },
+      { key: "code", label: "Código interno" },
+      { key: "reference", label: "Referencia del fabricante", optional: true },
+      { key: "name", label: "Nombre del repuesto" },
       { key: "brand", label: "Marca", optional: true },
+      { key: "unit", label: "Unidad de medida", hint: "Unidad, litro, kit…" },
       {
-        key: "kind",
-        label: "Tipo",
-        type: "select",
-        options: [
-          { id: "PART", label: "Repuesto por cantidad" },
-          { id: "SERVICE", label: "Servicio" },
-        ],
+        key: "notes",
+        label: "Notas y compatibilidad",
+        type: "textarea",
+        optional: true,
+      },
+    ],
+  };
+  const serviceForm: Dialog = {
+    kind: "item",
+    title: "Nuevo servicio",
+    extra: { kind: "SERVICE", unit: "servicio", brand: "" },
+    fields: [
+      { key: "code", label: "Código del servicio" },
+      {
+        key: "name",
+        label: "Nombre del servicio",
+        hint: "Escaneo, reparación de bomba, cambio de toberas…",
       },
       {
-        key: "unit",
-        label: "Unidad de medida",
-        hint: "Ej. unidad, litro, kit",
+        key: "notes",
+        label: "Alcance del servicio",
+        type: "textarea",
+        optional: true,
       },
     ],
   };
@@ -316,13 +354,15 @@ export function OperationsPanel({
   };
 
   function primary() {
-    return section === "Clientes"
-      ? customerForm
-      : section === "Proveedores"
-        ? supplierForm
-        : section === "Equipo"
-          ? memberForm
-          : itemForm;
+    return section === "Servicios"
+      ? serviceForm
+      : section === "Clientes"
+        ? customerForm
+        : section === "Proveedores"
+          ? supplierForm
+          : section === "Equipo"
+            ? memberForm
+            : itemForm;
   }
 
   const safeRun = async (kind: string, input: Record<string, unknown>) => {
@@ -352,9 +392,33 @@ export function OperationsPanel({
                     ? "Personas que pueden entrar y permisos de cada una."
                     : section === "Tareas"
                       ? "Tareas de reparación y pendientes del taller."
-                      : "Clientes y datos de contacto."}
+                      : section === "Servicios"
+                        ? "Diagnóstico, reparación y mantenimiento que ofrece el taller."
+                        : "Clientes y datos de contacto."}
           </p>
         </div>
+        {!demo && role === "ADMIN" && section === "Inventario" && (
+          <Button
+            variant="outline"
+            className="ml-auto"
+            onClick={() => {
+              const params = new URLSearchParams(window.location.search);
+              params.set(
+                "table",
+                tab === "movements"
+                  ? "movements"
+                  : tab === "offers"
+                    ? "offers"
+                    : tab === "catalog"
+                      ? "items"
+                      : "balances",
+              );
+              window.open(`/api/export?${params}`, "_blank", "noopener");
+            }}
+          >
+            Exportar inventario
+          </Button>
+        )}
         {role !== "MECHANIC" &&
           (section !== "Inventario" || tab === "catalog") && (
             <Button onClick={() => setDialog(primary())}>
@@ -369,7 +433,9 @@ export function OperationsPanel({
                       ? "Nuevo cliente"
                       : section === "Proveedores"
                         ? "Nuevo proveedor"
-                        : "Nuevo artículo"}
+                        : section === "Servicios"
+                          ? "Nuevo servicio"
+                          : "Nuevo repuesto"}
             </Button>
           )}
       </div>
@@ -451,10 +517,7 @@ export function OperationsPanel({
               <Choice
                 value={location}
                 onChange={setLocation}
-                options={[
-                  { id: "ALL", label: "Todas" },
-                  ...locationOptions,
-                ]}
+                options={[{ id: "ALL", label: "Todas" }, ...locationOptions]}
               />
             </label>
           )}
@@ -552,14 +615,12 @@ export function OperationsPanel({
 
       {section === "Clientes" && (
         <DataTable
+          tableKey="customers"
           headers={["Cliente", "Documento", "Contacto", "Órdenes", "Acciones"]}
           empty="No hay clientes con esos datos."
-        >
-          {data.customers
-            .filter((c) =>
-              filter(`${c.name} ${c.document} ${c.phone} ${c.email}`),
-            )
-            .map((c) => (
+          renderRow={(row) => {
+            const c = row as OperationsView["customers"][number];
+            return (
               <TableRow key={c.id}>
                 <TableCell>
                   <strong>{c.name}</strong>
@@ -584,33 +645,39 @@ export function OperationsPanel({
                   </Button>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
+                  <ContactActions
+                    name={c.name}
+                    onEdit={() =>
                       setDialog({
                         ...customerForm,
                         title: "Editar cliente",
                         extra: c,
                       })
                     }
-                  >
-                    Editar
-                  </Button>
+                    onDelete={
+                      role === "ADMIN"
+                        ? () => deleteDialog("customer", c)
+                        : undefined
+                    }
+                  />
                 </TableCell>
               </TableRow>
-            ))}
-        </DataTable>
+            );
+          }}
+          fallbackRows={data.customers.filter((c) =>
+            filter(`${c.name} ${c.document} ${c.phone} ${c.email}`),
+          )}
+        ></DataTable>
       )}
 
       {section === "Equipo" && (
         <DataTable
+          tableKey="members"
           headers={["Nombre", "Correo", "Rol", "Acceso", "Acciones"]}
           empty="No hay miembros autorizados."
-        >
-          {data.members
-            .filter((m) => filter(`${m.name} ${m.email ?? ""}`))
-            .map((m) => (
+          renderRow={(row) => {
+            const m = row as OperationsView["members"][number];
+            return (
               <TableRow key={m.id}>
                 <TableCell>{m.name}</TableCell>
                 <TableCell>{m.email}</TableCell>
@@ -656,27 +723,62 @@ export function OperationsPanel({
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
-        </DataTable>
+            );
+          }}
+          fallbackRows={data.members.filter((m) =>
+            filter(`${m.name} ${m.email ?? ""}`),
+          )}
+        ></DataTable>
       )}
 
       {section === "Proveedores" && (
         <>
           <DataTable
-            headers={["Proveedor", "Teléfono"]}
+            tableKey="suppliers"
+            headers={[
+              "Proveedor",
+              "Teléfono",
+              "Correo",
+              "Dirección",
+              "Acciones",
+            ]}
             empty="Aún no hay proveedores."
-          >
-            {data.suppliers
-              .filter((s) => filter(`${s.name} ${s.phone}`))
-              .map((s) => (
+            renderRow={(row) => {
+              const s = row as OperationsView["suppliers"][number];
+              return (
                 <TableRow key={s.id}>
                   <TableCell>
                     <strong>{s.name}</strong>
                   </TableCell>
                   <TableCell>{s.phone || "Sin teléfono"}</TableCell>
+                  <TableCell>{s.email || "Sin correo"}</TableCell>
+                  <TableCell>{s.address || "Sin dirección"}</TableCell>
+                  <TableCell>
+                    <ContactActions
+                      name={s.name}
+                      onEdit={() =>
+                        setDialog({
+                          ...supplierForm,
+                          title: "Editar proveedor",
+                          extra: s,
+                        })
+                      }
+                      onDelete={
+                        role === "ADMIN"
+                          ? () => deleteDialog("supplier", s)
+                          : undefined
+                      }
+                    />
+                  </TableCell>
                 </TableRow>
-              ))}
-          </DataTable>
+              );
+            }}
+            fallbackRows={data.suppliers.filter((s) =>
+              filter(
+                `${s.name} ${s.phone} ${s.email ?? ""} ${s.address ?? ""}`,
+              ),
+            )}
+          ></DataTable>
           <div className="operations-heading">
             <div>
               <h3>Registro de precios</h3>
@@ -703,10 +805,12 @@ export function OperationsPanel({
                       key: "supplierId",
                       label: "Proveedor",
                       type: "select",
-                      options: source.suppliers.map((s) => ({
-                        id: s.id,
-                        label: s.name,
-                      })),
+                      options: source.suppliers
+                        .filter((s) => !s.deletedAt)
+                        .map((s) => ({
+                          id: s.id,
+                          label: s.name,
+                        })),
                     },
                     {
                       key: "condition",
@@ -743,6 +847,7 @@ export function OperationsPanel({
             </Button>
           </div>
           <DataTable
+            tableKey="offers"
             headers={[
               "Repuesto",
               "Proveedor",
@@ -751,17 +856,19 @@ export function OperationsPanel({
               "Consulta",
               "Disponibilidad / soporte",
             ]}
-            empty="Registra un artículo y un proveedor para guardar su primer precio."
-          >
-            {data.offers
-              .filter((o) =>
-                filter(
-                  `${itemName(o.itemId)} ${source.items.find((i) => i.id === o.itemId)?.code} ${source.suppliers.find((s) => s.id === o.supplierId)?.name} ${o.evidence}`,
-                ),
-              )
-              .map((o) => (
+            empty="Registra un repuesto y un proveedor para guardar su primer precio."
+            renderRow={(row) => {
+              const o = row as OperationsView["offers"][number];
+              return (
                 <TableRow key={o.id}>
-                  <TableCell>{itemName(o.itemId)}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="link"
+                      onClick={() => setSelectedItemId(o.itemId)}
+                    >
+                      {itemName(o.itemId)}
+                    </Button>
+                  </TableCell>
                   <TableCell>
                     {data.suppliers.find((s) => s.id === o.supplierId)?.name}
                   </TableCell>
@@ -773,8 +880,14 @@ export function OperationsPanel({
                     <small className="cell-detail">{o.evidence}</small>
                   </TableCell>
                 </TableRow>
-              ))}
-          </DataTable>
+              );
+            }}
+            fallbackRows={data.offers.filter((o) =>
+              filter(
+                `${itemName(o.itemId)} ${itemSearch(o.itemId)} ${source.items.find((i) => i.id === o.itemId)?.code} ${source.suppliers.find((s) => s.id === o.supplierId)?.name} ${o.evidence}`,
+              ),
+            )}
+          ></DataTable>
         </>
       )}
 
@@ -791,7 +904,7 @@ export function OperationsPanel({
           <TabsList className="inventory-tabs" aria-label="Inventario">
             <TabsTrigger value="own">Inventario propio</TabsTrigger>
             <TabsTrigger value="suppliers">Inventario proveedores</TabsTrigger>
-            <TabsTrigger value="catalog">Catálogo y servicios</TabsTrigger>
+            <TabsTrigger value="catalog">Repuestos</TabsTrigger>
             <TabsTrigger value="movements">Movimientos</TabsTrigger>
           </TabsList>
           <TabsContent value="own">
@@ -812,6 +925,7 @@ export function OperationsPanel({
               </Button>
             </div>
             <DataTable
+              tableKey="balances"
               headers={[
                 "Repuesto",
                 "Sede",
@@ -820,16 +934,21 @@ export function OperationsPanel({
                 "Costo material COP",
               ]}
               empty="No hay existencias registradas."
-            >
-              {data.balances
-                .filter((b) =>
-                  filter(
-                    `${itemName(b.itemId)} ${source.items.find((i) => i.id === b.itemId)?.code} ${locationName(b.locationId)}`,
-                  ),
-                )
-                .map((b) => (
+              renderRow={(row) => {
+                const b = row as OperationsView["balances"][number];
+                return (
                   <TableRow key={`${b.itemId}-${b.locationId}-${b.condition}`}>
-                    <TableCell>{itemName(b.itemId)}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="link"
+                        onClick={() => setSelectedItemId(b.itemId)}
+                      >
+                        {itemName(b.itemId)}
+                      </Button>
+                      <small className="cell-detail">
+                        {source.items.find((i) => i.id === b.itemId)?.reference}
+                      </small>
+                    </TableCell>
                     <TableCell>{locationName(b.locationId)}</TableCell>
                     <TableCell>{conditionName(b.condition)}</TableCell>
                     <TableCell>
@@ -837,8 +956,14 @@ export function OperationsPanel({
                     </TableCell>
                     <TableCell>{money(b.materialCost)}</TableCell>
                   </TableRow>
-                ))}
-            </DataTable>
+                );
+              }}
+              fallbackRows={data.balances.filter((b) =>
+                filter(
+                  `${itemName(b.itemId)} ${itemSearch(b.itemId)} ${source.items.find((i) => i.id === b.itemId)?.code} ${locationName(b.locationId)}`,
+                ),
+              )}
+            ></DataTable>
           </TabsContent>
           <TabsContent value="suppliers">
             <div className="operations-heading">
@@ -867,10 +992,12 @@ export function OperationsPanel({
                         key: "supplierId",
                         label: "Proveedor",
                         type: "select",
-                        options: source.suppliers.map((s) => ({
-                          id: s.id,
-                          label: s.name,
-                        })),
+                        options: source.suppliers
+                          .filter((s) => !s.deletedAt)
+                          .map((s) => ({
+                            id: s.id,
+                            label: s.name,
+                          })),
                       },
                       {
                         key: "condition",
@@ -907,6 +1034,7 @@ export function OperationsPanel({
               </Button>
             </div>
             <DataTable
+              tableKey="offers"
               headers={[
                 "Repuesto",
                 "Proveedor",
@@ -915,17 +1043,19 @@ export function OperationsPanel({
                 "Consulta",
                 "Disponibilidad / soporte",
               ]}
-              empty="Registra un artículo y un proveedor para guardar su primer precio."
-            >
-              {data.offers
-                .filter((o) =>
-                  filter(
-                    `${itemName(o.itemId)} ${source.items.find((i) => i.id === o.itemId)?.code} ${source.suppliers.find((s) => s.id === o.supplierId)?.name} ${o.evidence}`,
-                  ),
-                )
-                .map((o) => (
+              empty="Registra un repuesto y un proveedor para guardar su primer precio."
+              renderRow={(row) => {
+                const o = row as OperationsView["offers"][number];
+                return (
                   <TableRow key={o.id}>
-                    <TableCell>{itemName(o.itemId)}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="link"
+                        onClick={() => setSelectedItemId(o.itemId)}
+                      >
+                        {itemName(o.itemId)}
+                      </Button>
+                    </TableCell>
                     <TableCell>
                       {data.suppliers.find((s) => s.id === o.supplierId)?.name}
                     </TableCell>
@@ -937,50 +1067,70 @@ export function OperationsPanel({
                       <small className="cell-detail">{o.evidence}</small>
                     </TableCell>
                   </TableRow>
-                ))}
-            </DataTable>
+                );
+              }}
+              fallbackRows={data.offers.filter((o) =>
+                filter(
+                  `${itemName(o.itemId)} ${itemSearch(o.itemId)} ${source.items.find((i) => i.id === o.itemId)?.code} ${source.suppliers.find((s) => s.id === o.supplierId)?.name} ${o.evidence}`,
+                ),
+              )}
+            ></DataTable>
           </TabsContent>
           <TabsContent value="catalog">
-            <h3>Catálogo de repuestos y servicios</h3>
+            <h3>Catálogo de repuestos</h3>
             <p className="muted-copy">
               Referencias registradas. Consulta las cantidades en Inventario
               propio.
             </p>
             <DataTable
-              headers={["Referencia", "Artículo", "Marca", "Tipo / unidad"]}
-              empty="Aún no hay artículos."
-            >
-              {data.items
-                .filter((i) => filter(`${i.name} ${i.code} ${i.brand}`))
-                .map((i) => (
+              tableKey="items"
+              headers={["Referencia", "Repuesto", "Marca", "Unidad"]}
+              empty="Aún no hay repuestos."
+              renderRow={(row) => {
+                const i = row as OperationsView["items"][number];
+                return (
                   <TableRow key={i.id}>
-                    <TableCell>{i.code}</TableCell>
                     <TableCell>
-                      <strong>{i.name}</strong>
+                      {i.code}
+                      <small className="cell-detail">{i.reference}</small>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="link"
+                        onClick={() => setSelectedItemId(i.id)}
+                      >
+                        {i.name}
+                      </Button>
                     </TableCell>
                     <TableCell>{i.brand || "Sin marca"}</TableCell>
-                    <TableCell>
-                      {i.kind === "PART" ? "Repuesto" : "Servicio"} · {i.unit}
-                    </TableCell>
+                    <TableCell>{i.unit}</TableCell>
                   </TableRow>
-                ))}
-            </DataTable>
+                );
+              }}
+              fallbackRows={data.items.filter(
+                (i) =>
+                  i.kind === "PART" &&
+                  filter(
+                    `${i.name} ${i.code} ${i.brand} ${i.reference ?? ""} ${i.notes ?? ""}`,
+                  ),
+              )}
+            ></DataTable>
           </TabsContent>
           <TabsContent value="movements">
             <h3>Movimientos recientes</h3>
             <DataTable
+              tableKey="movements"
               headers={[
-                "Artículo / sede",
+                "Repuesto / sede",
                 "Movimiento",
                 "Cantidad",
                 "Soporte",
                 "Acciones",
               ]}
               empty="El primer movimiento aparecerá aquí."
-            >
-              {data.movements
-                .filter((m) => filter(`${itemName(m.itemId)} ${m.reason}`))
-                .map((m) => (
+              renderRow={(row) => {
+                const m = row as OperationsView["movements"][number];
+                return (
                   <TableRow key={m.id}>
                     <TableCell>
                       {itemName(m.itemId)}
@@ -1009,7 +1159,13 @@ export function OperationsPanel({
                     <TableCell>
                       {m.reversed ? (
                         <Badge variant="outline">Revertido</Badge>
-                      ) : role === "ADMIN" && m.kind !== "REVERSAL" ? (
+                      ) : role === "ADMIN" &&
+                        [
+                          "RECEIPT",
+                          "CONSUMPTION",
+                          "ADJUSTMENT_IN",
+                          "ADJUSTMENT_OUT",
+                        ].includes(m.kind) ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1035,12 +1191,71 @@ export function OperationsPanel({
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
-            </DataTable>
+                );
+              }}
+              fallbackRows={data.movements.filter((m) =>
+                filter(
+                  `${itemName(m.itemId)} ${itemSearch(m.itemId)} ${m.reason}`,
+                ),
+              )}
+            ></DataTable>
           </TabsContent>
         </Tabs>
       )}
 
+      {section === "Servicios" && (
+        <DataTable
+          tableKey="services"
+          headers={["Código", "Servicio", "Alcance"]}
+          empty="No hay servicios registrados."
+          renderRow={(row) => {
+            const i = row as OperationsView["items"][number];
+            return (
+              <TableRow key={i.id}>
+                <TableCell>{i.code}</TableCell>
+                <TableCell>
+                  <Button
+                    variant="link"
+                    onClick={() => setSelectedItemId(i.id)}
+                  >
+                    {i.name}
+                  </Button>
+                </TableCell>
+                <TableCell>{i.notes || "Sin descripción"}</TableCell>
+              </TableRow>
+            );
+          }}
+          fallbackRows={source.items.filter(
+            (i) =>
+              i.kind === "SERVICE" &&
+              filter(`${i.code} ${i.name} ${i.notes ?? ""}`),
+          )}
+        ></DataTable>
+      )}
+      <ItemDetail
+        item={selectedItem}
+        data={source}
+        locations={locations}
+        onClose={() => setSelectedItemId(null)}
+        onEdit={() => {
+          if (!selectedItem) return;
+          const form = selectedItem.kind === "SERVICE" ? serviceForm : itemForm;
+          setDialog({
+            ...form,
+            title:
+              selectedItem.kind === "SERVICE"
+                ? "Editar servicio"
+                : "Editar repuesto",
+            extra: { ...selectedItem },
+          });
+          setSelectedItemId(null);
+        }}
+        onStock={() => {
+          if (!selectedItem) return;
+          setDialog({ ...stockForm, extra: { itemId: selectedItem.id } });
+          setSelectedItemId(null);
+        }}
+      />
       <FormSheet
         open={!!dialog}
         onOpenChange={(open) => {
@@ -1053,9 +1268,10 @@ export function OperationsPanel({
               {dialog?.title}
             </SheetTitle>
             <SheetDescription>
-              {demo
-                ? "Cambio de demostración; no afecta datos reales."
-                : "Los campos opcionales están indicados."}
+              {dialog?.description ??
+                (demo
+                  ? "Cambio de demostración; no afecta datos reales."
+                  : "Los campos opcionales están indicados.")}
             </SheetDescription>
           </SheetHeader>
           {dialog && (

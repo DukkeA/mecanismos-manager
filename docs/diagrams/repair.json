@@ -1,20 +1,141 @@
 {
- "schema_version":2,"diagram_type":"workflow",
- "meta":{"title":"Mecanismos · De la recepción a la entrega","quality_profile":"showcase"},
- "lanes":[{"id":"office","label":"Oficina"},{"id":"workshop","label":"Taller"},{"id":"finance","label":"Administración"}],
- "mainPath":["receive","diagnose","execute","review","deliver","settle"],
- "nodes":[
- {"id":"receive","lane":"office","col":0,"type":"frontend","label":"Recepción","sublabel":"Cliente y activo"},
- {"id":"diagnose","lane":"workshop","col":1,"type":"backend","label":"Diagnóstico","sublabel":"Alcance autorizado"},
- {"id":"execute","lane":"workshop","col":2,"type":"backend","label":"Ejecución","sublabel":"Tareas y materiales"},
- {"id":"review","lane":"workshop","col":3,"type":"security","label":"Revisión","sublabel":"Evidencia técnica"},
- {"id":"deliver","lane":"office","col":4,"type":"frontend","label":"Entrega","sublabel":"Venta y condiciones"},
- {"id":"settle","lane":"finance","col":5,"type":"database","label":"Cobros","sublabel":"Abonos y saldos"}],
- "edges":[
- {"from":"receive","to":"diagnose","label":"Asignar"},
- {"from":"diagnose","to":"execute","label":"Intervenir"},
- {"from":"execute","to":"review","label":"Comprobar"},
- {"from":"review","to":"deliver","label":"Conforme"},
- {"from":"deliver","to":"settle","label":"Contado o crédito"}],
- "cards":[{"dot":"amber","title":"Estados independientes","items":["Una entrega no confirma que el cliente haya pagado","Las pausas conservan motivo y responsable"]},{"dot":"emerald","title":"Trazabilidad","items":["Horas manuales por mecánico y tarea","Garantías vinculadas al trabajo original"]}]
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Mecanismos · Flujo de reparación actual",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Operación"
+        },
+        "backend": {
+          "label": "Trabajo"
+        },
+        "database": {
+          "label": "Registro"
+        },
+        "security": {
+          "label": "Control"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "office",
+      "label": "Oficina / Admin"
+    },
+    {
+      "id": "workshop",
+      "label": "Taller"
+    }
+  ],
+  "mainPath": [
+    "receive",
+    "diagnose",
+    "execute",
+    "review",
+    "ready",
+    "close"
+  ],
+  "nodes": [
+    {
+      "id": "receive",
+      "lane": "office",
+      "col": 0,
+      "type": "frontend",
+      "label": "Recepción",
+      "sublabel": "Cliente · Activo · Constancia",
+      "width": 140
+    },
+    {
+      "id": "diagnose",
+      "lane": "workshop",
+      "col": 1,
+      "type": "backend",
+      "label": "Diagnóstico",
+      "sublabel": "Problema y autorización",
+      "width": 120
+    },
+    {
+      "id": "execute",
+      "lane": "workshop",
+      "col": 2,
+      "type": "backend",
+      "label": "Trabajo",
+      "sublabel": "Tareas y consumos"
+    },
+    {
+      "id": "review",
+      "lane": "workshop",
+      "col": 3,
+      "type": "security",
+      "label": "Revisión",
+      "sublabel": "Pruebas aprobadas"
+    },
+    {
+      "id": "ready",
+      "lane": "office",
+      "col": 4,
+      "type": "frontend",
+      "label": "Lista",
+      "sublabel": "Estado READY"
+    },
+    {
+      "id": "close",
+      "lane": "office",
+      "col": 5,
+      "type": "database",
+      "label": "Cierre",
+      "sublabel": "Entrega aceptada"
+    }
+  ],
+  "edges": [
+    {
+      "from": "receive",
+      "to": "diagnose",
+      "label": "Asignar"
+    },
+    {
+      "from": "diagnose",
+      "to": "execute",
+      "label": "Iniciar"
+    },
+    {
+      "from": "execute",
+      "to": "review",
+      "label": "Comprobar"
+    },
+    {
+      "from": "review",
+      "to": "ready",
+      "label": "Conforme"
+    },
+    {
+      "from": "ready",
+      "to": "close",
+      "label": "Cerrar"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Acuerdo y ejecución",
+      "items": [
+        "La orden consulta la cotización aprobada y la venta vinculada",
+        "Reservas y consumos conservan disponibilidad y costo",
+        "Pruebas técnicas y constancia de entrega permiten cerrar"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Cobro y garantía",
+      "items": [
+        "La entrega y el pago son operaciones independientes",
+        "Los anticipos se aplican sin volver a sumar dinero a caja",
+        "La garantía conserva venta, activo y orden de origen"
+      ]
+    }
+  ]
 }

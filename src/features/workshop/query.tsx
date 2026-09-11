@@ -1,4 +1,6 @@
 "use client";
+import { useSearchParams } from "next/navigation";
+import { parseSort, sortSnapshot } from "@/domain/table-sort";
 import { executeOperation } from "@/app/operation-actions";
 import { applyDemoOperation } from "@/domain/demo-operations";
 import type { OperationsView } from "@/domain/operations-view";
@@ -63,14 +65,33 @@ export function useWorkshopQuery<T = WorkshopSnapshot>(
 ) {
   const { actorId, demo } = useWorkshopScope();
   const client = useQueryClient();
+  const params = useSearchParams();
+  let sort;
+  try {
+    sort = parseSort(new URLSearchParams(params.toString()));
+  } catch {
+    sort = undefined;
+  }
+  const suffix = sort
+    ? new URLSearchParams({
+        table: sort.table,
+        orderBy: sort.field,
+        direction: sort.direction,
+      }).toString()
+    : "";
   return useQuery({
-    queryKey: snapshotKey(actorId),
+    queryKey:snapshotKey(actorId),
+    placeholderData: (previous) =>
+      previous ?? client.getQueryData<WorkshopSnapshot>(snapshotKey(actorId)),
     enabled: !demo,
     queryFn: async ({ signal }) => {
-      const response = await fetch("/api/workshop", {
-        signal,
-        cache: "no-store",
-      });
+      const response = await fetch(
+        "/api/workshop",
+        {
+          signal,
+          cache: "no-store",
+        },
+      );
       if (response.status === 401 || response.status === 403) {
         client.clear();
         window.location.assign("/login");
@@ -90,7 +111,10 @@ export function useWorkshopQuery<T = WorkshopSnapshot>(
       }
       return result;
     },
-    select,
+    select: (data: WorkshopSnapshot) => {
+      const value = sortSnapshot(data, sort);
+      return select ? select(value) : (value as T);
+    },
   });
 }
 export function useOperationMutation(feature: string) {
@@ -123,10 +147,13 @@ export function useOperationMutation(feature: string) {
       }
       assertConnected();
       const result = await executeOperation(kind, input);
-      if (!result.ok) throw Object.assign(new Error(result.error),{fields:result.fields??{}});
+      if (!result.ok)
+        throw Object.assign(new Error(result.error), {
+          fields: result.fields ?? {},
+        });
     },
     onSuccess: async () => {
-      if (!scope.demo) await client.invalidateQueries({ queryKey: key });
+      if (!scope.demo) await Promise.all([client.invalidateQueries({ queryKey: key }),...(["control","commerce","records","observations"] as const).map(feature=>client.invalidateQueries({queryKey:[feature,scope.actorId]}))]);
     },
   });
 }

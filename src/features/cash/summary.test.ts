@@ -16,6 +16,10 @@ const entry = (overrides: Partial<OperationsView["cashEntries"][number]>) => ({
   ...overrides,
 });
 describe("financial overview", () => {
+  it("excludes transfers and their reversals from income and expense charts", () => {
+    const cashEntries = [entry({transferId:"transfer",kind:"TRANSFER",direction:"IN"}),entry({transferId:"transfer",kind:"TRANSFER",direction:"OUT"}),entry({transferId:"transfer",kind:"REVERSAL",direction:"IN"}),entry({transferId:"transfer",kind:"REVERSAL",direction:"OUT"})];
+    expect(cashSummary({...emptyOperations,cashEntries},"2026-08","2026-08-31")).toMatchObject({inflow:"0.00",outflow:"0.00",net:"0.00",series:[]});
+  });
   it("counts reversals in their posting month without erasing the original outflow", () => {
     const data = {
       ...emptyOperations,

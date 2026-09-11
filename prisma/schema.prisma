@@ -12,6 +12,7 @@ enum Role {
   ADMIN
   OFFICE
   MECHANIC
+
   @@schema("workshop")
 }
 
@@ -19,6 +20,7 @@ enum OrderPurpose {
   CUSTOMER_REPAIR
   OWN_REBUILD
   WARRANTY
+
   @@schema("workshop")
 }
 
@@ -31,6 +33,7 @@ enum OrderStatus {
   READY
   CLOSED
   CANCELLED
+
   @@schema("workshop")
 }
 
@@ -39,18 +42,21 @@ enum TaskStatus {
   IN_PROGRESS
   BLOCKED
   DONE
+
   @@schema("workshop")
 }
 
 enum AssetKind {
   VEHICLE
   COMPONENT
+
   @@schema("workshop")
 }
 
 enum ItemKind {
   PART
   SERVICE
+
   @@schema("workshop")
 }
 
@@ -58,108 +64,132 @@ enum PartCondition {
   NEW
   USED
   REBUILT
+
   @@schema("workshop")
 }
 
 model Member {
-  id          String   @id @default(uuid()) @db.Uuid
-  authSubject String?  @unique @db.Uuid
-  email       String   @unique @db.VarChar(254)
-  name        String   @db.VarChar(160)
-  role        Role
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
-  assignments TaskAssignment[]
-  timeEntries TimeEntry[]
-  observations Observation[]
-  commands CommandReceipt[]
-  cashEntries CashEntry[]
+  id             String           @id @default(uuid()) @db.Uuid
+  authSubject    String?          @unique @db.Uuid
+  email          String           @unique @db.VarChar(254)
+  name           String           @db.VarChar(160)
+  role           Role
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  assignments    TaskAssignment[]
+  timeEntries    TimeEntry[]
+  observations   Observation[]
+  commands       CommandReceipt[]
+  cashEntries    CashEntry[]
   stockMovements StockMovement[]
+
   @@schema("workshop")
 }
 
 model Location {
-  id       String @id @default(uuid()) @db.Uuid
-  code     String @unique @db.VarChar(20)
-  name     String @db.VarChar(120)
-  orders   WorkOrder[]
-  balances StockBalance[]
+  sales Sale[]
+
+  id             String          @id @default(uuid()) @db.Uuid
+  code           String          @unique @db.VarChar(20)
+  name           String          @db.VarChar(120)
+  orders         WorkOrder[]
+  balances       StockBalance[]
   stockMovements StockMovement[]
+
   @@schema("workshop")
 }
 
 model Customer {
-  id         String @id @default(uuid()) @db.Uuid
-  name       String @db.VarChar(180)
-  document   String? @db.VarChar(40)
-  phone      String? @db.VarChar(40)
-  email      String? @db.VarChar(254)
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
-  assets     Asset[]
-  orders     WorkOrder[]
+  quotes   Quote[]
+  sales    Sale[]
+  payments CustomerPayment[]
+
+  deletedAt DateTime?   @db.Timestamptz(3)
+  id        String      @id @default(uuid()) @db.Uuid
+  name      String      @db.VarChar(180)
+  document  String?     @db.VarChar(40)
+  phone     String?     @db.VarChar(40)
+  email     String?     @db.VarChar(254)
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+  assets    Asset[]
+  orders    WorkOrder[]
+
   @@index([name])
   @@schema("workshop")
 }
 
 model Asset {
-  id          String @id @default(uuid()) @db.Uuid
+  id          String       @id @default(uuid()) @db.Uuid
   kind        AssetKind
-  description String @db.VarChar(250)
-  plate       String? @db.VarChar(20)
-  serial      String? @db.VarChar(120)
-  customerId  String? @db.Uuid
-  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  description String       @db.VarChar(250)
+  plate       String?      @db.VarChar(20)
+  serial      String?      @db.VarChar(120)
+  customerId  String?      @db.Uuid
+  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: Restrict)
   orders      OrderAsset[]
+
   @@index([plate])
   @@index([serial])
   @@schema("workshop")
 }
 
 model WorkOrder {
-  id               String @id @default(uuid()) @db.Uuid
-  number           Int @unique @default(autoincrement())
-  purpose          OrderPurpose
-  status           OrderStatus @default(RECEIVED)
-  title            String @db.VarChar(250)
-  reportedProblem  String @db.Text
-  authorization    String? @db.Text
-  customerId       String? @db.Uuid
-  customer         Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  locationId       String @db.Uuid
-  location         Location @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  receivedAt       DateTime @default(now()) @db.Timestamptz(3)
-  dueAt            DateTime? @db.Timestamptz(3)
-  closedAt         DateTime? @db.Timestamptz(3)
-  version          Int @default(0)
-  assets           OrderAsset[]
-  tasks            Task[]
-  observations     Observation[]
-  stockMovements   StockMovement[]
+  quotes Quote[]
+  sales  Sale[]
+
+  id              String          @id @default(uuid()) @db.Uuid
+  number          Int             @unique @default(autoincrement())
+  purpose         OrderPurpose
+  status          OrderStatus     @default(RECEIVED)
+  title           String          @db.VarChar(250)
+  reportedProblem String          @db.Text
+  authorization   String?         @db.Text
+  customerId      String?         @db.Uuid
+  customer        Customer?       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  locationId      String          @db.Uuid
+  location        Location        @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  receivedAt      DateTime        @default(now()) @db.Timestamptz(3)
+  dueAt           DateTime?       @db.Timestamptz(3)
+  closedAt        DateTime?       @db.Timestamptz(3)
+  version         Int             @default(0)
+  assets          OrderAsset[]
+  tasks           Task[]
+  observations    Observation[]
+  stockMovements  StockMovement[]
+
   @@index([locationId, status, receivedAt])
   @@index([customerId, receivedAt])
   @@schema("workshop")
 }
 
 model OrderAsset {
-  orderId String @db.Uuid
-  assetId String @db.Uuid
+  orderId String    @db.Uuid
+  assetId String    @db.Uuid
   order   WorkOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  asset   Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  asset   Asset     @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
   @@id([orderId, assetId])
   @@index([assetId])
   @@schema("workshop")
 }
 
 model Task {
-  id          String @id @default(uuid()) @db.Uuid
-  title       String @db.VarChar(250)
-  status      TaskStatus @default(TODO)
-  orderId     String? @db.Uuid
-  order       WorkOrder? @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  dueAt       DateTime? @db.Timestamptz(3)
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  id          String           @id @default(uuid()) @db.Uuid
+  title       String           @db.VarChar(250)
+  status      TaskStatus       @default(TODO)
+  orderId     String?          @db.Uuid
+  order       WorkOrder?       @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  dueAt       DateTime?        @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  description String           @default("") @db.Text
+  deletedAt   DateTime?        @db.Timestamptz(3)
+  version     Int              @default(0)
+  plannedMinutes Int?
+  notes       TaskNote[]
+  photos      TaskPhoto[]
   assignments TaskAssignment[]
   timeEntries TimeEntry[]
+
   @@index([orderId, status])
   @@schema("workshop")
 }
@@ -167,138 +197,161 @@ model Task {
 model TaskAssignment {
   taskId   String @db.Uuid
   memberId String @db.Uuid
-  task     Task @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  task     Task   @relation(fields: [taskId], references: [id], onDelete: Restrict)
   member   Member @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
   @@id([taskId, memberId])
   @@index([memberId])
   @@schema("workshop")
 }
 
 model TimeEntry {
-  id             String @id @default(uuid()) @db.Uuid
-  taskId         String @db.Uuid
-  memberId       String @db.Uuid
-  task           Task @relation(fields: [taskId], references: [id], onDelete: Restrict)
-  member         Member @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  id             String   @id @default(uuid()) @db.Uuid
+  taskId         String   @db.Uuid
+  memberId       String   @db.Uuid
+  task           Task     @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  member         Member   @relation(fields: [memberId], references: [id], onDelete: Restrict)
   minutes        Int
   workedOn       DateTime @db.Date
-  note           String @db.VarChar(1000)
-  idempotencyKey  String @unique @db.Uuid
+  note           String   @db.VarChar(1000)
+  idempotencyKey String   @unique @db.Uuid
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
   @@index([memberId, workedOn])
   @@index([taskId])
   @@schema("workshop")
 }
 
 model Observation {
-  id        String @id @default(uuid()) @db.Uuid
-  orderId   String @db.Uuid
-  memberId  String @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  orderId   String    @db.Uuid
+  memberId  String    @db.Uuid
   order     WorkOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  member    Member @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  body      String @db.Text
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  body      String    @db.Text
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
   @@index([orderId, createdAt])
   @@index([memberId])
   @@schema("workshop")
 }
 
 model CatalogItem {
-  id          String @id @default(uuid()) @db.Uuid
-  code        String @unique @db.VarChar(80)
-  name        String @db.VarChar(200)
-  brand       String? @db.VarChar(100)
-  kind        ItemKind
-  unit        String @default("unidad") @db.VarChar(30)
-  serialized  Boolean @default(false)
-  offers      SupplierOffer[]
-  balances    StockBalance[]
+  quoteLines QuoteLine[]
+  saleLines  SaleLine[]
+
+  id             String          @id @default(uuid()) @db.Uuid
+  code           String          @unique @db.VarChar(80)
+  name           String          @db.VarChar(200)
+  brand          String?         @db.VarChar(100)
+  kind           ItemKind
+  unit           String          @default("unidad") @db.VarChar(30)
+  reference      String          @default("") @db.VarChar(200)
+  notes          String          @default("") @db.Text
+  serialized     Boolean         @default(false)
+  offers         SupplierOffer[]
+  balances       StockBalance[]
   stockMovements StockMovement[]
+
   @@index([name])
   @@schema("workshop")
 }
 
 model Supplier {
-  id      String @id @default(uuid()) @db.Uuid
-  name    String @db.VarChar(180)
-  phone   String? @db.VarChar(40)
-  offers  SupplierOffer[]
+  email     String?         @db.VarChar(254)
+  address   String?         @db.VarChar(300)
+  deletedAt DateTime?       @db.Timestamptz(3)
+  id        String          @id @default(uuid()) @db.Uuid
+  name      String          @db.VarChar(180)
+  phone     String?         @db.VarChar(40)
+  offers    SupplierOffer[]
+
   @@schema("workshop")
 }
 
 model SupplierOffer {
-  id              String @id @default(uuid()) @db.Uuid
-  supplierId      String @db.Uuid
-  itemId          String @db.Uuid
-  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  item            CatalogItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
-  condition       PartCondition
-  unitCost        Decimal @db.Decimal(18, 2)
-  reportedStock   String? @db.VarChar(120)
-  observedAt      DateTime @db.Timestamptz(3)
-  evidence        String @db.VarChar(1000)
+  id            String        @id @default(uuid()) @db.Uuid
+  supplierId    String        @db.Uuid
+  itemId        String        @db.Uuid
+  supplier      Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  item          CatalogItem   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  condition     PartCondition
+  unitCost      Decimal       @db.Decimal(18, 2)
+  reportedStock String?       @db.VarChar(120)
+  observedAt    DateTime      @db.Timestamptz(3)
+  evidence      String        @db.VarChar(1000)
+
   @@index([itemId, supplierId, observedAt])
   @@index([supplierId])
   @@schema("workshop")
 }
 
 model StockBalance {
-  itemId       String @db.Uuid
-  locationId   String @db.Uuid
+  costKnown    Boolean       @default(true)
+  itemId       String        @db.Uuid
+  locationId   String        @db.Uuid
   condition    PartCondition
-  item         CatalogItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
-  location     Location @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  quantity     Decimal @default(0) @db.Decimal(14, 3)
-  reserved     Decimal @default(0) @db.Decimal(14, 3)
-  materialCost Decimal @default(0) @db.Decimal(18, 2)
+  item         CatalogItem   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  location     Location      @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  quantity     Decimal       @default(0) @db.Decimal(14, 3)
+  reserved     Decimal       @default(0) @db.Decimal(14, 3)
+  materialCost Decimal       @default(0) @db.Decimal(18, 2)
+
   @@id([itemId, locationId, condition])
   @@index([locationId])
   @@schema("workshop")
 }
 
 model AuditEvent {
-  id         String @id @default(uuid()) @db.Uuid
-  actorId    String @db.Uuid
-  action     String @db.VarChar(80)
-  entityId   String @db.Uuid
-  details    Json
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String   @db.Uuid
+  action    String   @db.VarChar(80)
+  entityId  String   @db.Uuid
+  details   Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
   @@index([entityId, createdAt])
   @@index([actorId, createdAt])
   @@schema("workshop")
 }
 
 model CommandReceipt {
-  id          String @id @db.Uuid
-  actorId     String @db.Uuid
-  actor       Member @relation(fields:[actorId],references:[id],onDelete:Restrict)
-  kind        String @db.VarChar(80)
-  payloadHash String @db.VarChar(64)
+  id          String   @id @db.Uuid
+  actorId     String   @db.Uuid
+  actor       Member   @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  kind        String   @db.VarChar(80)
+  payloadHash String   @db.VarChar(64)
   result      Json
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
   @@index([actorId, createdAt])
   @@schema("workshop")
 }
 
 model StockMovement {
-  id             String @id @default(uuid()) @db.Uuid
-  itemId         String @db.Uuid
-  locationId     String @db.Uuid
+  costKnown  Boolean         @default(true)
+  saleLine   SaleLine?
+  returnLine SaleReturnLine?
+
+  id             String         @id @default(uuid()) @db.Uuid
+  itemId         String         @db.Uuid
+  locationId     String         @db.Uuid
   condition      PartCondition
-  quantity       Decimal @db.Decimal(14, 3)
-  materialAmount Decimal @db.Decimal(18, 2)
-  reason         String @db.VarChar(1000)
-  kind           String @db.VarChar(30)
-  actorId        String @db.Uuid
-  orderId        String? @db.Uuid
-  reversalOfId   String? @unique @db.Uuid
-  item           CatalogItem @relation(fields:[itemId],references:[id],onDelete:Restrict)
-  location       Location @relation(fields:[locationId],references:[id],onDelete:Restrict)
-  actor          Member @relation(fields:[actorId],references:[id],onDelete:Restrict)
-  order          WorkOrder? @relation(fields:[orderId],references:[id],onDelete:Restrict)
-  original       StockMovement? @relation("MovementReversal",fields:[reversalOfId],references:[id],onDelete:Restrict)
+  quantity       Decimal        @db.Decimal(14, 3)
+  materialAmount Decimal        @db.Decimal(18, 2)
+  reason         String         @db.VarChar(1000)
+  kind           String         @db.VarChar(30)
+  actorId        String         @db.Uuid
+  orderId        String?        @db.Uuid
+  reversalOfId   String?        @unique @db.Uuid
+  item           CatalogItem    @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  location       Location       @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  actor          Member         @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  order          WorkOrder?     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  original       StockMovement? @relation("MovementReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
   reversal       StockMovement? @relation("MovementReversal")
-  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+
   @@index([itemId, locationId, createdAt])
   @@index([orderId])
   @@index([actorId, createdAt])
@@ -306,49 +359,501 @@ model StockMovement {
 }
 
 model MoneyAccount {
-  id             String @id @default(uuid()) @db.Uuid
-  name           String @unique @db.VarChar(120)
-  openingBalance Decimal @db.Decimal(18, 2)
-  balance        Decimal @db.Decimal(18, 2)
-  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  id             String      @id @default(uuid()) @db.Uuid
+  name           String      @unique @db.VarChar(120)
+  openingBalance Decimal     @db.Decimal(18, 2)
+  balance        Decimal     @db.Decimal(18, 2)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
   entries        CashEntry[]
+
   @@schema("workshop")
 }
 
 model Obligation {
-  id        String @id @default(uuid()) @db.Uuid
-  title     String @db.VarChar(200)
-  category  String @db.VarChar(40)
-  period    String @db.VarChar(7)
-  amount    Decimal @db.Decimal(18, 2)
-  dueOn     DateTime @db.Date
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  entries   CashEntry[]
+  recurringId String?     @db.Uuid
+  estimated   Boolean     @default(false)
+  id          String      @id @default(uuid()) @db.Uuid
+  title       String      @db.VarChar(200)
+  category    String      @db.VarChar(40)
+  period      String      @db.VarChar(7)
+  amount      Decimal     @db.Decimal(18, 2)
+  dueOn       DateTime    @db.Date
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+  entries     CashEntry[]
+
+  @@unique([recurringId, period])
   @@index([period, category])
   @@schema("workshop")
 }
 
 model CashEntry {
-  id           String @id @default(uuid()) @db.Uuid
-  accountId    String @db.Uuid
-  account      MoneyAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
-  obligationId String? @db.Uuid
-  obligation   Obligation? @relation(fields:[obligationId],references:[id],onDelete:Restrict)
-  amount       Decimal @db.Decimal(18, 2)
-  direction    String @db.VarChar(3)
-  kind         String @db.VarChar(40)
-  counterparty String @db.VarChar(200)
-  reference    String @db.VarChar(200)
-  note         String @db.VarChar(1000)
-  occurredOn   DateTime @db.Date
-  actorId      String @db.Uuid
-  actor        Member @relation(fields:[actorId],references:[id],onDelete:Restrict)
-  reversalOfId String? @unique @db.Uuid
-  original     CashEntry? @relation("CashReversal",fields:[reversalOfId],references:[id],onDelete:Restrict)
-  reversal     CashEntry? @relation("CashReversal")
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  customerPayment CustomerPayment?
+
+  transferId   String?      @db.Uuid
+  id           String       @id @default(uuid()) @db.Uuid
+  accountId    String       @db.Uuid
+  account      MoneyAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  obligationId String?      @db.Uuid
+  obligation   Obligation?  @relation(fields: [obligationId], references: [id], onDelete: Restrict)
+  amount       Decimal      @db.Decimal(18, 2)
+  direction    String       @db.VarChar(3)
+  kind         String       @db.VarChar(40)
+  counterparty String       @db.VarChar(200)
+  reference    String       @db.VarChar(200)
+  note         String       @db.VarChar(1000)
+  occurredOn   DateTime     @db.Date
+  actorId      String       @db.Uuid
+  actor        Member       @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  reversalOfId String?      @unique @db.Uuid
+  original     CashEntry?   @relation("CashReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversal     CashEntry?   @relation("CashReversal")
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@unique([transferId, kind, direction])
   @@index([accountId, occurredOn])
   @@index([obligationId])
   @@index([actorId])
+  @@schema("workshop")
+}
+
+model TaskNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @db.Uuid
+  actorId   String   @db.Uuid
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt])
+  @@schema("workshop")
+}
+
+model TaskPhoto {
+  storagePath String?  @unique @db.Text
+  id          String   @id @default(uuid()) @db.Uuid
+  taskId      String   @db.Uuid
+  actorId     String   @db.Uuid
+  caption     String   @db.VarChar(250)
+  content     Bytes?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt])
+  @@schema("workshop")
+}
+
+model Quote {
+  id           String      @id @default(uuid()) @db.Uuid
+  number       Int         @unique @default(autoincrement())
+  groupId      String      @db.Uuid
+  revision     Int
+  customerId   String      @db.Uuid
+  orderId      String?     @db.Uuid
+  customer     Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  order        WorkOrder?  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  status       String      @default("DRAFT") @db.VarChar(20)
+  title        String      @db.VarChar(250)
+  terms        String      @db.Text
+  validUntil   DateTime    @db.Date
+  total        Decimal     @db.Decimal(18, 2)
+  approvedBy   String?     @db.VarChar(180)
+  approvalNote String?     @db.Text
+  approvedAt   DateTime?   @db.Timestamptz(3)
+  actorId      String      @db.Uuid
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  lines        QuoteLine[]
+  sale         Sale?
+
+  @@unique([groupId, revision])
+  @@index([customerId, createdAt])
+  @@index([orderId])
+  @@schema("workshop")
+}
+
+model QuoteLine {
+  id                String        @id @default(uuid()) @db.Uuid
+  quoteId           String        @db.Uuid
+  itemId            String        @db.Uuid
+  quote             Quote         @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  item              CatalogItem   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  description       String        @db.VarChar(250)
+  reference         String        @db.VarChar(200)
+  kind              ItemKind
+  quantity          Decimal       @db.Decimal(14, 3)
+  unitPrice         Decimal       @db.Decimal(18, 2)
+  discount          Decimal       @default(0) @db.Decimal(18, 2)
+  estimatedUnitCost Decimal?      @db.Decimal(18, 2)
+  condition         PartCondition @default(NEW)
+  total             Decimal       @db.Decimal(18, 2)
+
+  @@index([quoteId])
+  @@index([itemId])
+  @@schema("workshop")
+}
+
+model Sale {
+  id               String              @id @default(uuid()) @db.Uuid
+  number           Int                 @unique @default(autoincrement())
+  customerId       String              @db.Uuid
+  orderId          String?             @db.Uuid
+  quoteId          String?             @unique @db.Uuid
+  locationId       String              @db.Uuid
+  customer         Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  order            WorkOrder?          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  quote            Quote?              @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  location         Location            @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  kind             String              @db.VarChar(20)
+  status           String              @default("ISSUED") @db.VarChar(20)
+  title            String              @db.VarChar(250)
+  terms            String              @db.Text
+  invoiceReference String              @default("") @db.VarChar(200)
+  issuedOn         DateTime            @db.Date
+  dueOn            DateTime            @db.Date
+  total            Decimal             @db.Decimal(18, 2)
+  actorId          String              @db.Uuid
+  voidReason       String?             @db.Text
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  lines            SaleLine[]
+  allocations      PaymentAllocation[]
+  returns          SaleReturn[]
+
+  @@index([customerId, issuedOn])
+  @@index([orderId])
+  @@schema("workshop")
+}
+
+model SaleLine {
+  id           String           @id @default(uuid()) @db.Uuid
+  saleId       String           @db.Uuid
+  itemId       String           @db.Uuid
+  movementId   String?          @unique @db.Uuid
+  sale         Sale             @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  item         CatalogItem      @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  movement     StockMovement?   @relation(fields: [movementId], references: [id], onDelete: Restrict)
+  description  String           @db.VarChar(250)
+  reference    String           @db.VarChar(200)
+  kind         ItemKind
+  quantity     Decimal          @db.Decimal(14, 3)
+  unitPrice    Decimal          @db.Decimal(18, 2)
+  discount     Decimal          @default(0) @db.Decimal(18, 2)
+  condition    PartCondition
+  total        Decimal          @db.Decimal(18, 2)
+  materialCost Decimal?         @db.Decimal(18, 2)
+  returnLines  SaleReturnLine[]
+
+  @@index([saleId])
+  @@index([itemId])
+  @@schema("workshop")
+}
+
+model CustomerPayment {
+  refundOfId  String?             @db.Uuid
+  original    CustomerPayment?    @relation("PaymentRefund", fields: [refundOfId], references: [id], onDelete: Restrict)
+  refunds     CustomerPayment[]   @relation("PaymentRefund")
+  id          String              @id @default(uuid()) @db.Uuid
+  customerId  String              @db.Uuid
+  entryId     String              @unique @db.Uuid
+  customer    Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  entry       CashEntry           @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  allocations PaymentAllocation[]
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+
+  @@index([refundOfId])
+  @@index([customerId])
+  @@schema("workshop")
+}
+
+model PaymentAllocation {
+  id           String             @id @default(uuid()) @db.Uuid
+  paymentId    String             @db.Uuid
+  saleId       String             @db.Uuid
+  payment      CustomerPayment    @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  sale         Sale               @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  amount       Decimal            @db.Decimal(18, 2)
+  actorId      String             @db.Uuid
+  reversalOfId String?            @unique @db.Uuid
+  original     PaymentAllocation? @relation("AllocationReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversal     PaymentAllocation? @relation("AllocationReversal")
+  note         String             @db.VarChar(1000)
+  createdAt    DateTime           @default(now()) @db.Timestamptz(3)
+
+  @@index([paymentId])
+  @@index([saleId])
+  @@schema("workshop")
+}
+
+model SaleReturn {
+  id         String           @id @default(uuid()) @db.Uuid
+  saleId     String           @db.Uuid
+  sale       Sale             @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  amount     Decimal          @db.Decimal(18, 2)
+  reason     String           @db.VarChar(1000)
+  occurredOn DateTime         @db.Date
+  actorId    String           @db.Uuid
+  lines      SaleReturnLine[]
+  createdAt  DateTime         @default(now()) @db.Timestamptz(3)
+
+  @@index([saleId])
+  @@schema("workshop")
+}
+
+model SaleReturnLine {
+  id         String         @id @default(uuid()) @db.Uuid
+  returnId   String         @db.Uuid
+  saleLineId String         @db.Uuid
+  movementId String?        @unique @db.Uuid
+  document   SaleReturn     @relation(fields: [returnId], references: [id], onDelete: Restrict)
+  saleLine   SaleLine       @relation(fields: [saleLineId], references: [id], onDelete: Restrict)
+  movement   StockMovement? @relation(fields: [movementId], references: [id], onDelete: Restrict)
+  quantity   Decimal        @db.Decimal(14, 3)
+  amount     Decimal        @db.Decimal(18, 2)
+
+  @@index([returnId])
+  @@index([saleLineId])
+  @@schema("workshop")
+}
+
+model Purchase {
+  id         String            @id @default(uuid()) @db.Uuid
+  number     Int               @unique @default(autoincrement())
+  supplierId String            @db.Uuid
+  locationId String            @db.Uuid
+  status     String            @default("OPEN") @db.VarChar(20)
+  reference  String            @default("") @db.VarChar(200)
+  orderedOn  DateTime          @db.Date
+  dueOn      DateTime          @db.Date
+  note       String            @db.Text
+  actorId    String            @db.Uuid
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
+  lines      PurchaseLine[]
+  payments   SupplierPayment[]
+
+  @@index([supplierId, orderedOn])
+  @@schema("workshop")
+}
+
+model PurchaseLine {
+  id          String            @id @default(uuid()) @db.Uuid
+  purchaseId  String            @db.Uuid
+  purchase    Purchase          @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  itemId      String            @db.Uuid
+  description String            @db.VarChar(250)
+  condition   PartCondition
+  quantity    Decimal           @db.Decimal(14, 3)
+  unitCost    Decimal           @db.Decimal(18, 2)
+  receipts    PurchaseReceipt[]
+
+  @@index([purchaseId])
+  @@schema("workshop")
+}
+
+model PurchaseReceipt {
+  id         String       @id @default(uuid()) @db.Uuid
+  lineId     String       @db.Uuid
+  line       PurchaseLine @relation(fields: [lineId], references: [id], onDelete: Restrict)
+  movementId String       @unique @db.Uuid
+  quantity   Decimal      @db.Decimal(14, 3)
+  amount     Decimal      @db.Decimal(18, 2)
+  occurredOn DateTime     @db.Date
+  reason     String       @db.Text
+  actorId    String       @db.Uuid
+  originalId String?      @db.Uuid
+  createdAt  DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([lineId])
+  @@schema("workshop")
+}
+
+model SupplierPayment {
+  id         String   @id @default(uuid()) @db.Uuid
+  purchaseId String   @db.Uuid
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  entryId    String   @unique @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@schema("workshop")
+}
+
+model StockReservation {
+  id         String        @id @default(uuid()) @db.Uuid
+  itemId     String        @db.Uuid
+  locationId String        @db.Uuid
+  condition  PartCondition
+  orderId    String        @db.Uuid
+  quantity   Decimal       @db.Decimal(14, 3)
+  status     String        @default("ACTIVE") @db.VarChar(20)
+  actorId    String        @db.Uuid
+  movementId String?       @unique @db.Uuid
+  createdAt  DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@index([orderId, status])
+  @@schema("workshop")
+}
+
+model StockTransfer {
+  id         String   @id @default(uuid()) @db.Uuid
+  outboundId String   @unique @db.Uuid
+  inboundId  String   @unique @db.Uuid
+  actorId    String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@schema("workshop")
+}
+
+model LaborRate {
+  id          String   @id @default(uuid()) @db.Uuid
+  memberId    String   @db.Uuid
+  effectiveOn DateTime @db.Date
+  hourlyCost  Decimal  @db.Decimal(18, 2)
+  note        String   @db.Text
+  actorId     String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([memberId, effectiveOn])
+  @@schema("workshop")
+}
+
+model WarrantyCase {
+  id              String   @id @default(uuid()) @db.Uuid
+  saleId          String   @db.Uuid
+  originalOrderId String?  @db.Uuid
+  assetId         String?  @db.Uuid
+  repairOrderId   String   @unique @db.Uuid
+  symptom         String   @db.Text
+  diagnosis       String   @default("") @db.Text
+  decision        String   @default("PENDING") @db.VarChar(20)
+  cause           String   @default("UNDETERMINED") @db.VarChar(30)
+  reviewerId      String?  @db.Uuid
+  actorId         String   @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([saleId])
+  @@schema("workshop")
+}
+
+model OrderCheck {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  name      String   @db.VarChar(200)
+  result    String   @db.VarChar(20)
+  readings  String   @db.Text
+  actorId   String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([orderId, createdAt])
+  @@schema("workshop")
+}
+
+model OrderHandover {
+  id         String   @id @default(uuid()) @db.Uuid
+  orderId    String   @db.Uuid
+  kind       String   @db.VarChar(20)
+  condition  String   @db.Text
+  inventory  String   @db.Text
+  acceptedBy String   @db.VarChar(180)
+  note       String   @db.Text
+  actorId    String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([orderId, kind, createdAt])
+  @@schema("workshop")
+}
+
+model AssetOwnership {
+  id                 String   @id @default(uuid()) @db.Uuid
+  assetId            String   @db.Uuid
+  previousCustomerId String?  @db.Uuid
+  customerId         String   @db.Uuid
+  reason             String   @db.Text
+  actorId            String   @db.Uuid
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([assetId, createdAt])
+  @@schema("workshop")
+}
+
+model CashClosure {
+  id           String    @id @default(uuid()) @db.Uuid
+  accountId    String    @db.Uuid
+  throughOn    DateTime  @db.Date
+  expected     Decimal   @db.Decimal(18, 2)
+  counted      Decimal   @db.Decimal(18, 2)
+  difference   Decimal   @db.Decimal(18, 2)
+  note         String    @db.Text
+  actorId      String    @db.Uuid
+  reopenedAt   DateTime? @db.Timestamptz(3)
+  reopenReason String?   @db.Text
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([accountId, throughOn])
+  @@schema("workshop")
+}
+
+model RecurringExpense {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String   @db.VarChar(200)
+  category  String   @db.VarChar(30)
+  amount    Decimal  @db.Decimal(18, 2)
+  dueDay    Int
+  active    Boolean  @default(true)
+  actorId   String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@schema("workshop")
+}
+
+model MonthCoverage {
+  period      String   @id @db.VarChar(7)
+  confirmed   Boolean  @default(false)
+  note        String   @db.Text
+  actorId     String   @db.Uuid
+  confirmedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@schema("workshop")
+}
+
+model InventoryCount {
+  id         String    @id @default(uuid()) @db.Uuid
+  locationId String    @db.Uuid
+  cutoffAt   DateTime  @default(now()) @db.Timestamptz(3)
+  status     String    @default("DRAFT") @db.VarChar(20)
+  rows       Json
+  note       String    @db.Text
+  actorId    String    @db.Uuid
+  appliedAt  DateTime? @db.Timestamptz(3)
+
+  @@index([locationId, cutoffAt])
+  @@schema("workshop")
+}
+
+model SerializedUnit {
+  id          String   @id @default(uuid()) @db.Uuid
+  itemId      String   @db.Uuid
+  locationId  String   @db.Uuid
+  code        String   @unique @db.VarChar(120)
+  serial      String   @default("") @db.VarChar(120)
+  orderId     String?  @unique @db.Uuid
+  status      String   @default("REBUILDING") @db.VarChar(20)
+  coreCost    Decimal  @db.Decimal(18, 2)
+  rebuildCost Decimal? @db.Decimal(18, 2)
+  saleId      String?  @unique @db.Uuid
+  actorId     String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@schema("workshop")
+}
+
+model Attachment {
+  id         String   @id @default(uuid()) @db.Uuid
+  entityType String   @db.VarChar(30)
+  entityId   String   @db.Uuid
+  path       String   @unique @db.Text
+  name       String   @db.VarChar(250)
+  mime       String   @db.VarChar(100)
+  bytes      Int
+  actorId    String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([entityType, entityId, createdAt])
   @@schema("workshop")
 }

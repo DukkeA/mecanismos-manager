@@ -1,5 +1,7 @@
 "use client";
+import {useWorkshopScope} from "@/features/workshop/query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { BrandLogo } from "@/components/brand-logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +29,7 @@ import type { Role } from "@/domain/permissions";
 import { useSignOut } from "@/features/workshop/session";
 import {
   Boxes,
-  Building2,
+  Wrench as ServiceIcon,
   ChartNoAxesCombined,
   ChevronsUpDown,
   ClipboardList,
@@ -37,6 +39,9 @@ import {
   Truck,
   Users,
   Wallet,
+  FileText,
+  ShoppingBag,
+  HandCoins,
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
@@ -49,9 +54,24 @@ export const workshopSections = [
   { label: "Clientes", icon: ContactRound },
   { label: "Proveedores", icon: Truck },
   { label: "Inventario", icon: Boxes },
+  { label: "Servicios", icon: ServiceIcon },
+  { label: "Cotizaciones", icon: FileText },
+  { label: "Ventas", icon: ShoppingBag },
+  { label: "Cartera", icon: HandCoins },
   { label: "Caja", icon: Wallet },
+  { label: "Compras", icon: Truck },
+  { label: "Control de inventario", icon: Boxes },
+  { label: "Garantías", icon: Wrench },
+  { label: "Activos", icon: ContactRound },
+  { label: "Rentabilidad", icon: ChartNoAxesCombined },
+  { label: "Control de caja", icon: Wallet },
   { label: "Equipo", icon: Users },
 ];
+export function sectionAvailable(label:string, role:Role, demo:boolean){
+ if(role === "MECHANIC" && !["Resumen","Órdenes","Tareas"].includes(label))return false;
+ if(role !== "ADMIN" && ["Equipo","Rentabilidad"].includes(label))return false;
+ return !demo || !["Cotizaciones","Ventas","Cartera","Compras","Control de inventario","Garantías","Activos","Rentabilidad","Control de caja"].includes(label);
+}
 export function AppSidebar({
   actor,
   section,
@@ -65,13 +85,8 @@ export function AppSidebar({
 }) {
   const { isMobile, setOpenMobile } = useSidebar();
   const logout = useSignOut();
-  const visible = workshopSections
-    .filter(
-      (s) =>
-        actor.role !== "MECHANIC" ||
-        ["Resumen", "Órdenes", "Tareas"].includes(s.label),
-    )
-    .filter((s) => actor.role === "ADMIN" || s.label !== "Equipo");
+  const {demo}=useWorkshopScope();
+  const visible=workshopSections.filter(s=>sectionAvailable(s.label,actor.role,demo));
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
@@ -81,23 +96,20 @@ export function AppSidebar({
               size="lg"
               onClick={() => navigate("Resumen")}
               tooltip="Mecanismos Manager"
+              aria-label="Mecanismos Técnicos · Ir al resumen"
+              className="sidebar-brand-button"
             >
-              <div className="sidebar-brand-mark">
-                <Wrench aria-hidden="true" />
-              </div>
-              <span className="sidebar-wordmark">
-                Mecanismos<small>Manager</small>
-              </span>
+              <BrandLogo className="sidebar-logo-full" />
+              <BrandLogo compact className="sidebar-logo-compact" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {["Taller", "Administración"].map((group) => {
+        {["Taller", "Comercial", "Administración"].map((group) => {
           const items = visible.filter(
             (s) =>
-              ["Caja", "Equipo"].includes(s.label) ===
-              (group === "Administración"),
+              (["Caja", "Equipo", "Rentabilidad", "Control de caja"].includes(s.label) ? "Administración" : ["Clientes","Proveedores","Cotizaciones","Ventas","Cartera","Compras"].includes(s.label) ? "Comercial" : "Taller") === group,
           );
           return (
             items.length > 0 && (
@@ -127,14 +139,7 @@ export function AppSidebar({
             )
           );
         })}
-        <SidebarGroup className="mt-auto group-data-[collapsible=icon]:hidden">
-          <div className="sidebar-location">
-            <Building2 aria-hidden="true" />
-            <div>
-              Bogotá<small>Oficina y bodega / taller</small>
-            </div>
-          </div>
-        </SidebarGroup>
+
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

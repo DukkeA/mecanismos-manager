@@ -1,4 +1,8 @@
 "use client";
+import { useCommercialCommand } from "@/features/commerce/hooks";
+import { useWorkshopQuery, useWorkshopScope } from "@/features/workshop/query";
+import { useControlCommand } from "@/features/control/hooks";
+import { accountNames } from "@/domain/accounts";
 import { FormSheet } from "@/components/form-sheet";
 import { DataTable } from "@/components/data-table";
 import { OperationForm, type Dialog } from "@/components/operation-form";
@@ -28,7 +32,7 @@ import { cashKinds, obligationCategories } from "@/domain/cash";
 import type { OperationsView } from "@/domain/operations-view";
 import type { Role } from "@/domain/permissions";
 import Decimal from "decimal.js";
-import { Plus, ReceiptText, Undo2, Wallet } from "lucide-react";
+import { ArrowLeftRight, Plus, ReceiptText, Undo2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { FinancialOverview } from "./financial-overview";
@@ -36,10 +40,17 @@ import { useCash, useCashMutation } from "./hooks";
 import { cop, todayInBogota } from "./summary";
 
 export function CashPanel({ role }: { role: Role }) {
+  const { demo } = useWorkshopScope();
   const { data: cash } = useCash();
   const mutation = useCashMutation();
+  const control = useControlCommand();
+  const commerce = useCommercialCommand();
+  const { data: customers = [] } = useWorkshopQuery(
+    (s) => s.operations.customers,
+  );
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [history, setHistory] = useState<string | null>(null);
+  const [sortTable] = useQueryState("table");
   const [period, setPeriod] = useQueryState(
       "period",
       todayInBogota().slice(0, 7),
@@ -60,6 +71,47 @@ export function CashPanel({ role }: { role: Role }) {
       id: a.id,
       label: `${a.name} · ${cop(a.balance)}`,
     }));
+  const transferForm: Dialog = {
+    kind: "cash-transfer",
+    title: "Transferir entre cuentas",
+    submitLabel: "Transferir dinero",
+    description:
+      "El dinero saldrá de la cuenta de origen y entrará en la de destino. El saldo total del taller se conserva.",
+    extra: {
+      sourceAccountId: accountOptions[0]?.id,
+      destinationAccountId: accountOptions[1]?.id,
+      occurredOn: todayInBogota(),
+    },
+    fields: [
+      {
+        key: "sourceAccountId",
+        label: "Cuenta de origen",
+        type: "select",
+        options: accountOptions,
+      },
+      {
+        key: "destinationAccountId",
+        label: "Cuenta de destino",
+        type: "select",
+        options: accountOptions,
+        hint: "Debe ser diferente a la cuenta de origen.",
+      },
+      { key: "amount", label: "Valor COP", type: "money" },
+      { key: "occurredOn", label: "Fecha de transferencia", type: "date" },
+      { key: "reference", label: "Comprobante / referencia", optional: true },
+      { key: "note", label: "Motivo", type: "textarea" },
+    ],
+  };
+  const entryLabel = (e: OperationsView["cashEntries"][number]) =>
+    e.transferId
+      ? e.kind === "REVERSAL"
+        ? "Reversión de transferencia"
+        : e.direction === "OUT"
+          ? "Transferencia enviada"
+          : "Transferencia recibida"
+      : e.kind === "REVERSAL"
+        ? "Reversión"
+        : cashKinds[e.kind as keyof typeof cashKinds]?.label;
   const cashForm: Dialog = {
     kind: "cash",
     title: "Registrar entrada o salida",
@@ -81,6 +133,15 @@ export function CashPanel({ role }: { role: Role }) {
         options: Object.entries(cashKinds)
           .filter(
             ([id]) =>
+              ![
+                "CUSTOMER_PAYMENT",
+                "CUSTOMER_ADVANCE",
+                "CUSTOMER_REFUND",
+                "SUPPLIER_PAYMENT",
+              ].includes(id),
+          )
+          .filter(
+            ([id]) =>
               role === "ADMIN" ||
               ![
                 "OWNER_WITHDRAWAL",
@@ -98,6 +159,19 @@ export function CashPanel({ role }: { role: Role }) {
       { key: "note", label: "Concepto", type: "textarea" },
     ],
   };
+  const correct = (o: OperationsView["obligations"][number]) =>
+    setDialog({
+      kind: "obligation-correct",
+      title: "Confirmar importe del gasto",
+      description:
+        "Revisa el importe real y la fecha de vencimiento antes de confirmar el mes.",
+      extra: { obligationId: o.id, amount: o.amount, dueOn: o.dueOn },
+      fields: [
+        { key: "amount", label: "Importe confirmado (COP)", type: "money" },
+        { key: "dueOn", label: "Vencimiento", type: "date" },
+        { key: "note", label: "Motivo de la corrección", type: "textarea" },
+      ],
+    });
   const pay = (o: OperationsView["obligations"][number]) =>
     setDialog({
       kind: "cash",
@@ -135,17 +209,24 @@ export function CashPanel({ role }: { role: Role }) {
   const reverse = (entry: OperationsView["cashEntries"][number]) =>
     setDialog({
       kind: "cash-reversal",
-      title: "Revertir pago o movimiento",
-      submitLabel: "Revertir movimiento",
-      description:
-        "Se registrará un movimiento contrario. El original se conserva en el historial.",
+      title: entry.transferId
+        ? "Revertir transferencia"
+        : "Revertir pago o movimiento",
+      submitLabel: entry.transferId
+        ? "Revertir transferencia"
+        : "Revertir movimiento",
+      description: entry.transferId
+        ? "Se devolverá el dinero a la cuenta de origen. Se revertirán ambos movimientos y se conservará el historial."
+        : "Se registrará un movimiento contrario. El original se conserva en el historial.",
       extra: { entryId: entry.id, occurredOn: todayInBogota() },
       fields: [
         {
           key: "reason",
           label: "Motivo de la reversión",
           type: "textarea",
-          hint: `Se registrará la contrapartida de ${cop(entry.amount)} en ${cash.accounts.find((a) => a.id === entry.accountId)?.name}.`,
+          hint: entry.transferId
+            ? `Se devolverán ${cop(entry.amount)} entre las dos cuentas.`
+            : `Se registrará la contrapartida de ${cop(entry.amount)} en ${cash.accounts.find((a) => a.id === entry.accountId)?.name}.`,
         },
         { key: "occurredOn", label: "Fecha de reversión", type: "date" },
       ],
@@ -179,7 +260,14 @@ export function CashPanel({ role }: { role: Role }) {
     description:
       "Indica el dinero disponible al comenzar el registro de esta caja o banco.",
     fields: [
-      { key: "name", label: "Nombre de caja o banco" },
+      {
+        key: "name",
+        label: "Cuenta",
+        type: "select",
+        options: accountNames
+          .filter((name) => !cash.accounts.some((a) => a.name === name))
+          .map((name) => ({ id: name, label: name })),
+      },
       {
         key: "openingBalance",
         label: "Saldo inicial COP",
@@ -208,11 +296,12 @@ export function CashPanel({ role }: { role: Role }) {
       matches(o.title, q) &&
       (status === "ALL" || paymentState(o) === status),
   );
-  obligations.sort(
-    (a, b) =>
-      Number(paymentState(a) === "paid") - Number(paymentState(b) === "paid") ||
-      a.dueOn.localeCompare(b.dueOn),
-  );
+  if (sortTable !== "obligations")
+    obligations.sort(
+      (a, b) =>
+        Number(paymentState(a) === "paid") -
+          Number(paymentState(b) === "paid") || a.dueOn.localeCompare(b.dueOn),
+    );
   const entries = cash.entries.filter(
     (e) =>
       matches(
@@ -222,8 +311,37 @@ export function CashPanel({ role }: { role: Role }) {
       inDates(e.occurredOn, from, to) &&
       (!min || Number(e.amount) >= Number(min)) &&
       (!max || Number(e.amount) <= Number(max)) &&
-      (status === "ALL" || e.direction === status),
+      (status === "ALL" ||
+        (status === "TRANSFERS" ? !!e.transferId : e.direction === status)),
   );
+  const linkPayment = (e: OperationsView["cashEntries"][number]) =>
+    setDialog({
+      kind: "link-payment",
+      title: "Vincular cobro a un cliente",
+      submitLabel: "Vincular cobro",
+      description:
+        "El dinero ya está en caja. Esta acción identifica el cliente y deja el importe disponible en Cartera.",
+      extra: {
+        existingEntryId: e.id,
+        amount: e.amount,
+        occurredOn: e.occurredOn,
+        note: e.note || "Cobro registrado previamente",
+        reference: e.reference,
+      },
+      fields: [
+        {
+          key: "customerId",
+          label: "Cliente",
+          type: "select",
+          options: customers.map((c) => ({ id: c.id, label: c.name })),
+        },
+      ],
+    });
+  const canLink = (e: OperationsView["cashEntries"][number]) =>
+    !demo &&
+    !e.paymentId &&
+    !e.reversed &&
+    ["CUSTOMER_PAYMENT", "CUSTOMER_ADVANCE"].includes(e.kind);
   const mobileEntries = (rows: typeof entries) =>
     rows.map((e) => (
       <li key={e.id} className="mobile-cash-row">
@@ -232,9 +350,7 @@ export function CashPanel({ role }: { role: Role }) {
             variant="outline"
             data-payment-state={e.direction === "IN" ? "paid" : "pending"}
           >
-            {e.kind === "REVERSAL"
-              ? "Reversión"
-              : cashKinds[e.kind as keyof typeof cashKinds]?.label}
+            {entryLabel(e)}
           </Badge>
           <strong className="money-cell">
             {e.direction === "IN" ? "+" : "−"}
@@ -248,6 +364,11 @@ export function CashPanel({ role }: { role: Role }) {
         </small>
         <p>{[e.reference, e.note].filter(Boolean).join(" · ")}</p>
         <footer>
+          {canLink(e) && (
+            <Button variant="outline" onClick={() => linkPayment(e)}>
+              Vincular cliente
+            </Button>
+          )}
           {e.reversed ? (
             <Badge variant="outline">Revertido</Badge>
           ) : role === "ADMIN" && e.kind !== "REVERSAL" ? (
@@ -278,9 +399,7 @@ export function CashPanel({ role }: { role: Role }) {
             variant="outline"
             data-payment-state={e.direction === "IN" ? "paid" : "pending"}
           >
-            {e.kind === "REVERSAL"
-              ? "Reversión"
-              : cashKinds[e.kind as keyof typeof cashKinds]?.label}
+            {entryLabel(e)}
           </Badge>
         </TableCell>
         <TableCell className="money-cell">
@@ -288,6 +407,11 @@ export function CashPanel({ role }: { role: Role }) {
           {cop(e.amount)}
         </TableCell>
         <TableCell>
+          {canLink(e) && (
+            <Button variant="outline" onClick={() => linkPayment(e)}>
+              Vincular cliente
+            </Button>
+          )}
           {e.reversed ? (
             <Badge variant="outline">Revertido</Badge>
           ) : role === "ADMIN" && e.kind !== "REVERSAL" ? (
@@ -327,27 +451,72 @@ export function CashPanel({ role }: { role: Role }) {
             <TabsTrigger value="entries">Movimientos</TabsTrigger>
             <TabsTrigger value="accounts">Cuentas</TabsTrigger>
           </TabsList>
-          {(tab !== "accounts" || role === "ADMIN") && (
+          <div className="row-actions flex-wrap">
+            {!demo && role === "ADMIN" && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const params = new URLSearchParams(window.location.search);
+                  params.set(
+                    "table",
+                    tab === "entries"
+                      ? "cashEntries"
+                      : tab === "accounts"
+                        ? "accounts"
+                        : "obligations",
+                  );
+                  if (tab === "obligations") params.set("period", period);
+                  window.open(`/api/export?${params}`, "_blank", "noopener");
+                }}
+              >
+                Exportar
+              </Button>
+            )}
+            {!demo && tab === "entries" && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.history.pushState({}, "", "/?view=Cartera");
+                }}
+              >
+                Registrar cobro
+              </Button>
+            )}
+
             <Button
-              onClick={() =>
-                setDialog(
-                  tab === "accounts"
-                    ? accountForm
-                    : tab === "obligations"
-                      ? obligationForm
-                      : cashForm,
-                )
-              }
-              disabled={!cash.accounts.length && tab === "entries"}
+              variant="outline"
+              onClick={() => setDialog(transferForm)}
+              disabled={cash.accounts.length < 2 || mutation.isPending}
             >
-              <Plus data-icon="inline-start" />
-              {tab === "accounts"
-                ? "Crear cuenta"
-                : tab === "obligations"
-                  ? "Registrar gasto"
-                  : "Registrar movimiento"}
+              <ArrowLeftRight />
+              Transferir
             </Button>
-          )}
+            {(tab !== "accounts" ||
+              (role === "ADMIN" &&
+                accountNames.some(
+                  (name) => !cash.accounts.some((a) => a.name === name),
+                ))) && (
+              <Button
+                onClick={() =>
+                  setDialog(
+                    tab === "accounts"
+                      ? accountForm
+                      : tab === "obligations"
+                        ? obligationForm
+                        : cashForm,
+                  )
+                }
+                disabled={!cash.accounts.length && tab === "entries"}
+              >
+                <Plus data-icon="inline-start" />
+                {tab === "accounts"
+                  ? "Crear cuenta"
+                  : tab === "obligations"
+                    ? "Registrar gasto"
+                    : "Registrar movimiento"}
+              </Button>
+            )}
+          </div>
         </div>
         <FilterBar>
           <label className="search-filter">
@@ -378,12 +547,13 @@ export function CashPanel({ role }: { role: Role }) {
                     : [
                         { id: "IN", label: "Entradas" },
                         { id: "OUT", label: "Salidas" },
+                        { id: "TRANSFERS", label: "Transferencias" },
                       ]),
                 ]}
               />
             </label>
           )}
-          {tab === "entries" && (
+          {!demo && tab === "entries" && (
             <label className="range-filter">
               Fecha del movimiento
               <DateRangePicker
@@ -396,7 +566,7 @@ export function CashPanel({ role }: { role: Role }) {
               />
             </label>
           )}
-          {tab === "entries" && (
+          {!demo && tab === "entries" && (
             <>
               <label>
                 Valor mínimo COP
@@ -432,6 +602,7 @@ export function CashPanel({ role }: { role: Role }) {
         </FilterBar>
         <TabsContent value="obligations">
           <DataTable
+            tableKey="obligations"
             headers={[
               "Concepto / vencimiento",
               "Estado",
@@ -440,110 +611,137 @@ export function CashPanel({ role }: { role: Role }) {
               "Pendiente COP",
               "Acciones",
             ]}
-            mobileRows={obligations.map((o) => (
-              <li key={o.id} className="mobile-cash-row">
-                <header>
-                  <strong>{o.title}</strong>
-                  <Badge
-                    variant="secondary"
-                    data-payment-state={paymentState(o)}
-                  >
-                    {stateLabels[paymentState(o)]}
-                  </Badge>
-                </header>
-                <small>Vence {dateLabel(o.dueOn)}</small>
-                <dl>
-                  <div>
-                    <dt>Total</dt>
-                    <dd>{cop(o.amount)}</dd>
-                  </div>
-                  <div>
-                    <dt>Pagado</dt>
-                    <dd>{cop(o.paid)}</dd>
-                  </div>
-                  <div>
-                    <dt>Pendiente</dt>
-                    <dd>
-                      {cop(new Decimal(o.amount).minus(o.paid).toString())}
-                    </dd>
-                  </div>
-                </dl>
-                <footer>
-                  <Button variant="outline" onClick={() => setHistory(o.id)}>
-                    Ver pagos
-                  </Button>
-                  {new Decimal(o.amount).gt(o.paid) && (
-                    <Button
-                      disabled={!cash.accounts.length || mutation.isPending}
-                      onClick={() => pay(o)}
-                    >
-                      Pagar
-                    </Button>
-                  )}
-                </footer>
-                {!cash.accounts.length && new Decimal(o.amount).gt(o.paid) && (
-                  <p>Registra una cuenta en la pestaña Cuentas para pagar.</p>
-                )}
-              </li>
-            ))}
+
             empty="No hay gastos registrados para este mes con estos filtros."
-          >
-            {obligations.map((o) => (
-              <TableRow key={o.id}>
-                <TableCell>
-                  <strong>{o.title}</strong>
-                  <small className="cell-detail">
-                    {dateLabel(o.dueOn)} ·{" "}
-                    {
-                      obligationCategories[
-                        o.category as keyof typeof obligationCategories
-                      ]
-                    }
-                  </small>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant="secondary"
-                    data-payment-state={paymentState(o)}
-                  >
-                    {stateLabels[paymentState(o)]}
-                  </Badge>
-                </TableCell>
-                <TableCell>{cop(o.amount)}</TableCell>
-                <TableCell>{cop(o.paid)}</TableCell>
-                <TableCell>
-                  <strong>
-                    {cop(new Decimal(o.amount).minus(o.paid).toString())}
-                  </strong>
-                </TableCell>
-                <TableCell>
-                  <div className="row-actions">
-                    {new Decimal(o.amount).gt(o.paid) && (
+            renderRow={(row) => {
+              const o = row as OperationsView["obligations"][number];
+              return (
+                <TableRow key={o.id}>
+                  <TableCell>
+                    <strong>
+                      {o.title}
+                      {o.estimated ? " · Estimado" : ""}
+                    </strong>
+                    <small className="cell-detail">
+                      {dateLabel(o.dueOn)} ·{" "}
+                      {
+                        obligationCategories[
+                          o.category as keyof typeof obligationCategories
+                        ]
+                      }
+                    </small>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      data-payment-state={paymentState(o)}
+                    >
+                      {stateLabels[paymentState(o)]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{cop(o.amount)}</TableCell>
+                  <TableCell>{cop(o.paid)}</TableCell>
+                  <TableCell>
+                    <strong>
+                      {cop(new Decimal(o.amount).minus(o.paid).toString())}
+                    </strong>
+                  </TableCell>
+                  <TableCell>
+                    <div className="row-actions">
                       <Button
                         size="sm"
+                        variant="outline"
+                        onClick={() => correct(o)}
+                      >
+                        Revisar importe
+                      </Button>
+                      {new Decimal(o.amount).gt(o.paid) && (
+                        <Button
+                          size="sm"
+                          disabled={!cash.accounts.length || mutation.isPending}
+                          onClick={() => pay(o)}
+                        >
+                          <Wallet data-icon="inline-start" />
+                          Pagar
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setHistory(o.id)}
+                      >
+                        <ReceiptText data-icon="inline-start" />
+                        Pagos
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            }}
+            renderMobileRow={(row) => {
+              const o = row as OperationsView["obligations"][number];
+              return (
+                <li key={o.id} className="mobile-cash-row">
+                  <header>
+                    <strong>
+                      {o.title}
+                      {o.estimated ? " · Estimado" : ""}
+                    </strong>
+                    <Badge
+                      variant="secondary"
+                      data-payment-state={paymentState(o)}
+                    >
+                      {stateLabels[paymentState(o)]}
+                    </Badge>
+                  </header>
+                  <small>Vence {dateLabel(o.dueOn)}</small>
+                  <dl>
+                    <div>
+                      <dt>Total</dt>
+                      <dd>{cop(o.amount)}</dd>
+                    </div>
+                    <div>
+                      <dt>Pagado</dt>
+                      <dd>{cop(o.paid)}</dd>
+                    </div>
+                    <div>
+                      <dt>Pendiente</dt>
+                      <dd>
+                        {cop(new Decimal(o.amount).minus(o.paid).toString())}
+                      </dd>
+                    </div>
+                  </dl>
+                  <footer>
+                    <Button variant="outline" onClick={() => correct(o)}>
+                      Revisar importe
+                    </Button>
+                    <Button variant="outline" onClick={() => setHistory(o.id)}>
+                      Ver pagos
+                    </Button>
+                    {new Decimal(o.amount).gt(o.paid) && (
+                      <Button
                         disabled={!cash.accounts.length || mutation.isPending}
                         onClick={() => pay(o)}
                       >
-                        <Wallet data-icon="inline-start" />
                         Pagar
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setHistory(o.id)}
-                    >
-                      <ReceiptText data-icon="inline-start" />
-                      Pagos
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </DataTable>
+                  </footer>
+                  {!cash.accounts.length &&
+                    new Decimal(o.amount).gt(o.paid) && (
+                      <p>
+                        Registra una cuenta en la pestaña Cuentas para pagar.
+                      </p>
+                    )}
+                </li>
+              );
+            }}
+            fallbackRows={obligations}
+          ></DataTable>
         </TabsContent>
         <TabsContent value="entries">
           <DataTable
+            tableKey="cashEntries"
             headers={[
               "Fecha / cuenta",
               "Beneficiario / soporte",
@@ -551,28 +749,32 @@ export function CashPanel({ role }: { role: Role }) {
               "Valor COP",
               "Acciones",
             ]}
-            mobileRows={mobileEntries(entries)}
+            renderMobileRow={(r) =>
+              mobileEntries([r as (typeof entries)[number]])[0]
+            }
+            renderRow={(r) => entryRows([r as (typeof entries)[number]])[0]}
+            fallbackRows={entries}
             empty="No hay movimientos con estos filtros."
-          >
-            {entryRows(entries)}
-          </DataTable>
+          ></DataTable>
         </TabsContent>
         <TabsContent value="accounts">
           <DataTable
+            tableKey="accounts"
             headers={["Cuenta", "Saldo actual COP"]}
             empty="No hay cuentas registradas."
-          >
-            {cash.accounts
-              .filter((a) => matches(a.name, q))
-              .map((a) => (
+            renderRow={(row) => {
+              const a = row as OperationsView["accounts"][number];
+              return (
                 <TableRow key={a.id}>
                   <TableCell>{a.name}</TableCell>
                   <TableCell>
                     <strong>{cop(a.balance)}</strong>
                   </TableCell>
                 </TableRow>
-              ))}
-          </DataTable>
+              );
+            }}
+            fallbackRows={cash.accounts.filter((a) => matches(a.name, q))}
+          ></DataTable>
         </TabsContent>
       </Tabs>
       <Sheet
@@ -592,6 +794,7 @@ export function CashPanel({ role }: { role: Role }) {
           </SheetHeader>
           <div className="sheet-body">
             <DataTable
+              tableKey="cashEntries"
               headers={[
                 "Fecha / cuenta",
                 "Beneficiario / soporte",
@@ -629,7 +832,14 @@ export function CashPanel({ role }: { role: Role }) {
               }
               dialog={dialog}
               submit={async (input) => {
-                await mutation.mutateAsync({ kind: dialog.kind, input });
+                if (dialog.kind === "obligation-correct")
+                  await control.mutateAsync({
+                    kind: "obligation-correct",
+                    input,
+                  });
+                else if (dialog.kind === "link-payment")
+                  await commerce.mutateAsync({ kind: "payment", input });
+                else await mutation.mutateAsync({ kind: dialog.kind, input });
                 setDialog(null);
                 toast.success(
                   dialog.kind === "obligation"

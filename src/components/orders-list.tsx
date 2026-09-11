@@ -1,4 +1,6 @@
 "use client";
+import {useRecordPage} from "@/features/records/hooks";
+import { SortableHead } from "./sortable-head";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +29,9 @@ import {
 export function OrdersList({
   orders,
   openOrder,
+  createAction,
 }: {
+  createAction?: React.ReactNode;
   orders: OrderView[];
   openOrder: (id: string) => void;
 }) {
@@ -51,9 +55,15 @@ export function OrdersList({
       (location === "ALL" || o.location === location) &&
       inDates(o.receivedAt, from, to),
   );
-  const pagination = usePagination(filtered.length, "orders");
+  const server=useRecordPage<OrderView>("orders");
+  const pagination = usePagination(server.data?.total??filtered.length, "orders");
+  const visible=server.serverEnabled?server.data?.rows??[]:filtered.slice(pagination.start,pagination.start+pagination.size);
   return (
     <section className="orders-list">
+      <div className="operations-heading">
+        <p>Ingresos, reparaciones y entregas del taller.</p>
+        {createAction}
+      </div>
       <FilterBar>
         <label className="search-filter">
           Buscar
@@ -152,14 +162,15 @@ export function OrdersList({
                 "Ingreso",
                 "Entrega prevista",
                 "Salida",
-              ].map((h) => (
-                <TableHead key={h}>{h}</TableHead>
+              ].map((h, index) => (
+                <SortableHead key={h} table="orders" index={index}>
+                  {h}
+                </SortableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered
-              .slice(pagination.start, pagination.start + pagination.size)
+            {visible
               .map((o) => (
                 <TableRow key={o.id}>
                   <TableCell>
@@ -185,10 +196,10 @@ export function OrdersList({
               ))}
           </TableBody>
         </Table>
-        {!filtered.length && (
+        {!visible.length && !server.isPending && (
           <p className="empty-results">No hay órdenes con estos filtros.</p>
         )}
-        <Pager total={filtered.length} state={pagination} />
+        <Pager total={server.data?.total??filtered.length} state={pagination} />
       </div>
     </section>
   );
