@@ -76,6 +76,20 @@ export async function orderCost(tx: Tx, orderId: string) {
         new Decimal(rate.hourlyCost.toString()).mul(time.minutes).div(60),
       );
   }
+  const extra = await tx.overtimeEntry.aggregate({
+    where: {
+      taskId: {
+        in: (
+          await tx.task.findMany({ where: { orderId }, select: { id: true } })
+        ).map((t) => t.id),
+      },
+      voidedAt: null,
+    },
+    _sum: { pay: true, employerCost: true },
+  });
+  labor = labor
+    .plus(extra._sum.pay?.toString() ?? 0)
+    .plus(extra._sum.employerCost?.toString() ?? 0);
   return {
     material: material.toDecimalPlaces(2),
     labor: labor.toDecimalPlaces(2),
@@ -102,8 +116,15 @@ export async function openWarranty(actor: Actor, raw: unknown) {
     });
     if (sale.status !== "ISSUED")
       throw new DomainError("La garantía requiere una venta vigente.");
-    const candidates=sale.orderId?await tx.orderAsset.findMany({where:{orderId:sale.orderId},select:{assetId:true}}):[];
-    const assetId=input.assetId??(candidates.length===1?candidates[0].assetId:undefined);
+    const candidates = sale.orderId
+      ? await tx.orderAsset.findMany({
+          where: { orderId: sale.orderId },
+          select: { assetId: true },
+        })
+      : [];
+    const assetId =
+      input.assetId ??
+      (candidates.length === 1 ? candidates[0].assetId : undefined);
     if (assetId) {
       const linked = sale.orderId
         ? await tx.orderAsset.findUnique({
@@ -125,9 +146,7 @@ export async function openWarranty(actor: Actor, raw: unknown) {
         locationId: input.locationId,
         title: `Garantía · ${sale.title}`,
         reportedProblem: input.symptom,
-        ...(assetId
-          ? { assets: { create: { assetId } } }
-          : {}),
+        ...(assetId ? { assets: { create: { assetId } } } : {}),
       },
     });
     const warranty = await tx.warrantyCase.create({

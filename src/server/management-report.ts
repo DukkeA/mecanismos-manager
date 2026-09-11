@@ -30,7 +30,7 @@ export async function managementReport(actor: Actor, params: URLSearchParams) {
     ),
     db()
       .$queryRaw(Prisma.sql`SELECT m.name,COALESCE(t.minutes,0)::int minutes,COALESCE(a.completed,0)::int completed,COALESCE(a.open,0)::int open FROM workshop."Member" m
-      LEFT JOIN LATERAL(SELECT sum(minutes) minutes FROM workshop."TimeEntry" WHERE "memberId"=m.id AND "workedOn">=${from}::date AND "workedOn"<${to}::date)t ON true
+      LEFT JOIN LATERAL(SELECT sum(minutes) minutes FROM (SELECT minutes FROM workshop."TimeEntry" WHERE "memberId"=m.id AND "workedOn">=${from}::date AND "workedOn"<${to}::date UNION ALL SELECT minutes FROM workshop."OvertimeEntry" WHERE "memberId"=m.id AND "workedOn">=${from}::date AND "workedOn"<${to}::date AND "voidedAt" IS NULL)entries)t ON true
       LEFT JOIN LATERAL(SELECT count(*) FILTER(WHERE task.status='DONE') completed,count(*) FILTER(WHERE task.status<>'DONE') open FROM workshop."TaskAssignment" a JOIN workshop."Task" task ON task.id=a."taskId" WHERE a."memberId"=m.id AND task."deletedAt" IS NULL AND task."createdAt">=${from} AND task."createdAt"<${to})a ON true
       WHERE m.role='MECHANIC' AND m.active ORDER BY m.name`),
   ]);

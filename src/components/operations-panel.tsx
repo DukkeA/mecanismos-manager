@@ -47,6 +47,8 @@ import type { OrderView } from "@/domain/workshop-view";
 import type { Role } from "@/domain/permissions";
 
 type Props = {
+  onCompensation?: (member: OperationsView["members"][number]) => void;
+  compensationRates?: import("@/domain/team").Compensation[];
   section: string;
   data: OperationsView;
   orders: OrderView[];
@@ -79,6 +81,8 @@ const taskLabels: Record<string, string> = {
 
 export function OperationsPanel({
   section,
+  onCompensation,
+  compensationRates,
   data: source,
   orders,
   locations,
@@ -361,11 +365,65 @@ export function OperationsPanel({
         : section === "Proveedores"
           ? supplierForm
           : section === "Equipo"
-            ? memberForm
+            ? {
+                ...memberForm,
+                title: "Añadir empleado",
+                extra: {
+                  active: true,
+                  monthlyEmployerCost: "0",
+                  monthlyHours: "210",
+                  effectiveOn: new Date().toLocaleDateString("en-CA", {
+                    timeZone: "America/Bogota",
+                  }),
+                },
+                fields: [
+                  ...memberForm.fields,
+                  {
+                    key: "monthlySalary",
+                    label: "Salario mensual (COP)",
+                    type: "money" as const,
+                    optional: true,
+                    allowZero: true,
+                    hint: "Déjalo vacío para configurarlo después. Usa 0 si no recibe salario fijo.",
+                  },
+                  {
+                    key: "monthlyEmployerCost",
+                    label: "Otros costos mensuales (COP)",
+                    type: "money" as const,
+                    allowZero: true,
+                  },
+                  {
+                    key: "monthlyHours",
+                    label: "Horas mensuales para el cálculo",
+                    type: "quantity" as const,
+                  },
+                  {
+                    key: "effectiveOn",
+                    label: "Salario vigente desde",
+                    type: "date" as const,
+                  },
+                ],
+              }
             : itemForm;
   }
 
   const safeRun = async (kind: string, input: Record<string, unknown>) => {
+    if (
+      kind === "member" &&
+      input.monthlySalary !== undefined &&
+      input.monthlySalary !== ""
+    ) {
+      input = {
+        ...input,
+        compensation: {
+          monthlySalary: input.monthlySalary,
+          monthlyEmployerCost: input.monthlyEmployerCost,
+          monthlyHours: input.monthlyHours,
+          effectiveOn: input.effectiveOn,
+          note: "Salario inicial al añadir al empleado",
+        },
+      };
+    }
     await run(kind, input);
     setNotice(
       demo
@@ -389,7 +447,7 @@ export function OperationsPanel({
                 : section === "Proveedores"
                   ? "Precios y disponibilidad informados por cada proveedor."
                   : section === "Equipo"
-                    ? "Personas que pueden entrar y permisos de cada una."
+                    ? "Empleados, salarios y permisos de acceso."
                     : section === "Tareas"
                       ? "Tareas de reparación y pendientes del taller."
                       : section === "Servicios"
@@ -428,7 +486,7 @@ export function OperationsPanel({
                 : section === "Tareas"
                   ? "Asignar tarea"
                   : section === "Equipo"
-                    ? "Autorizar miembro"
+                    ? "Añadir empleado"
                     : section === "Clientes"
                       ? "Nuevo cliente"
                       : section === "Proveedores"
@@ -673,10 +731,18 @@ export function OperationsPanel({
       {section === "Equipo" && (
         <DataTable
           tableKey="members"
-          headers={["Nombre", "Correo", "Rol", "Acceso", "Acciones"]}
+          headers={[
+            "Nombre",
+            "Correo",
+            "Rol",
+            "Acceso",
+            "Salario mensual",
+            "Acciones",
+          ]}
           empty="No hay miembros autorizados."
           renderRow={(row) => {
             const m = row as OperationsView["members"][number];
+            const rate = compensationRates?.find((r) => r.memberId === m.id);
             return (
               <TableRow key={m.id}>
                 <TableCell>{m.name}</TableCell>
@@ -692,6 +758,17 @@ export function OperationsPanel({
                   <Badge variant={m.active ? "secondary" : "outline"}>
                     {m.active ? "Activo" : "Inactivo"}
                   </Badge>
+                </TableCell>
+                <TableCell className="tabular-nums">
+                  {onCompensation ? (
+                    <Button variant="link" onClick={() => onCompensation(m)}>
+                      {rate?.monthlySalary != null
+                        ? money(rate.monthlySalary)
+                        : "Configurar salario"}
+                    </Button>
+                  ) : (
+                    "Sin configurar"
+                  )}
                 </TableCell>
                 <TableCell>
                   <Button
@@ -901,10 +978,13 @@ export function OperationsPanel({
             setTo("");
           }}
         >
-          <TabsList className="inventory-tabs" aria-label="Inventario">
+          <TabsList
+            className="inventory-tabs"
+            aria-label="Consulta de repuestos"
+          >
             <TabsTrigger value="own">Inventario propio</TabsTrigger>
             <TabsTrigger value="suppliers">Inventario proveedores</TabsTrigger>
-            <TabsTrigger value="catalog">Repuestos</TabsTrigger>
+            <TabsTrigger value="catalog">Catálogo</TabsTrigger>
             <TabsTrigger value="movements">Movimientos</TabsTrigger>
           </TabsList>
           <TabsContent value="own">

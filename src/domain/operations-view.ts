@@ -119,6 +119,7 @@ export type OperationsView = {
       details: Record<string, unknown>;
     }[];
     timeEntries?: {
+      overtime?: boolean;
       id: string;
       minutes: number;
       workedOn: string;

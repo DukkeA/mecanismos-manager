@@ -57,6 +57,24 @@ export async function recordTaskTime(
     }
     if (task.order && ["CLOSED", "CANCELLED"].includes(task.order.status))
       throw new Error("La orden está cerrada.");
+    const workedOn = new Date(`${input.workedOn}T00:00:00.000Z`);
+    const [regular, extra] = await Promise.all([
+      tx.timeEntry.aggregate({
+        where: { memberId: actor.id, workedOn },
+        _sum: { minutes: true },
+      }),
+      tx.overtimeEntry.aggregate({
+        where: { memberId: actor.id, workedOn, voidedAt: null },
+        _sum: { minutes: true },
+      }),
+    ]);
+    if (
+      (regular._sum.minutes ?? 0) + (extra._sum.minutes ?? 0) + input.minutes >
+      1440
+    )
+      throw new DomainError(
+        "El tiempo registrado supera las 24 horas de ese día.",
+      );
     const entry = await tx.timeEntry.create({
       data: {
         ...input,

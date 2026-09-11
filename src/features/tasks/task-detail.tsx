@@ -267,7 +267,11 @@ export function TaskDetail({
                       {task.timeEntries.map((e) => (
                         <li key={e.id}>
                           <strong>
-                            {e.minutes} minutos · {e.author}
+                            {e.minutes} min
+                            {e.overtime
+                              ? " · Horas extra"
+                              : " · Tiempo ordinario"}
+                            utos · {e.author}
                           </strong>
                           <p>{e.note}</p>
                           <small>{dateLabel(e.workedOn)}</small>

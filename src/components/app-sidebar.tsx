@@ -70,6 +70,8 @@ export const workshopSections = [
 export function sectionTitle(section: string) {
   if (["Caja", "Cartera", "Control de caja"].includes(section)) return "Dinero";
   if (section === "Cotizaciones") return "Ventas";
+  if (section === "Control de inventario") return "Inventario";
+  if (section === "Activos") return "Clientes";
   return section;
 }
 export function sectionAvailable(label: string, role: Role, demo: boolean) {
@@ -109,7 +111,13 @@ export function AppSidebar({
   const visible = workshopSections.filter(
     (s) =>
       sectionAvailable(s.label, actor.role, demo) &&
-      !["Cotizaciones", "Cartera", "Control de caja"].includes(s.label),
+      ![
+        "Cotizaciones",
+        "Cartera",
+        "Control de caja",
+        "Control de inventario",
+        "Activos",
+      ].includes(s.label),
   );
   return (
     <Sidebar collapsible="icon" variant="inset">

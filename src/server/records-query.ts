@@ -12,7 +12,7 @@ const sql = Prisma.sql;
 const sources = {
   customers: sql`SELECT c.id::text id,concat_ws(' ',c.name,c.document,c.phone,c.email) search,to_jsonb(c)||jsonb_build_object('contact',concat_ws(' ',c.phone,c.email),'orders',(SELECT count(*) FROM workshop."WorkOrder" WHERE "customerId"=c.id)) attrs FROM workshop."Customer" c`,
   suppliers: sql`SELECT s.id::text id,concat_ws(' ',s.name,s.phone,s.email,s.address) search,to_jsonb(s) attrs FROM workshop."Supplier" s`,
-  members: sql`SELECT m.id::text id,concat_ws(' ',m.name,m.email,m.role) search,to_jsonb(m) attrs FROM workshop."Member" m`,
+  members: sql`SELECT m.id::text id,concat_ws(' ',m.name,m.email,m.role) search,to_jsonb(m)||jsonb_build_object('monthlySalary',r."monthlySalary") attrs FROM workshop."Member" m LEFT JOIN LATERAL (SELECT "monthlySalary" FROM workshop."LaborRate" WHERE "memberId"=m.id AND "effectiveOn"<=(now() AT TIME ZONE 'America/Bogota')::date ORDER BY "effectiveOn" DESC LIMIT 1)r ON true`,
   items: sql`SELECT i.id::text id,concat_ws(' ',i.code,i.name,i.reference,i.brand,i.notes) search,to_jsonb(i) attrs FROM workshop."CatalogItem" i WHERE kind='PART'`,
   services: sql`SELECT i.id::text id,concat_ws(' ',i.code,i.name,i.reference,i.notes) search,to_jsonb(i) attrs FROM workshop."CatalogItem" i WHERE kind='SERVICE'`,
   balances: sql`SELECT b."itemId"||'-'||b."locationId"||'-'||b.condition::text id,concat_ws(' ',i.code,i.name,i.reference,i.notes,l.name,b.condition) search,to_jsonb(b)||jsonb_build_object('item',i.name,'brand',i.brand,'location',l.name,'available',b.quantity-b.reserved) attrs FROM workshop."StockBalance" b JOIN workshop."CatalogItem" i ON i.id=b."itemId" JOIN workshop."Location" l ON l.id=b."locationId"`,
@@ -108,7 +108,11 @@ export async function recordsPage(actor: Actor, params: URLSearchParams) {
     else if (table === "obligations")
       filters.push(sql`${attr("paymentState")}=${status}`);
     else if (table === "cashEntries")
-      filters.push(status === "TRANSFERS" ? sql`${attr("transferId")} IS NOT NULL` : sql`${attr("direction")}=${status}`);
+      filters.push(
+        status === "TRANSFERS"
+          ? sql`${attr("transferId")} IS NOT NULL`
+          : sql`${attr("direction")}=${status}`,
+      );
     else if (table === "orders" && status === "OPEN")
       filters.push(sql`${attr("status")} NOT IN ('CLOSED','CANCELLED')`);
     else filters.push(sql`${attr("status")}=${status}`);
@@ -170,6 +174,7 @@ export async function recordsPage(actor: Actor, params: URLSearchParams) {
       "paid",
       "pending",
       "balance",
+      "monthlySalary",
     ].includes(field),
     sort = numeric ? sql`(${attr(field)})::numeric` : sql`${attr(field)}`;
   const where = filters.length ? Prisma.join(filters, " AND ") : sql`true`,
