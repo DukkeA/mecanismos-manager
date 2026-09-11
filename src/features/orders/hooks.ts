@@ -78,10 +78,21 @@ export function useOrderCommand() {
           String(command.input.body),
         );
       else if (command.kind === "time") await addTime(command.input);
-      else await createOrder(command.input);
+      else {
+        const result = await createOrder(command.input);
+        if (!result.ok) throw new Error(result.error);
+        return { id: result.id };
+      }
     },
     onSuccess: async () => {
-      if (!scope.demo) await Promise.all([client.invalidateQueries({ queryKey: key }),...(["control","commerce","records","observations"] as const).map(feature=>client.invalidateQueries({queryKey:[feature,scope.actorId]}))]);
+      if (!scope.demo)
+        await Promise.all([
+          client.invalidateQueries({ queryKey: key }),
+          ...(["control", "commerce", "records", "observations"] as const).map(
+            (feature) =>
+              client.invalidateQueries({ queryKey: [feature, scope.actorId] }),
+          ),
+        ]);
     },
   });
 }

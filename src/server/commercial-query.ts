@@ -15,7 +15,9 @@ const paramsSchema = z.object({
   q: z.string().trim().max(200).default(""),
   status: z.string().max(20).default(""),
   customerId: z.uuid().optional(),
-  orderId:z.uuid().optional(),
+  orderId: z.uuid().optional(),
+  recordId: z.uuid().optional(),
+  outstanding: z.enum(["true", "false"]).optional(),
   page: z.coerce.number().int().min(1).max(100000).default(1),
   pageSize: z.coerce
     .number()
@@ -55,7 +57,8 @@ export async function commercialPage(
       : undefined;
   const customerFilter = customerId ? { customerId } : {};
   const shared = {
-    ...(input.orderId?{orderId:input.orderId}:{}),
+    ...(input.recordId ? { id: input.recordId } : {}),
+    ...(input.orderId ? { orderId: input.orderId } : {}),
     ...customerFilter,
     ...(q
       ? {
@@ -87,7 +90,12 @@ export async function commercialPage(
         orderBy: [sort, { id: "asc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { customer: true, order: true, lines: true, sale: {select:{id:true}} },
+        include: {
+          customer: true,
+          order: true,
+          lines: true,
+          sale: { select: { id: true } },
+        },
       }),
       db().quote.count({ where }),
     ]);
@@ -116,8 +124,19 @@ export async function commercialPage(
       lines: plain<CommercialLine[]>(r.lines),
     }));
   } else if (resource === "sales") {
+    const unpaid =
+      input.outstanding === "true"
+        ? await db().$queryRaw<{ id: string }[]>`
+      SELECT s.id FROM workshop."Sale" s
+      LEFT JOIN LATERAL (SELECT SUM(amount) amount FROM workshop."SaleReturn" WHERE "saleId"=s.id) r ON true
+      LEFT JOIN LATERAL (SELECT SUM(amount) amount FROM workshop."PaymentAllocation" WHERE "saleId"=s.id) a ON true
+      WHERE s.status='ISSUED' AND s.total-COALESCE(r.amount,0)-COALESCE(a.amount,0)>0
+      AND (${customerId ?? null}::uuid IS NULL OR s."customerId"=${customerId ?? null}::uuid)
+      AND (${input.recordId ?? null}::uuid IS NULL OR s.id=${input.recordId ?? null}::uuid)`
+        : undefined;
     const where = {
       ...shared,
+      ...(unpaid ? { id: { in: unpaid.map((s) => s.id) } } : {}),
       ...(status ? { status } : {}),
       ...(dates ? { issuedOn: dates } : {}),
     };
@@ -248,10 +267,10 @@ export async function commercialPage(
       FROM workshop."CustomerPayment" p JOIN workshop."CashEntry" e ON e.id=p."entryId"
       LEFT JOIN LATERAL (SELECT SUM(amount) amount FROM workshop."PaymentAllocation" WHERE "paymentId"=p.id) ap ON true
       LEFT JOIN LATERAL (SELECT SUM(re.amount) amount FROM workshop."CustomerPayment" rp JOIN workshop."CashEntry" re ON re.id=rp."entryId" WHERE rp."refundOfId"=p.id AND NOT EXISTS(SELECT 1 FROM workshop."CashEntry" rr WHERE rr."reversalOfId"=re.id)) ref ON true
-      WHERE p."refundOfId" IS NULL AND e.direction='IN' AND NOT EXISTS(SELECT 1 FROM workshop."CashEntry" rev WHERE rev."reversalOfId"=e.id)) AS advances
+      WHERE (${customerId ?? null}::uuid IS NULL OR p."customerId"=${customerId ?? null}::uuid) AND p."refundOfId" IS NULL AND e.direction='IN' AND NOT EXISTS(SELECT 1 FROM workshop."CashEntry" rev WHERE rev."reversalOfId"=e.id)) AS advances
     FROM workshop."Sale" s
     LEFT JOIN LATERAL (SELECT SUM(amount) amount FROM workshop."SaleReturn" WHERE "saleId"=s.id) r ON true
     LEFT JOIN LATERAL (SELECT SUM(amount) amount FROM workshop."PaymentAllocation" WHERE "saleId"=s.id) a ON true
-    WHERE s.status='ISSUED'`;
+    WHERE s.status='ISSUED' AND (${customerId ?? null}::uuid IS NULL OR s."customerId"=${customerId ?? null}::uuid)`;
   return { rows, total: count, page, pageSize, summary };
 }

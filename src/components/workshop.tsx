@@ -5,7 +5,10 @@ import { OrderAgreement } from "@/features/commerce/order-agreement";
 import { Attachments } from "@/features/control/attachments";
 import { ControlPanel } from "@/features/control/control-panel";
 import { AssetSelector } from "@/features/control/asset-selector";
-import { CommercePanel } from "@/features/commerce/commerce-panel";
+import { CommerceWorkspace } from "@/features/commerce/commerce-workspace";
+import { MoneyWorkspace } from "@/features/cash/money-workspace";
+import { CustomerPicker } from "@/features/contacts/customer-picker";
+import type { CommercialRow } from "@/domain/commercial";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -43,7 +46,12 @@ import {
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AppSidebar, workshopSections, sectionAvailable } from "./app-sidebar";
+import {
+  AppSidebar,
+  workshopSections,
+  sectionAvailable,
+  sectionTitle,
+} from "./app-sidebar";
 
 import { Check, ClipboardList, Clock3, Plus } from "lucide-react";
 
@@ -129,11 +137,16 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
 
   const [creating, setCreating] = useState(false);
   const [orderPurpose, setOrderPurpose] = useState("CUSTOMER_REPAIR");
-  const [orderKind,setOrderKind]=useState("VEHICLE");
+  const [orderKind, setOrderKind] = useState("VEHICLE");
   const [orderCustomer, setOrderCustomer] = useState("");
+  const [receivingQuote, setReceivingQuote] = useState<CommercialRow | null>(
+    null,
+  );
 
   const params = useSearchParams();
-  const allowed = sections.filter(s=>sectionAvailable(s.label,actor.role,!!demo));
+  const allowed = sections.filter((s) =>
+    sectionAvailable(s.label, actor.role, !!demo),
+  );
   const section =
     allowed.find((s) => s.label === params.get("view"))?.label ?? "Resumen";
 
@@ -228,19 +241,23 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
     );
 
     const input = {
+      quoteId: receivingQuote?.id,
       requestId:
         orderRequest.current ?? (orderRequest.current = crypto.randomUUID()),
-      customerId: selectedCustomer || undefined,
-      purpose: String(form.get("purpose")),
+      customerId: (demo ? selectedCustomer : orderCustomer) || undefined,
+      purpose: orderPurpose,
       authorization: String(form.get("authorization") ?? ""),
       title: String(form.get("title")),
       dueAt: String(form.get("dueAt") ?? "") || undefined,
       customer:
-        selectedCustomer || String(form.get("purpose")) === "OWN_REBUILD"
+        selectedCustomer ||
+        (!demo && orderCustomer) ||
+        orderPurpose === "OWN_REBUILD"
           ? undefined
           : String(form.get("customer") ?? ""),
       reference: String(form.get("reference")),
-      assetId: String(form.get("assetId") ?? "") || undefined,
+      assetId:
+        String(form.get("assetId") ?? "").replace("__none", "") || undefined,
       kind: String(form.get("kind")) as "VEHICLE" | "COMPONENT",
       problem: String(form.get("problem")),
       locationId: String(form.get("locationId")),
@@ -249,19 +266,22 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
     setError("");
 
     try {
-      await orderCommand.mutateAsync({ kind: "create", input });
+      const created = await orderCommand.mutateAsync({ kind: "create", input });
       element?.reset();
       orderRequest.current = null;
       setCreating(false);
       navigate("Órdenes");
+      if (created?.id) setSelectedId(created.id);
       setNotice(
         demo
           ? "Orden añadida a la demostración. Se pierde al recargar."
           : "Orden creada.",
       );
-    } catch {
+    } catch (cause) {
       setError(
-        "No se pudo crear la orden. Revisa los campos y vuelve a intentarlo.",
+        cause instanceof Error
+          ? cause.message
+          : "No se pudo crear la orden. Revisa los campos y vuelve a intentarlo.",
       );
     }
   }
@@ -290,7 +310,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>{section}</BreadcrumbPage>
+                <BreadcrumbPage>{sectionTitle(section)}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -315,7 +335,11 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
             </Alert>
           )}
           <header className="workspace-header">
-            <h1>{section === "Órdenes" ? "Órdenes de trabajo" : section}</h1>
+            <h1>
+              {section === "Órdenes"
+                ? "Órdenes de trabajo"
+                : sectionTitle(section)}
+            </h1>
           </header>
 
           {query.isError && (
@@ -349,6 +373,8 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   <Button
                     size="default"
                     onClick={() => {
+                      setReceivingQuote(null);
+                      orderRequest.current = null;
                       setOrderPurpose("CUSTOMER_REPAIR");
                       setOrderCustomer("");
                       setCreating(true);
@@ -364,12 +390,66 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
             />
           ) : section === "Tareas" ? (
             <TasksPanel role={actor.role} openOrder={setSelectedId} />
-          ) : section === "Caja" ? (
-            <CashPanel role={actor.role} />
-          ) : ["Cotizaciones", "Ventas", "Cartera"].includes(section) ? (
-            <CommercePanel key={section} section={section} data={operations} orders={orders} locations={locations} role={actor.role} />
-          ) : ["Compras","Control de inventario","Garantías","Activos","Rentabilidad","Control de caja"].includes(section) ? (
-            <ControlPanel key={section} data={operations} orders={orders} locations={locations} role={actor.role} resources={section==="Compras"?["purchases"]:section==="Control de inventario"?(actor.role==="ADMIN"?["reservations","transfers","counts","units"]:["reservations","transfers","units"]):section==="Garantías"?["warranties"]:section==="Activos"?["assets"]:section==="Rentabilidad"?["margins","rates"]:actor.role==="ADMIN"?["closures","recurring","coverage","audit"]:["closures","recurring"]}/>
+          ) : ["Caja", "Cartera", "Control de caja"].includes(section) ? (
+            demo ? (
+              <CashPanel role={actor.role} />
+            ) : (
+              <MoneyWorkspace
+                section={section}
+                data={operations}
+                orders={orders}
+                locations={locations}
+                role={actor.role}
+              />
+            )
+          ) : ["Cotizaciones", "Ventas"].includes(section) ? (
+            <CommerceWorkspace
+              section={section}
+              data={operations}
+              orders={orders}
+              locations={locations}
+              role={actor.role}
+              onOpenOrder={setSelectedId}
+              onReceiveQuote={(quote) => {
+                setReceivingQuote(quote);
+                setOrderPurpose("CUSTOMER_REPAIR");
+                setOrderCustomer(quote.customerId);
+                setError("");
+                orderRequest.current = null;
+                setCreating(true);
+              }}
+            />
+          ) : [
+              "Compras",
+              "Control de inventario",
+              "Garantías",
+              "Activos",
+              "Rentabilidad",
+            ].includes(section) ? (
+            <ControlPanel
+              key={section}
+              data={operations}
+              orders={orders}
+              locations={locations}
+              role={actor.role}
+              resources={
+                section === "Compras"
+                  ? ["purchases"]
+                  : section === "Control de inventario"
+                    ? actor.role === "ADMIN"
+                      ? ["reservations", "transfers", "counts", "units"]
+                      : ["reservations", "transfers", "units"]
+                    : section === "Garantías"
+                      ? ["warranties"]
+                      : section === "Activos"
+                        ? ["assets"]
+                        : section === "Rentabilidad"
+                          ? ["margins", "rates"]
+                          : actor.role === "ADMIN"
+                            ? ["closures", "recurring", "coverage", "audit"]
+                            : ["closures", "recurring"]
+              }
+            />
           ) : (
             <OperationsPanel
               key={section}
@@ -430,9 +510,30 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 <p>{selected.problem}</p>
               </section>
               <Separator />
-              {!demo && <ControlPanel key={selected.id} data={operations} orders={orders} locations={locations} role={actor.role} resources={actor.role==="MECHANIC"?["checks"]:["checks","handovers"]} orderId={selected.id}/>}
-              {!demo && actor.role!=="MECHANIC" && <OrderAgreement orderId={selected.id}/>}
-              {!demo && <Attachments entityType="ORDER" entityId={selected.id}/>}
+              {!demo && (
+                <ControlPanel
+                  key={selected.id}
+                  data={operations}
+                  orders={orders}
+                  locations={locations}
+                  role={actor.role}
+                  resources={
+                    actor.role === "MECHANIC"
+                      ? ["checks"]
+                      : ["checks", "handovers"]
+                  }
+                  orderId={selected.id}
+                />
+              )}
+              {!demo && actor.role !== "MECHANIC" && (
+                <OrderAgreement
+                  key={`agreement-${selected.id}`}
+                  order={selected}
+                />
+              )}
+              {!demo && (
+                <Attachments entityType="ORDER" entityId={selected.id} />
+              )}
               <section>
                 <h3>Tareas del trabajo</h3>
                 {selected.tasks.length ? (
@@ -510,16 +611,20 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                     </FieldGroup>
                   </form>
                 )}
-                {!demo?<ObservationHistory key={selected.id} orderId={selected.id}/>:<ol className="observation-list">
-                  {selected.notes.map((note) => (
-                    <li key={note.id}>
-                      <p>{note.body}</p>
-                      <small>
-                        {note.author} · {note.date}
-                      </small>
-                    </li>
-                  ))}
-                </ol>}
+                {!demo ? (
+                  <ObservationHistory key={selected.id} orderId={selected.id} />
+                ) : (
+                  <ol className="observation-list">
+                    {selected.notes.map((note) => (
+                      <li key={note.id}>
+                        <p>{note.body}</p>
+                        <small>
+                          {note.author} · {note.date}
+                        </small>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </section>
             </div>
           )}
@@ -529,7 +634,11 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
       <FormSheet open={creating} onOpenChange={setCreating}>
         <SheetContent className="dossier-sheet">
           <SheetHeader>
-            <SheetTitle>Nueva orden de trabajo</SheetTitle>
+            <SheetTitle>
+              {receivingQuote
+                ? `Recibir trabajo · COT-${receivingQuote.number}`
+                : "Nueva orden de trabajo"}
+            </SheetTitle>
             <SheetDescription>
               Recepción de un vehículo, componente o unidad propia.
               {demo ? " Los datos solo se guardan en esta demostración." : ""}
@@ -553,6 +662,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 <Input
                   id="order-title"
                   name="title"
+                  defaultValue={receivingQuote?.title}
                   required
                   minLength={3}
                   maxLength={250}
@@ -565,6 +675,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 <Choice
                   id="purpose"
                   name="purpose"
+                  disabled={!!receivingQuote}
                   value={orderPurpose}
                   onChange={setOrderPurpose}
                   options={[
@@ -576,45 +687,55 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   ]}
                 />
               </Field>
-              {orderPurpose !== "OWN_REBUILD" && (
-                <>
-                  <Field>
-                    <FieldLabel htmlFor="customerId">
-                      Cliente existente
-                    </FieldLabel>
-                    <Choice
-                      id="customerId"
-                      name="customerId"
-                      value={orderCustomer}
-                      onChange={setOrderCustomer}
-                      options={[
-                        { id: "", label: "Cliente nuevo / unidad propia" },
-                        ...operations.customers.filter(c => !c.deletedAt).map((c) => ({
-                          id: c.id,
-                          label: c.name,
-                        })),
-                      ]}
-                    />
-                  </Field>
-                  {!orderCustomer && (
+              {orderPurpose !== "OWN_REBUILD" &&
+                (!demo ? (
+                  <CustomerPicker
+                    id="customerId"
+                    value={orderCustomer}
+                    onChange={setOrderCustomer}
+                    disabled={!!receivingQuote}
+                  />
+                ) : (
+                  <>
                     <Field>
-                      <FieldLabel htmlFor="customer">
-                        Nombre del cliente nuevo
+                      <FieldLabel htmlFor="customerId">
+                        Cliente existente
                       </FieldLabel>
-                      <Input
-                        id="customer"
-                        name="customer"
-                        required
-                        minLength={3}
-                        maxLength={180}
+                      <Choice
+                        id="customerId"
+                        name="customerId"
+                        value={orderCustomer}
+                        onChange={setOrderCustomer}
+                        options={[
+                          { id: "", label: "Cliente nuevo / unidad propia" },
+                          ...operations.customers
+                            .filter((c) => !c.deletedAt)
+                            .map((c) => ({
+                              id: c.id,
+                              label: c.name,
+                            })),
+                        ]}
                       />
-                      <FieldDescription>
-                        El cliente quedará registrado al crear la orden.
-                      </FieldDescription>
                     </Field>
-                  )}
-                </>
-              )}
+                    {!orderCustomer && (
+                      <Field>
+                        <FieldLabel htmlFor="customer">
+                          Nombre del cliente nuevo
+                        </FieldLabel>
+                        <Input
+                          id="customer"
+                          name="customer"
+                          required
+                          minLength={3}
+                          maxLength={180}
+                        />
+                        <FieldDescription>
+                          El cliente quedará registrado al crear la orden.
+                        </FieldDescription>
+                      </Field>
+                    )}
+                  </>
+                ))}
 
               <Field>
                 <FieldLabel htmlFor="kind">Tipo de recepción</FieldLabel>
@@ -630,7 +751,13 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 />
               </Field>
 
-              {!demo && orderCustomer && <AssetSelector key={orderCustomer} customerId={orderCustomer} onKind={setOrderKind}/>}
+              {!demo && orderCustomer && (
+                <AssetSelector
+                  key={orderCustomer}
+                  customerId={orderCustomer}
+                  onKind={setOrderKind}
+                />
+              )}
               <Field>
                 <FieldLabel htmlFor="reference">Placa o serial</FieldLabel>
                 <Input id="reference" name="reference" maxLength={20} />
@@ -659,6 +786,11 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 <Textarea
                   id="authorization"
                   name="authorization"
+                  defaultValue={
+                    receivingQuote
+                      ? `Cotización ${receivingQuote.number} aprobada por ${receivingQuote.approvedBy}. ${receivingQuote.approvalNote ?? ""}`
+                      : undefined
+                  }
                   maxLength={5000}
                   placeholder="Ej. Autoriza diagnóstico. Llamar antes de cambiar repuestos."
                 />

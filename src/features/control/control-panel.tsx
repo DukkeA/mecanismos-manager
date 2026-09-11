@@ -190,6 +190,7 @@ export type ControlProps = {
   role: Role;
   resources: HubResource[];
   orderId?: string;
+  payables?: boolean;
 };
 export function ControlPanel({
   data,
@@ -198,6 +199,7 @@ export function ControlPanel({
   role,
   resources,
   orderId,
+  payables = false,
 }: ControlProps) {
   const params = useSearchParams(),
     [localTab, setLocalTab] = useState<HubResource>(resources[0]);
@@ -209,6 +211,7 @@ export function ControlPanel({
   for (const k of ["q", "page", "orderBy", "direction", "status", "from", "to"])
     if (!orderId && params.get(k)) qp.set(k, params.get(k)!);
   if (orderId) qp.set("page", String(localPage));
+  if (payables) qp.set("outstanding", "true");
   const query = useControlPage(qp),
     command = useControlCommand();
   const [selected, setSelected] = useState<HubRow | null>(null),
@@ -342,7 +345,7 @@ export function ControlPanel({
         break;
       case "warranties":
         form("warranty", "Abrir garantía", [
-          {key:"saleId",label:"Venta original",type:"sale"},
+          { key: "saleId", label: "Venta original", type: "sale" },
           location,
           { key: "symptom", label: "Síntoma reportado", type: "textarea" },
         ]);
@@ -709,36 +712,53 @@ export function ControlPanel({
 
       {resource === "margins" && (
         <p className="text-sm text-muted-foreground">
-          Venta neta menos materiales y mano de obra registrada. El margen de una orden abierta es provisional. Las órdenes sin venta muestran sus costos en el detalle. No incluye
-          arriendos ni otros gastos generales. Las horas sin tarifa impiden
-          calcular el margen completo.
+          Venta neta menos materiales y mano de obra registrada. El margen de
+          una orden abierta es provisional. Las órdenes sin venta muestran sus
+          costos en el detalle. No incluye arriendos ni otros gastos generales.
+          Las horas sin tarifa impiden calcular el margen completo.
         </p>
       )}
       {!orderId && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Input
-            className="min-w-44 flex-1"
-            aria-label={`Buscar en ${names[resource]}`}
-            placeholder="Buscar por nombre o referencia"
-            value={params.get("q") ?? ""}
-            onChange={(e) => update({ q: e.target.value })}
-          />
-          {resourceStatuses[resource] && (
-            <Choice
-              label="Estado"
-              value={params.get("status") ?? ""}
-              onChange={(status) => update({ status })}
-              options={resourceStatuses[resource]!.map((value) => ({
-                id: value,
-                label: statusNames[value],
-              }))}
+        <div
+          className="commercial-filters"
+          role="search"
+          aria-label="Filtros de registros"
+        >
+          <label>
+            Buscar
+            <Input
+              className="min-w-44 flex-1"
+              aria-label={`Buscar en ${names[resource]}`}
+              placeholder="Buscar por nombre o referencia"
+              value={params.get("q") ?? ""}
+              onChange={(e) => update({ q: e.target.value })}
             />
+          </label>
+          {resourceStatuses[resource] && (
+            <label>
+              Estado
+              <Choice
+                label="Estado"
+                value={params.get("status") ?? ""}
+                onChange={(status) => update({ status })}
+                options={[
+                  { id: "", label: "Todos los estados" },
+                  ...resourceStatuses[resource]!.map((value) => ({
+                    id: value,
+                    label: statusNames[value],
+                  })),
+                ]}
+              />
+            </label>
           )}
-          <DateRangePicker
-            from={params.get("from") ?? ""}
-            to={params.get("to") ?? ""}
-            onChange={(from, to) => update({ from, to })}
-          />
+          <label className="commercial-date-filter">
+            Fechas
+            <DateRangePicker
+              from={params.get("from") ?? ""}
+              to={params.get("to") ?? ""}
+              onChange={(from, to) => update({ from, to })}
+            />
+          </label>
           {(params.get("q") ||
             params.get("from") ||
             params.get("to") ||
@@ -894,6 +914,18 @@ export function ControlPanel({
                       </TableCell>
                     )}
                     <TableCell>
+                      {payables && Number(row.amount) > 0 && (
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            actions(row)
+                              .find((action) => action.label === "Pagar compra")
+                              ?.run()
+                          }
+                        >
+                          Pagar
+                        </Button>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

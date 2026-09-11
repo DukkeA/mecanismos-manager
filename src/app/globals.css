@@ -368,7 +368,7 @@ h2 { font-size:27px;line-height:1.15; }
 }
 
 /* Shared controls: text, select and date fields use the same surface and states. */
-:root{--control-surface:var(--card);--control-radius:8px;--control-height:40px}
+:root{--control-surface:var(--card);--control-radius:8px;--control-height:44px}
 .form-control{background:var(--control-surface);color:var(--foreground);border:1px solid var(--input);border-radius:var(--control-radius);font-size:14px;font-weight:400;box-shadow:none;transition:border-color 140ms,box-shadow 140ms}
 .form-control:not(textarea){height:var(--control-height);min-height:var(--control-height);padding-inline:12px}
 textarea.form-control{min-height:96px;padding:10px 12px}
@@ -429,3 +429,16 @@ textarea.form-control{min-height:96px;padding:10px 12px}
 
 .task-photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.task-photos figure{margin:0}.task-photo{width:100%;height:160px;object-fit:contain;background:var(--muted);border-radius:8px}.task-photos figcaption{font-size:13px;margin-top:8px;overflow-wrap:anywhere}
 [data-slot=tabs-list]:has([data-slot=tabs-trigger]:nth-child(4)){max-width:100%;overflow-x:auto}
+
+/* Main workspaces share the same tab and control dimensions. */
+.workspace-tabs [data-slot=tabs-list][role=tablist]{height:auto;min-height:52px;max-width:100%;flex-wrap:wrap;justify-content:flex-start;overflow:visible}
+.workspace-tabs [data-slot=tabs-trigger]{min-height:44px;padding-inline:16px}
+.workspace-tabs [data-variant=line]{min-height:44px}
+.workspace-tabs [data-variant=line] [data-slot=tabs-trigger]{padding-inline:12px}
+.commercial-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
+.commercial-filters>label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500}
+.commercial-filters>label:first-child{flex:1;min-width:200px}
+.commercial-filters>label:nth-child(2){min-width:170px}
+.commercial-filters .range-filter{max-width:none}
+.commercial-filters>.commercial-date-filter{flex:0 1 270px}
+@media(max-width:767px){.commercial-filters>label,.commercial-filters>.commercial-date-filter{flex-basis:100%;width:100%}.workspace-tabs [data-slot=tabs-trigger]{padding-inline:12px}.commercial-filters+*{min-width:0}}

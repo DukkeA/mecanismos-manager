@@ -24,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -80,12 +79,18 @@ export function CommercePanel({
   orders,
   locations,
   role,
+  receivables = false,
+  onReceiveQuote,
+  onOpenOrder,
 }: {
   section: string;
   data: OperationsView;
   orders: OrderView[];
   locations: { id: string; name: string }[];
   role: Role;
+  receivables?: boolean;
+  onReceiveQuote?: (quote: CommercialRow) => void;
+  onOpenOrder?: (id: string) => void;
 }) {
   const resource =
     section === "Cotizaciones"
@@ -104,8 +109,13 @@ export function CommercePanel({
     "direction",
     "from",
     "to",
+    "recordId",
   ])
     if (params.get(key)) queryParams.set(key, params.get(key)!);
+  if (receivables) {
+    queryParams.set("outstanding", "true");
+    queryParams.set("status", "ISSUED");
+  }
   const query = useCommercialPage(queryParams),
     command = useCommercialCommand();
   const [selected, setSelected] = useState<CommercialRow | null>(null),
@@ -158,7 +168,9 @@ export function CommercePanel({
   function payment(row?: CommercialRow) {
     form({
       kind: "payment",
-      title: row ? `Abonar a venta ${row.number}` : "Recibir anticipo",
+      title: row
+        ? `Cobrar venta ${row.number} · ${row.customer}`
+        : "Recibir anticipo",
       submitLabel: "Registrar cobro",
       extra: {
         customerId: row?.customerId,
@@ -190,16 +202,17 @@ export function CommercePanel({
   function actions(row: CommercialRow) {
     const list: { label: string; run: () => void; danger?: boolean }[] = [];
     if (resource === "quotes") {
-      list.push({
-        label: "Crear nueva versión",
-        run: () => {
-          setSelected(null);
-          setEditor({ mode: "quote", source: row });
-        },
-      });
+      if (!row.saleId)
+        list.push({
+          label: "Crear nueva versión",
+          run: () => {
+            setSelected(null);
+            setEditor({ mode: "quote", source: row });
+          },
+        });
       if (row.status === "DRAFT")
         list.push({
-          label: "Registrar decisión",
+          label: "Aprobar o rechazar",
           run: () =>
             form({
               kind: "quote-decision",
@@ -225,9 +238,41 @@ export function CommercePanel({
               ],
             }),
         });
-      if (row.status === "APPROVED" && !row.saleId)
+      if (row.orderId && onOpenOrder)
+        list.unshift({
+          label: "Ver trabajo",
+          run: () => {
+            setSelected(null);
+            onOpenOrder(row.orderId!);
+          },
+        });
+      if (
+        row.status === "APPROVED" &&
+        !row.saleId &&
+        !row.orderId &&
+        onReceiveQuote
+      )
+        list.unshift({
+          label: "Recibir trabajo",
+          run: () => {
+            setSelected(null);
+            onReceiveQuote(row);
+          },
+        });
+      if (
+        row.status === "APPROVED" &&
+        !row.saleId &&
+        (!row.orderId ||
+          orders.some(
+            (order) =>
+              order.id === row.orderId &&
+              ["READY", "CLOSED"].includes(order.status),
+          ))
+      )
         list.push({
-          label: "Registrar venta",
+          label: row.orderId
+            ? "Registrar venta y cobro"
+            : "Vender en mostrador",
           run: () => {
             setSelected(null);
             setEditor({ mode: "sale", source: row });
@@ -236,7 +281,7 @@ export function CommercePanel({
     }
     if (resource === "sales" && row.status === "ISSUED") {
       if (Number(row.balance) > 0)
-        list.push({ label: "Registrar abono", run: () => payment(row) });
+        list.push({ label: "Cobrar", run: () => payment(row) });
       if (role === "ADMIN") {
         list.push({
           label: "Registrar devolución",
@@ -340,7 +385,21 @@ export function CommercePanel({
     }
     return list;
   }
-  const displayedDialog = dialog?.kind === "payment-apply" ? {...dialog,fields:dialog.fields.map(f=>f.key === "saleId" ? {...f,type:"sale" as const,customerId:selected?.customerId}:f)} : dialog;
+  const displayedDialog =
+    dialog?.kind === "payment-apply"
+      ? {
+          ...dialog,
+          fields: dialog.fields.map((f) =>
+            f.key === "saleId"
+              ? {
+                  ...f,
+                  type: "sale" as const,
+                  customerId: selected?.customerId,
+                }
+              : f,
+          ),
+        }
+      : dialog;
   const page = query.data?.page ?? 1,
     pages = Math.max(
       1,
@@ -357,35 +416,48 @@ export function CommercePanel({
   }
   return (
     <div className="flex flex-col gap-5">
-      {query.data && (
-        <div className="grid gap-4 md:grid-cols-3">
+      {query.data && resource !== "quotes" && (
+        <dl
+          className={`grid grid-cols-2 gap-4 border-y py-4 ${!receivables && resource === "sales" ? "md:grid-cols-3" : ""}`}
+        >
           {[
-            ["Por cobrar", query.data.summary.receivable],
-            ["Saldos a favor", query.data.summary.advances],
-            ["Ventas vigentes, menos devoluciones", query.data.summary.sales],
+            ["Deudas de clientes · total", query.data.summary.receivable],
+            ["Saldos a favor de clientes · total", query.data.summary.advances],
+            ...(!receivables && resource === "sales"
+              ? [
+                  [
+                    "Ventas acumuladas, menos devoluciones",
+                    query.data.summary.sales,
+                  ],
+                ]
+              : []),
           ].map(([label, value]) => (
-            <Card key={label}>
-              <CardHeader>
-                <CardTitle className="text-sm">{label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <strong className="text-2xl tabular-nums">{cop(value)}</strong>
-              </CardContent>
-            </Card>
+            <div key={label}>
+              <dt className="text-sm text-muted-foreground">{label}</dt>
+              <dd className="mt-1 text-2xl font-semibold tabular-nums">
+                {cop(value)}
+              </dd>
+            </div>
           ))}
-        </div>
+        </dl>
       )}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-48 flex-1">
+      <div
+        className="commercial-filters"
+        role="search"
+        aria-label="Filtros de documentos"
+      >
+        <label>
+          Buscar
           <Input
             aria-label="Buscar documentos"
             placeholder="Buscar cliente, descripción o número"
             value={params.get("q") ?? ""}
             onChange={(e) => filter({ q: e.target.value })}
           />
-        </div>
-        {resource !== "payments" && (
-          <div className="w-44">
+        </label>
+        {resource !== "payments" && !receivables && (
+          <label>
+            Estado
             <Choice
               label="Estado"
               value={params.get("status") ?? ""}
@@ -398,38 +470,46 @@ export function CommercePanel({
                 ).map((s) => ({ id: s, label: statuses[s] })),
               ]}
             />
-          </div>
+          </label>
         )}
-        <DateRangePicker
-          from={params.get("from") ?? ""}
-          to={params.get("to") ?? ""}
-          onChange={(from, to) => filter({ from, to })}
-        />
+        <label className="commercial-date-filter">
+          Fechas
+          <DateRangePicker
+            from={params.get("from") ?? ""}
+            to={params.get("to") ?? ""}
+            onChange={(from, to) => filter({ from, to })}
+          />
+        </label>
         {(params.get("q") ||
+          params.get("recordId") ||
           params.get("status") ||
           params.get("from") ||
           params.get("to")) && (
           <Button
             variant="ghost"
-            onClick={() => filter({ q: "", status: "", from: "", to: "" })}
+            onClick={() =>
+              filter({ q: "", status: "", from: "", to: "", recordId: "" })
+            }
           >
             Limpiar
           </Button>
         )}
-        <Button
-          onClick={() =>
-            resource === "payments"
-              ? payment()
-              : setEditor({ mode: resource === "quotes" ? "quote" : "sale" })
-          }
-        >
-          <Plus data-icon="inline-start" />
-          {resource === "quotes"
-            ? "Nueva cotización"
-            : resource === "sales"
-              ? "Nueva venta"
-              : "Recibir anticipo"}
-        </Button>
+        {!receivables && (
+          <Button
+            onClick={() =>
+              resource === "payments"
+                ? payment()
+                : setEditor({ mode: resource === "quotes" ? "quote" : "sale" })
+            }
+          >
+            <Plus data-icon="inline-start" />
+            {resource === "quotes"
+              ? "Nueva cotización"
+              : resource === "sales"
+                ? "Nueva venta"
+                : "Recibir anticipo"}
+          </Button>
+        )}
       </div>
       {query.isError && (
         <Alert variant="destructive">
@@ -453,10 +533,28 @@ export function CommercePanel({
                     ["date", "Fecha"],
                     ["", "Estado"],
                     ["total", "Total"],
-                    ["", "Pendiente / disponible"],
+                    ...(resource === "quotes"
+                      ? []
+                      : [
+                          [
+                            "",
+                            resource === "payments"
+                              ? "Saldo a favor"
+                              : "Por cobrar",
+                          ],
+                        ]),
                     ["", "Acciones"],
                   ].map(([key, label]) => (
-                    <TableHead key={label}>
+                    <TableHead
+                      key={label}
+                      aria-sort={
+                        key && params.get("orderBy") === key
+                          ? params.get("direction") === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : undefined
+                      }
+                    >
                       {key ? (
                         <Button
                           variant="ghost"
@@ -498,22 +596,51 @@ export function CommercePanel({
                     </TableCell>
                     <TableCell>
                       <Badge
+                        data-payment-state={
+                          resource === "sales" && row.status === "ISSUED"
+                            ? Number(row.balance) === 0
+                              ? "paid"
+                              : Number(row.paid) > 0
+                                ? "partial"
+                                : "pending"
+                            : undefined
+                        }
                         variant={
                           row.status === "APPROVED" || row.status === "RECEIVED"
                             ? "default"
                             : "secondary"
                         }
                       >
-                        {statuses[row.status] ?? row.status}
+                        {resource === "sales" && row.status === "ISSUED"
+                          ? Number(row.total) === 0
+                            ? "Devuelta"
+                            : Number(row.balance) === 0
+                              ? "Pagada"
+                              : Number(row.paid) > 0
+                                ? "Con abono"
+                                : "Por cobrar"
+                          : (statuses[row.status] ?? row.status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {cop(row.total)}
                     </TableCell>
-                    <TableCell className="tabular-nums">
-                      {resource === "quotes" ? "—" : cop(row.balance)}
-                    </TableCell>
+                    {resource !== "quotes" && (
+                      <TableCell className="tabular-nums">
+                        {cop(row.balance)}
+                      </TableCell>
+                    )}
                     <TableCell>
+                      {resource === "sales" &&
+                        row.status === "ISSUED" &&
+                        Number(row.balance) > 0 && (
+                          <Button
+                            variant="outline"
+                            onClick={() => payment(row)}
+                          >
+                            Cobrar
+                          </Button>
+                        )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -549,11 +676,17 @@ export function CommercePanel({
           ) : (
             <Empty>
               <EmptyHeader>
-                <EmptyTitle>No hay documentos</EmptyTitle>
+                <EmptyTitle>
+                  {receivables
+                    ? "No hay ventas pendientes de cobro"
+                    : "No hay documentos"}
+                </EmptyTitle>
                 <EmptyDescription>
                   {params.get("q")
                     ? "Prueba otra búsqueda o limpia los filtros."
-                    : "Registra el primer documento para comenzar."}
+                    : receivables
+                      ? "Las ventas con deuda aparecerán aquí hasta que se paguen."
+                      : "Registra el primer documento para comenzar."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -599,10 +732,16 @@ export function CommercePanel({
           {selected && (
             <div className="sheet-body flex flex-col gap-5">
               <div className="flex flex-wrap gap-2">
-                {actions(selected).map((a) => (
+                {actions(selected).map((a, index) => (
                   <Button
                     key={a.label}
-                    variant={a.danger ? "destructive" : "outline"}
+                    variant={
+                      a.danger
+                        ? "destructive"
+                        : index === 0 && a.label !== "Crear nueva versión"
+                          ? "default"
+                          : "outline"
+                    }
                     onClick={a.run}
                   >
                     {a.label}
@@ -616,14 +755,16 @@ export function CommercePanel({
                     {cop(selected.total)}
                   </dd>
                 </div>
-                <div>
-                  <dt>
-                    {resource === "payments" ? "Disponible" : "Pendiente"}
-                  </dt>
-                  <dd className="text-xl font-semibold">
-                    {cop(selected.balance)}
-                  </dd>
-                </div>
+                {resource !== "quotes" && (
+                  <div>
+                    <dt>
+                      {resource === "payments" ? "Disponible" : "Pendiente"}
+                    </dt>
+                    <dd className="text-xl font-semibold">
+                      {cop(selected.balance)}
+                    </dd>
+                  </div>
+                )}
                 <div>
                   <dt>Fecha</dt>
                   <dd>{dateLabel(selected.date)}</dd>
@@ -731,9 +872,18 @@ export function CommercePanel({
               data={data}
               orders={orders}
               locations={locations}
-              onSaved={() => {
+              onSaved={(id) => {
                 setEditor(null);
-                toast.success("Documento guardado.");
+                window.history.pushState(
+                  null,
+                  "",
+                  `?view=${editor.mode === "sale" ? "Ventas" : "Cotizaciones"}&recordId=${id}`,
+                );
+                toast.success(
+                  editor.mode === "sale"
+                    ? "Venta guardada."
+                    : "Cotización guardada.",
+                );
               }}
             />
           )}

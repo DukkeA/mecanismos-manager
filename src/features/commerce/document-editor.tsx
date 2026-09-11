@@ -2,7 +2,9 @@
 import { useState } from "react";
 import Decimal from "decimal.js";
 import { Plus, Trash2 } from "lucide-react";
-import { useCommercialCommand } from "./hooks";
+import { useCommercialCommand, useCommercialPage } from "./hooks";
+import { CustomerPicker } from "@/features/contacts/customer-picker";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useFormSheet } from "@/components/form-sheet";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -23,6 +25,7 @@ import type { OrderView } from "@/domain/workshop-view";
 export function DocumentEditor({
   mode,
   source,
+  context,
   data,
   orders,
   locations,
@@ -30,20 +33,30 @@ export function DocumentEditor({
 }: {
   mode: "quote" | "sale";
   source?: CommercialRow;
+  context?: { customerId: string; orderId: string; title: string };
   data: OperationsView;
   orders: OrderView[];
   locations: { id: string; name: string }[];
-  onSaved: () => void;
+  onSaved: (id: string) => void;
 }) {
   const command = useCommercialCommand(),
     draft = useFormSheet();
   const [requestId] = useState(() => crypto.randomUUID()),
     [error, setError] = useState("");
-  const [customerId, setCustomerId] = useState(source?.customerId ?? ""),
-    [orderId, setOrderId] = useState(source?.orderId ?? "");
-  const [title, setTitle] = useState(source?.title ?? ""),
+  const [customerId, setCustomerId] = useState(
+      source?.customerId ?? context?.customerId ?? "",
+    ),
+    [orderId, setOrderId] = useState(source?.orderId ?? context?.orderId ?? "");
+  const [title, setTitle] = useState(source?.title ?? context?.title ?? ""),
     [terms, setTerms] = useState(source?.terms ?? "");
   const fromQuote = mode === "sale" && !!source;
+  const [paymentMode, setPaymentMode] = useState("full");
+  const [applyCredit, setApplyCredit] = useState(false);
+  const [partialAmount, setPartialAmount] = useState("");
+  const credit = useCommercialPage(
+    new URLSearchParams({ resource: "payments", customerId }),
+    mode === "sale" && !!customerId,
+  );
   const emptyLine: DocumentLineInput = {
     itemId: "",
     description: "",
@@ -65,6 +78,18 @@ export function DocumentEditor({
       return s;
     }
   }, new Decimal(0));
+  const creditUsed = applyCredit
+    ? Decimal.min(sum, credit.data?.summary.advances ?? "0")
+    : new Decimal(0);
+  const afterCredit = Decimal.max(0, sum.minus(creditUsed));
+  let collected = paymentMode === "full" ? afterCredit : new Decimal(0);
+  if (paymentMode === "partial") {
+    try {
+      collected = new Decimal(partialAmount || "0");
+    } catch {
+      /* Validated on submit. */
+    }
+  }
   function update(index: number, patch: Partial<DocumentLineInput>) {
     draft.change();
     setLines((rows) =>
@@ -80,7 +105,15 @@ export function DocumentEditor({
         setError("");
         const form = new FormData(event.currentTarget);
         try {
-          await command.mutateAsync({
+          if (
+            mode === "sale" &&
+            paymentMode === "partial" &&
+            (!/^\d+(\.\d{1,2})?$/.test(partialAmount) || collected.lte(0))
+          )
+            throw new Error("Escribe el valor del abono.");
+          if (mode === "sale" && collected.gt(afterCredit))
+            throw new Error("El abono supera lo que falta por cobrar.");
+          const result = await command.mutateAsync({
             kind: mode,
             input: {
               requestId,
@@ -102,41 +135,41 @@ export function DocumentEditor({
                     invoiceReference: String(
                       form.get("invoiceReference") ?? "",
                     ),
+                    applyCredit,
+                    settleInFull: paymentMode === "full",
+                    payment: collected.gt(0)
+                      ? {
+                          accountId: String(form.get("paymentAccountId")),
+                          amount: collected.toFixed(2),
+                        }
+                      : undefined,
                   }),
             },
           });
           draft.saved();
-          onSaved();
+          onSaved(result.id);
         } catch (e) {
+          if (mode === "sale" && applyCredit) void credit.refetch();
           setError(e instanceof Error ? e.message : "No se pudo guardar.");
         }
       }}
     >
       <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="document-customer">Cliente</FieldLabel>
-          <Choice
-            id="document-customer"
-            disabled={fromQuote}
-            label="Cliente"
-            value={customerId}
-            onChange={(id) => {
-              setCustomerId(id);
-              setOrderId("");
-            }}
-            options={[
-              { id: "", label: "Seleccionar cliente" },
-              ...data.customers
-                .filter((c) => !c.deletedAt)
-                .map((c) => ({ id: c.id, label: c.name })),
-            ]}
-          />
-        </Field>
+        <CustomerPicker
+          id="document-customer"
+          disabled={!!source || !!context}
+          value={customerId}
+          onChange={(id) => {
+            setCustomerId(id);
+            setOrderId("");
+            setApplyCredit(false);
+          }}
+        />
         <Field>
           <FieldLabel htmlFor="document-order">Orden de trabajo</FieldLabel>
           <Choice
             id="document-order"
-            disabled={fromQuote}
+            disabled={!!source || !!context}
             label="Orden de trabajo"
             value={orderId}
             onChange={setOrderId}
@@ -199,7 +232,11 @@ export function DocumentEditor({
             <DateField
               id="document-due"
               name="dueOn"
-              defaultValue={source?.dueOn ?? todayInBogota()}
+              defaultValue={
+                mode === "quote"
+                  ? (source?.dueOn ?? todayInBogota())
+                  : todayInBogota()
+              }
               required
             />
           </Field>
@@ -373,6 +410,104 @@ export function DocumentEditor({
         <span>Total</span>
         <strong className="text-xl tabular-nums">{cop(sum.toString())}</strong>
       </div>
+      {mode === "sale" && (
+        <FieldGroup className="border-t pt-4">
+          <h3 className="font-semibold">Cobro</h3>
+          {credit.isError && (
+            <Alert variant="destructive">
+              <AlertTitle>
+                No se pudo consultar el saldo a favor del cliente.{" "}
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => credit.refetch()}
+                >
+                  Reintentar
+                </Button>
+              </AlertTitle>
+            </Alert>
+          )}
+          {Number(credit.data?.summary.advances ?? 0) > 0 && (
+            <Field orientation="horizontal">
+              <Checkbox
+                id="use-credit"
+                checked={applyCredit}
+                onCheckedChange={(value) => {
+                  setApplyCredit(value === true);
+                  draft.change();
+                }}
+              />
+              <FieldLabel htmlFor="use-credit">
+                Usar saldo a favor: {cop(credit.data!.summary.advances)}
+              </FieldLabel>
+            </Field>
+          )}
+          <Field>
+            <FieldLabel htmlFor="payment-mode">¿Cuánto paga hoy?</FieldLabel>
+            <Choice
+              id="payment-mode"
+              value={paymentMode}
+              onChange={(value) => {
+                setPaymentMode(value);
+                draft.change();
+              }}
+              options={[
+                { id: "full", label: `Todo · ${cop(afterCredit.toString())}` },
+                { id: "partial", label: "Deja un abono" },
+                { id: "later", label: "Queda pendiente de pago" },
+              ]}
+            />
+          </Field>
+          {paymentMode === "partial" && (
+            <Field>
+              <FieldLabel htmlFor="partial-amount">
+                Abono de hoy (COP)
+              </FieldLabel>
+              <Input
+                id="partial-amount"
+                inputMode="decimal"
+                value={partialAmount}
+                onChange={(event) => setPartialAmount(event.target.value)}
+                required
+              />
+            </Field>
+          )}
+          {paymentMode !== "later" && afterCredit.gt(0) && (
+            <Field>
+              <FieldLabel htmlFor="payment-account">
+                ¿En qué cuenta se recibe?
+              </FieldLabel>
+              <Choice
+                id="payment-account"
+                name="paymentAccountId"
+                defaultValue={
+                  data.accounts.find((account) => account.name === "Oficina")
+                    ?.id ?? data.accounts[0]?.id
+                }
+                options={data.accounts.map((account) => ({
+                  id: account.id,
+                  label: account.name,
+                }))}
+                required
+              />
+            </Field>
+          )}
+          <dl className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-4 text-sm">
+            <dt>Saldo a favor aplicado</dt>
+            <dd className="text-right tabular-nums">
+              {cop(creditUsed.toString())}
+            </dd>
+            <dt>Cobro de hoy</dt>
+            <dd className="text-right tabular-nums">
+              {cop(collected.toString())}
+            </dd>
+            <dt className="font-semibold">Queda por cobrar</dt>
+            <dd className="text-right font-semibold tabular-nums">
+              {cop(Decimal.max(0, afterCredit.minus(collected)).toString())}
+            </dd>
+          </dl>
+        </FieldGroup>
+      )}
       {error && (
         <Alert variant="destructive">
           <AlertTitle>{error}</AlertTitle>
@@ -387,12 +522,22 @@ export function DocumentEditor({
         >
           Cancelar
         </Button>
-        <Button type="submit" disabled={command.isPending}>
+        <Button
+          type="submit"
+          disabled={
+            command.isPending ||
+            (applyCredit && (credit.isFetching || credit.isError))
+          }
+        >
           {command.isPending
             ? "Guardando…"
             : mode === "quote"
-              ? "Guardar versión"
-              : "Registrar venta"}
+              ? source
+                ? "Guardar nueva versión"
+                : "Guardar cotización"
+              : collected.gt(0)
+                ? "Guardar venta y cobro"
+                : "Guardar venta"}
         </Button>
       </div>
     </form>

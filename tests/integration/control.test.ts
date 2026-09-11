@@ -36,7 +36,11 @@ import {
   finishUnit,
   sellUnit,
 } from "@/server/job-service";
-import { assignTask, transitionOrder, receiveOrder } from "@/server/operations-service";
+import {
+  assignTask,
+  transitionOrder,
+  receiveOrder,
+} from "@/server/operations-service";
 import { issueSale, returnSale } from "@/server/sales-service";
 import { hubPage } from "@/server/hub-query";
 const admin = { id: uuid(), role: "ADMIN" as const },
@@ -238,6 +242,23 @@ it("receives partial purchases once, limits payments to receipts, and handles su
   const receipt = await receivePurchase(office, receiptInput);
   expect(await receivePurchase(office, receiptInput)).toEqual(receipt);
   expect((await stock()).quantity.toString()).toBe("4");
+  const purchaseNumber = (
+    await db().purchase.findUniqueOrThrow({ where: { id: p.id } })
+  ).number;
+  const pendingPurchases = () =>
+    hubPage(
+      office,
+      new URLSearchParams({
+        resource: "purchases",
+        q: `Compra ${purchaseNumber}`,
+        outstanding: "true",
+      }),
+    );
+  expect(
+    (await pendingPurchases()).rows.some(
+      (row) => row.id === p.id && Number(row.amount) === 40000,
+    ),
+  ).toBe(true);
   await expect(
     paySupplier(office, {
       requestId: uuid(),
@@ -256,6 +277,9 @@ it("receives partial purchases once, limits payments to receipts, and handles su
     occurredOn: "2026-09-11",
     reason,
   });
+  expect((await pendingPurchases()).rows.some((row) => row.id === p.id)).toBe(
+    false,
+  );
   await returnPurchase(admin, {
     requestId: uuid(),
     receiptId: receipt.id,
@@ -696,9 +720,34 @@ it("paginates database records and computes reports independently of page select
   );
 });
 
-it('stores a task time estimate and rejects invalid planned minutes',async()=>{
- const own=await db().workOrder.create({data:{customerId,purpose:'CUSTOMER_REPAIR',title:'Trabajo con estimación',reportedProblem:reason,locationId:loc}});
- const task=await assignTask(office,{requestId:uuid(),orderId:own.id,title:'Prueba de retorno',memberIds:[mechanic.id],plannedMinutes:90});
- expect((await db().task.findUniqueOrThrow({where:{id:task.id}})).plannedMinutes).toBe(90);
- await expect(assignTask(office,{requestId:uuid(),orderId:own.id,title:'Prueba de retorno',memberIds:[mechanic.id],plannedMinutes:0})).rejects.toThrow();
+it("stores a task time estimate and rejects invalid planned minutes", async () => {
+  const own = await db().workOrder.create({
+    data: {
+      customerId,
+      purpose: "CUSTOMER_REPAIR",
+      title: "Trabajo con estimación",
+      reportedProblem: reason,
+      locationId: loc,
+    },
+  });
+  const task = await assignTask(office, {
+    requestId: uuid(),
+    orderId: own.id,
+    title: "Prueba de retorno",
+    memberIds: [mechanic.id],
+    plannedMinutes: 90,
+  });
+  expect(
+    (await db().task.findUniqueOrThrow({ where: { id: task.id } }))
+      .plannedMinutes,
+  ).toBe(90);
+  await expect(
+    assignTask(office, {
+      requestId: uuid(),
+      orderId: own.id,
+      title: "Prueba de retorno",
+      memberIds: [mechanic.id],
+      plannedMinutes: 0,
+    }),
+  ).rejects.toThrow();
 });
