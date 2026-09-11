@@ -63,7 +63,10 @@ export async function saveCustomer(actor: Actor, raw: unknown) {
   const input = customerInput.parse(raw);
   return db().$transaction(async (tx) => {
     const customer = input.id
-      ? await tx.customer.update({ where: { id: input.id, deletedAt: null }, data: input })
+      ? await tx.customer.update({
+          where: { id: input.id, deletedAt: null },
+          data: input,
+        })
       : await tx.customer.create({ data: input });
     await tx.auditEvent.create({
       data: {
@@ -78,6 +81,7 @@ export async function saveCustomer(actor: Actor, raw: unknown) {
 }
 const orderInput = z
   .object({
+    assetId: z.uuid().optional(),
     dueAt: z.iso.date().optional(),
     requestId: z.uuid(),
     title: z.string().trim().min(3).max(250),
@@ -103,7 +107,14 @@ const orderInput = z
   });
 export async function receiveOrder(actor: Actor, raw: unknown) {
   requirePermission(actor.role, "orders:write");
-  const input = orderInput.parse(raw);
+  const parsed = orderInput.parse(raw);
+  const input = {
+    ...parsed,
+    reference:
+      parsed.kind === "VEHICLE"
+        ? parsed.reference.toUpperCase().replace(/[^A-Z0-9]/g, "")
+        : parsed.reference.trim(),
+  };
   return once(actor, input.requestId, "ORDER_RECEIVED", input, async (tx) => {
     await tx.location.findUniqueOrThrow({ where: { id: input.locationId } });
     let customerId =
@@ -115,18 +126,50 @@ export async function receiveOrder(actor: Actor, raw: unknown) {
         await tx.customer.create({ data: { name: input.customer! } })
       ).id;
     // Reuse an exact reference only within the same owner's history.
-    if (customerId && !await tx.customer.findFirst({where: {id: customerId, deletedAt: null}})) throw new DomainError("El cliente fue eliminado. Selecciona otro cliente.");
-    const match = input.reference
-      ? await tx.asset.findFirst({
-          where: {
-            customerId,
-            kind: input.kind,
-            ...(input.kind === "VEHICLE"
-              ? { plate: input.reference }
-              : { serial: input.reference }),
-          },
-        })
+    if (
+      customerId &&
+      !(await tx.customer.findFirst({
+        where: { id: customerId, deletedAt: null },
+      }))
+    )
+      throw new DomainError(
+        "El cliente fue eliminado. Selecciona otro cliente.",
+      );
+    const chosen = input.assetId
+      ? await tx.asset.findUniqueOrThrow({ where: { id: input.assetId } })
       : null;
+    if (
+      chosen &&
+      (chosen.customerId !== customerId || chosen.kind !== input.kind)
+    )
+      throw new DomainError("El activo no corresponde a este cliente o tipo.");
+    if (
+      !chosen &&
+      input.kind === "VEHICLE" &&
+      input.reference &&
+      (await tx.asset.findFirst({
+        where: {
+          plate: input.reference,
+          customerId: { not: customerId ?? undefined },
+        },
+      }))
+    )
+      throw new DomainError(
+        "La placa está registrada con otro propietario. Revisa el activo antes de crear otra ficha.",
+      );
+    const match =
+      chosen ??
+      (input.reference
+        ? await tx.asset.findFirst({
+            where: {
+              customerId,
+              kind: input.kind,
+              ...(input.kind === "VEHICLE"
+                ? { plate: input.reference }
+                : { serial: input.reference }),
+            },
+          })
+        : null);
     const asset =
       match ??
       (await tx.asset.create({
@@ -188,6 +231,38 @@ export async function transitionOrder(actor: Actor, raw: unknown) {
     if (order.version !== input.version)
       throw new DomainError("La orden cambió. Actualiza antes de continuar.");
     assertOrderTransition(order.status, input.status);
+    if (["READY", "CLOSED"].includes(input.status)) {
+      const checks = await tx.orderCheck.findMany({
+        where: { orderId: order.id },
+        orderBy: { createdAt: "desc" },
+      });
+      const latest = new Map<string, string>();
+      for (const check of checks)
+        if (!latest.has(check.name)) latest.set(check.name, check.result);
+      if (!latest.size || [...latest.values()].some((r) => r !== "PASS"))
+        throw new DomainError(
+          "Registra resultados satisfactorios de las pruebas técnicas antes de entregar.",
+        );
+    }
+    if (
+      input.status === "CLOSED" &&
+      order.purpose !== "OWN_REBUILD" &&
+      !(await tx.orderHandover.findFirst({
+        where: { orderId: order.id, kind: "DELIVERY" },
+      }))
+    )
+      throw new DomainError(
+        "Registra la constancia de entrega antes de cerrar la orden.",
+      );
+    if (
+      ["CLOSED", "CANCELLED"].includes(input.status) &&
+      (await tx.stockReservation.count({
+        where: { orderId: order.id, status: "ACTIVE" },
+      }))
+    )
+      throw new DomainError(
+        "Consume o libera las reservas de repuestos antes de cerrar la orden.",
+      );
     if (
       ["QUALITY_REVIEW", "READY", "CLOSED"].includes(input.status) &&
       (await tx.task.count({
@@ -222,6 +297,8 @@ export async function assignTask(actor: Actor, raw: unknown) {
       orderId: z.uuid().optional(),
       title: z.string().trim().min(3).max(250),
       description: z.string().trim().max(5000).default(""),
+      plannedMinutes: z.coerce.number().int().min(1).max(43200).optional(),
+      assetId: z.uuid().optional(),
       dueAt: z.iso.date().optional(),
       memberIds: z.array(z.uuid()).min(1).max(20),
     })
@@ -245,6 +322,7 @@ export async function assignTask(actor: Actor, raw: unknown) {
         orderId: input.orderId,
         title: input.title,
         description: input.description,
+        plannedMinutes: input.plannedMinutes ?? null,
         dueAt: input.dueAt ? new Date(`${input.dueAt}T17:00:00Z`) : undefined,
         assignments: { create: ids.map((memberId) => ({ memberId })) },
       },

@@ -1,4 +1,6 @@
+import { assertOpenCash } from "./financial-control";
 import { reverseTransfer } from "./cash-transfers";
+import { releaseAllocations } from "./commercial-ledger";
 import { DomainError } from "@/domain/errors";
 import "server-only";
 import { z } from "zod";
@@ -25,6 +27,7 @@ export async function createObligation(actor:Actor,raw:unknown) {
   const input=z.object({requestId:z.uuid(),title:z.string().trim().min(3).max(200),category:z.enum(["RENT","UTILITIES","PAYROLL","OTHER"]),period:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),amount:positiveMoney,dueOn:z.iso.date()}).parse(raw);
   if(input.category==="PAYROLL")requirePermission(actor.role,"payroll:read");
   return once(actor,input.requestId,"OBLIGATION_CREATED",input,async tx=>{
+    await tx.monthCoverage.updateMany({where:{period:input.period},data:{confirmed:false}});
     const obligation=await tx.obligation.create({data:{title:input.title,category:input.category,period:input.period,amount:input.amount,dueOn:new Date(input.dueOn+"T00:00:00Z")}});
     await tx.auditEvent.create({data:{actorId:actor.id,entityId:obligation.id,action:"OBLIGATION_CREATED",details:{category:input.category,period:input.period}}});
     return {id:obligation.id};
@@ -36,6 +39,7 @@ export async function recordCash(actor:Actor,raw:unknown) {
   const input=z.object({requestId:z.uuid(),accountId:z.uuid(),obligationId:z.uuid().optional(),kind:z.enum(Object.keys(cashKinds) as [keyof typeof cashKinds,...(keyof typeof cashKinds)[]]),amount:positiveMoney,counterparty:z.string().trim().min(2).max(200),reference:z.string().trim().max(200),note:z.string().trim().min(3).max(1000),occurredOn:z.iso.date()}).parse(raw);
   if(["OWNER_WITHDRAWAL","OWNER_CONTRIBUTION","LOAN_RECEIVED","LOAN_PAYMENT"].includes(input.kind)&&actor.role!=="ADMIN")throw new DomainError("Esta operación requiere administración.");
   return once(actor,input.requestId,"CASH_RECORDED",input,async tx=>{
+    await assertOpenCash(tx,input.accountId,input.occurredOn);
     const direction=cashKinds[input.kind].direction;const amount=new Decimal(input.amount);
     const account=await tx.moneyAccount.findUniqueOrThrow({where:{id:input.accountId}});
     if(input.obligationId){
@@ -60,7 +64,11 @@ export async function reverseCash(actor:Actor,raw:unknown) {
   return once(actor,input.requestId,"CASH_REVERSED",input,async tx=>{
     const original=await tx.cashEntry.findUniqueOrThrow({where:{id:input.entryId}});
     if(original.reversalOfId||await tx.cashEntry.findUnique({where:{reversalOfId:original.id}}))throw new DomainError("Ese movimiento no admite otra reversión.");
+    await assertOpenCash(tx,original.accountId,input.occurredOn);
     if(original.transferId) return reverseTransfer(tx,actor,original.transferId,input);
+    const payment = await tx.customerPayment.findUnique({where:{entryId:original.id},include:{refunds:{include:{entry:{include:{reversal:true}}}}}});
+    if(payment?.refunds.some(r=>!r.entry.reversal))throw new DomainError("Revierte las devoluciones de este anticipo antes de revertir su cobro.");
+    if(payment)await releaseAllocations(tx,actor,{paymentId:payment.id},input.reason);
     const account=await tx.moneyAccount.findUniqueOrThrow({where:{id:original.accountId}});
     const direction=original.direction==="IN"?"OUT":"IN";
     const next=new Decimal(account.balance.toString()).plus(direction==="IN"?original.amount.toString():new Decimal(original.amount.toString()).negated());

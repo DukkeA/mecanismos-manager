@@ -1,3 +1,4 @@
+import { assertOpenCash } from "./financial-control";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -27,6 +28,8 @@ export async function transferCash(actor: Actor, raw: unknown) {
       "Selecciona una cuenta de destino diferente al origen.",
     );
   return once(actor, input.requestId, "CASH_TRANSFERRED", input, async (tx) => {
+    await assertOpenCash(tx,input.sourceAccountId,input.occurredOn);
+    await assertOpenCash(tx,input.destinationAccountId,input.occurredOn);
     const source = await tx.moneyAccount.findUniqueOrThrow({
       where: { id: input.sourceAccountId },
     });
@@ -93,6 +96,7 @@ export async function reverseTransfer(
     where: { transferId, kind: "TRANSFER" },
     include: { reversal: true },
   });
+  for (const entry of pair) await assertOpenCash(tx,entry.accountId,input.occurredOn);
   if (pair.length !== 2 || pair.some((e) => e.reversal))
     throw new DomainError(
       "Esta transferencia ya fue revertida o está incompleta.",

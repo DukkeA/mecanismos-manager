@@ -7,9 +7,11 @@ export type FormField = {
     | "date"
     | "textarea"
     | "select"
+    | "sale"
     | "members"
     | "money"
     | "quantity";
+  customerId?: string;
   options?: { id: string; label: string }[];
   optional?: boolean;
   hint?: string;

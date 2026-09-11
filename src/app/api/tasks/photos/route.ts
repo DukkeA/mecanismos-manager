@@ -1,3 +1,4 @@
+import {readPrivate} from "@/server/private-storage";
 import { requireMember } from "@/server/auth";
 import { db } from "@/server/db";
 import { saveTaskPhoto } from "@/server/task-photos";
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
     )
   )
     return new Response(null, { status: 404, headers });
-  return new Response(new Uint8Array(photo.content), {
+  return new Response(photo.storagePath ? await readPrivate(photo.storagePath) : new Uint8Array(photo.content!), {
     headers: { ...headers, "Content-Type": "image/jpeg" },
   });
 }

@@ -81,6 +81,7 @@ const editInput = z.object({
   version: z.number().int().nonnegative(),
   title: z.string().trim().min(3).max(250),
   description: z.string().trim().max(5000).default(""),
+  plannedMinutes: z.coerce.number().int().min(1).max(43200).optional(),
   dueAt: z.iso.date().optional(),
   memberIds: z.array(z.uuid()).min(1).max(20),
 });
@@ -113,6 +114,7 @@ export async function editTask(actor: Actor, raw: unknown) {
       data: {
         title: input.title,
         description: input.description,
+        plannedMinutes: input.plannedMinutes ?? null,
         dueAt: input.dueAt ? new Date(`${input.dueAt}T17:00:00Z`) : null,
         version: { increment: 1 },
         assignments: { create: ids.map((memberId) => ({ memberId })) },
@@ -127,11 +129,13 @@ export async function editTask(actor: Actor, raw: unknown) {
           before: {
             title: task.title,
             description: task.description,
+            plannedMinutes: task.plannedMinutes,
             dueAt: task.dueAt?.toISOString() ?? null,
           },
           after: {
             title: input.title,
             description: input.description,
+            plannedMinutes: input.plannedMinutes ?? null,
             dueAt: input.dueAt ?? null,
             members: ids,
           },

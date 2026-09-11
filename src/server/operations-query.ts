@@ -4,9 +4,19 @@ import type { Actor } from "./commands";
 import { emptyOperations, type OperationsView } from "@/domain/operations-view";
 import Decimal from "decimal.js";
 
-export async function getOperations(actor: Actor): Promise<OperationsView> {
+export async function getOperations(
+  actor: Actor,
+  selection?: { table: string; ids: string[] },
+): Promise<OperationsView> {
+  const subset = (table: string) =>
+    selection
+      ? { id: { in: selection.table === table ? selection.ids : [] } }
+      : {};
   const members = await db().member.findMany({
-    where: actor.role === "ADMIN" ? {} : { active: true },
+    where: {
+      ...subset("members"),
+      ...(actor.role === "ADMIN" ? {} : { active: true }),
+    },
     select:
       actor.role === "ADMIN"
         ? { id: true, name: true, email: true, role: true, active: true }
@@ -14,12 +24,14 @@ export async function getOperations(actor: Actor): Promise<OperationsView> {
     orderBy: { name: "asc" },
   });
   const tasks = await db().task.findMany({
-    where:
-      actor.role === "MECHANIC"
+    where: {
+      ...subset("tasks"),
+      ...(actor.role === "MECHANIC"
         ? { deletedAt: null, assignments: { some: { memberId: actor.id } } }
         : actor.role === "ADMIN"
           ? {}
-          : { deletedAt: null },
+          : { deletedAt: null }),
+    },
     select: {
       id: true,
       title: true,
@@ -28,6 +40,7 @@ export async function getOperations(actor: Actor): Promise<OperationsView> {
         select: { id: true, caption: true, createdAt: true, actorId: true },
       },
       description: true,
+      plannedMinutes: true,
       version: true,
       deletedAt: true,
       notes: { orderBy: { createdAt: "desc" } },
@@ -78,6 +91,7 @@ export async function getOperations(actor: Actor): Promise<OperationsView> {
         author: author(p.actorId),
       })),
       description: t.description,
+      plannedMinutes: t.plannedMinutes,
       version: t.version,
       deletedAt: t.deletedAt?.toISOString(),
       notes: t.notes.map((n) => ({
@@ -115,14 +129,40 @@ export async function getOperations(actor: Actor): Promise<OperationsView> {
   const [customers, items, suppliers, offers, balances, movements] =
     await Promise.all([
       db().customer.findMany({
+        where: subset("customers"),
         orderBy: { name: "asc" },
         include: { _count: { select: { orders: true } } },
       }),
-      db().catalogItem.findMany({ orderBy: { name: "asc" } }),
-      db().supplier.findMany({ orderBy: { name: "asc" } }),
-      db().supplierOffer.findMany({ orderBy: { observedAt: "desc" } }),
-      db().stockBalance.findMany({}),
-      db().stockMovement.findMany({ orderBy: { createdAt: "desc" } }),
+      db().catalogItem.findMany({
+        where: subset("items"),
+        orderBy: { name: "asc" },
+      }),
+      db().supplier.findMany({
+        where: subset("suppliers"),
+        orderBy: { name: "asc" },
+      }),
+      db().supplierOffer.findMany({
+        where: subset("offers"),
+        orderBy: { observedAt: "desc" },
+      }),
+      db().stockBalance.findMany({
+        where: selection
+          ? {
+              OR:
+                selection.table === "balances"
+                  ? selection.ids.map((id) => ({
+                      itemId: id.slice(0, 36),
+                      locationId: id.slice(37, 73),
+                      condition: id.slice(74) as "NEW" | "USED" | "REBUILT",
+                    }))
+                  : [],
+            }
+          : undefined,
+      }),
+      db().stockMovement.findMany({
+        where: subset("movements"),
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
   const reversed = await db().stockMovement.findMany({
     where: { reversalOfId: { in: movements.map((m) => m.id) } },
@@ -130,30 +170,45 @@ export async function getOperations(actor: Actor): Promise<OperationsView> {
   });
   const [accounts, obligations, cash] = await Promise.all([
     db().moneyAccount.findMany({
+      where: subset("accounts"),
       select: { id: true, name: true, balance: true },
       orderBy: { name: "asc" },
     }),
     db().obligation.findMany({
-      where: actor.role === "ADMIN" ? {} : { category: { not: "PAYROLL" } },
+      where: {
+        ...subset("obligations"),
+        ...(actor.role === "ADMIN" ? {} : { category: { not: "PAYROLL" } }),
+      },
       include: { entries: { select: { amount: true, direction: true } } },
       orderBy: { dueOn: "desc" },
     }),
     db().cashEntry.findMany({
-      where:
-        actor.role === "ADMIN"
+      where: {
+        ...subset("cashEntries"),
+        ...(actor.role === "ADMIN"
           ? {}
           : {
               OR: [
                 { obligationId: null },
                 { obligation: { category: { not: "PAYROLL" } } },
               ],
-            },
+            }),
+      },
       orderBy: { createdAt: "desc" },
-      include: { reversal: { select: { id: true } } },
+      include: {
+        reversal: { select: { id: true } },
+        customerPayment: { select: { id: true } },
+      },
     }),
   ]);
   return {
     ...technical,
+    coverage:
+      !selection && actor.role === "ADMIN"
+        ? await db().monthCoverage.findMany({
+            select: { period: true, confirmed: true },
+          })
+        : [],
     archivedTasks,
     accounts: accounts.map((a) => ({
       id: a.id,
@@ -161,6 +216,7 @@ export async function getOperations(actor: Actor): Promise<OperationsView> {
       balance: a.balance.toFixed(2),
     })),
     obligations: obligations.map((o) => ({
+      estimated: o.estimated,
       id: o.id,
       title: o.title,
       category: o.category,
@@ -192,6 +248,7 @@ export async function getOperations(actor: Actor): Promise<OperationsView> {
       note: e.note,
       occurredOn: e.occurredOn.toISOString().slice(0, 10),
       reversed: !!e.reversal,
+      paymentId: e.customerPayment?.id,
     })),
     customers: customers.map((c) => ({
       id: c.id,
@@ -213,7 +270,9 @@ export async function getOperations(actor: Actor): Promise<OperationsView> {
       notes: i.notes,
     })),
     suppliers: suppliers.map((s) => ({
-      email: s.email ?? "", address: s.address ?? "", deletedAt: s.deletedAt?.toISOString(),
+      email: s.email ?? "",
+      address: s.address ?? "",
+      deletedAt: s.deletedAt?.toISOString(),
       id: s.id,
       name: s.name,
       phone: s.phone ?? "",
@@ -229,6 +288,7 @@ export async function getOperations(actor: Actor): Promise<OperationsView> {
       evidence: o.evidence,
     })),
     balances: balances.map((b) => ({
+      costKnown: b.costKnown,
       itemId: b.itemId,
       locationId: b.locationId,
       condition: b.condition,

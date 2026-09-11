@@ -66,7 +66,12 @@ export async function saveSupplier(actor: Actor, raw: unknown) {
     })
     .parse(raw);
   return db().$transaction(async (tx) => {
-    const supplier = input.id ? await tx.supplier.update({where: {id: input.id, deletedAt: null}, data: input}) : await tx.supplier.create({ data: input });
+    const supplier = input.id
+      ? await tx.supplier.update({
+          where: { id: input.id, deletedAt: null },
+          data: input,
+        })
+      : await tx.supplier.create({ data: input });
     await tx.auditEvent.create({
       data: {
         actorId: actor.id,
@@ -93,7 +98,14 @@ export async function saveOffer(actor: Actor, raw: unknown) {
     })
     .parse(raw);
   return db().$transaction(async (tx) => {
-    if (!await tx.supplier.findFirst({where: {id: input.supplierId, deletedAt: null}})) throw new DomainError("El proveedor fue eliminado. Selecciona otro proveedor.");
+    if (
+      !(await tx.supplier.findFirst({
+        where: { id: input.supplierId, deletedAt: null },
+      }))
+    )
+      throw new DomainError(
+        "El proveedor fue eliminado. Selecciona otro proveedor.",
+      );
     const offer = await tx.supplierOffer.create({
       data: { ...input, observedAt: new Date(input.observedAt + "T12:00:00Z") },
     });
@@ -175,6 +187,7 @@ export async function moveStock(actor: Actor, raw: unknown) {
     const movement = await tx.stockMovement.create({
       data: {
         ...key,
+        costKnown: incoming ? true : balance.costKnown,
         quantity: signedQty.toString(),
         materialAmount: signedValue.toFixed(2),
         kind: input.kind,
@@ -186,6 +199,7 @@ export async function moveStock(actor: Actor, raw: unknown) {
     await tx.stockBalance.update({
       where: { itemId_locationId_condition: key },
       data: {
+        costKnown: currentQty.isZero() ? true : balance.costKnown,
         quantity: currentQty.plus(signedQty).toString(),
         materialCost: value.plus(signedValue).toFixed(2),
       },
@@ -197,6 +211,7 @@ export async function moveStock(actor: Actor, raw: unknown) {
         action: "STOCK_MOVED",
         details: {
           itemId: item.id,
+          costKnown: incoming ? true : balance.costKnown,
           quantity: signedQty.toString(),
           kind: input.kind,
         },
@@ -227,6 +242,14 @@ export async function reverseMovement(actor: Actor, raw: unknown) {
     )
       throw new DomainError(
         "Ese movimiento ya fue revertido o es una reversión.",
+      );
+    if (
+      !["RECEIPT", "CONSUMPTION", "ADJUSTMENT_IN", "ADJUSTMENT_OUT"].includes(
+        original.kind,
+      )
+    )
+      throw new DomainError(
+        "Corrige este movimiento desde el documento de venta, compra, traslado o conteo que lo generó.",
       );
     if (original.orderId) {
       const order = await tx.workOrder.findUniqueOrThrow({
@@ -268,6 +291,7 @@ export async function reverseMovement(actor: Actor, raw: unknown) {
         materialAmount: new Decimal(original.materialAmount.toString())
           .negated()
           .toString(),
+        costKnown: original.costKnown,
         kind: "REVERSAL",
         reason: input.reason,
         actorId: actor.id,
@@ -280,6 +304,7 @@ export async function reverseMovement(actor: Actor, raw: unknown) {
       data: {
         quantity: nextQty.toString(),
         materialCost: nextValue.toFixed(2),
+        costKnown: nextQty.eq(0) || (balance.costKnown && original.costKnown),
       },
     });
     await tx.auditEvent.create({

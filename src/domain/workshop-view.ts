@@ -1,7 +1,7 @@
 export type OrderView = {
   id: string; number: number; title: string; reference: string; kind: "VEHICLE" | "COMPONENT";
   family: string; status: string; responsible: string; nextStep: string; customer: string;
-  problem: string; location: string; version?:number; receivedAt?:string; dueAt?:string|null; closedAt?:string|null;
+  customerId?: string | null; problem: string; location: string; version?:number; receivedAt?:string; dueAt?:string|null; closedAt?:string|null;
   tasks: {id: string; title: string; done: boolean; status: string; minutes: number}[];
   notes: {id: string; body: string; author: string; date: string; createdAt?:string}[];
 };

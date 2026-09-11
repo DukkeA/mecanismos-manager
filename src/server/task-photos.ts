@@ -1,4 +1,6 @@
 import "server-only";
+import {db} from "./db";
+import {storePrivate} from "./private-storage";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 import { z } from "zod";
@@ -40,6 +42,11 @@ export async function saveTaskPhoto(actor: Actor, raw: unknown, bytes: Buffer) {
       "La foto sigue siendo demasiado grande. Usa una imagen más pequeña.",
     );
   const hash = createHash("sha256").update(bytes).digest("hex");
+  const before=await db().task.findUniqueOrThrow({where:{id:input.taskId},include:{assignments:true}});
+  if(!canContributeToTask(actor.role,actor.id,before.assignments.map(a=>a.memberId)))throw new AccessDenied();
+  if(before.deletedAt)throw new DomainError("La tarea ya no admite fotos.");
+  const storagePath=`tasks/${input.taskId}/${actor.id}-${input.requestId}-${hash}.jpg`;
+  await storePrivate(storagePath,content,"image/jpeg");
   return once(
     actor,
     input.requestId,
@@ -70,7 +77,8 @@ export async function saveTaskPhoto(actor: Actor, raw: unknown, bytes: Buffer) {
           taskId: task.id,
           actorId: actor.id,
           caption: input.caption,
-          content: new Uint8Array(content),
+          storagePath,
+          content: null,
         },
       });
       await tx.auditEvent.create({

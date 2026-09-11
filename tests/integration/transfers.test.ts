@@ -61,10 +61,16 @@ afterAll(async () => {
 });
 it("records both sides once and preserves the total", async () => {
   const payload = input();
-  const [a, b] = await Promise.all([
+  const results = await Promise.allSettled([
     transferCash(office, payload),
     transferCash(office, payload),
   ]);
+  // Drain both commands even on failure before afterEach removes their fixtures.
+  expect(results.every((result) => result.status === "fulfilled")).toBe(true);
+  const [a, b] = results.map((result) => {
+    if (result.status === "rejected") throw result.reason;
+    return result.value;
+  });
   expect(a).toEqual(b);
   expect(await balances()).toEqual(["74.85", "25.15"]);
   const entries = await db().cashEntry.findMany({
