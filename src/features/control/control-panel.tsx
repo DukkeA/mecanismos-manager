@@ -62,7 +62,7 @@ const names: Record<HubResource, string> = {
   warranties: "Garantías",
   checks: "Pruebas técnicas",
   handovers: "Recepción y entrega",
-  assets: "Activos",
+  assets: "Vehículos y componentes",
   rates: "Costo por hora",
   margins: "Margen por trabajo",
   closures: "Cierres de caja",
@@ -396,26 +396,6 @@ export function ControlPanel({
           { orderId },
         );
         break;
-      case "rates":
-        form(
-          "labor-rate",
-          "Registrar costo por hora",
-          [
-            choose(
-              "memberId",
-              "Empleado",
-              data.members
-                .filter((m) => m.active)
-                .map((m) => ({ id: m.id, label: m.name })),
-            ),
-            date("effectiveOn", "Vigente desde"),
-            m("hourlyCost", "Costo por hora (COP)"),
-            note,
-          ],
-          {},
-          "Incluye el costo laboral asignable. El informe de margen no vuelve a descontar la nómina pagada.",
-        );
-        break;
       case "closures":
         form("cash-close", "Cerrar caja", [
           account,
@@ -664,7 +644,7 @@ export function ControlPanel({
       });
     return a;
   }
-  const canCreate = !["assets", "margins", "audit"].includes(resource),
+  const canCreate = !["assets", "margins", "audit", "rates"].includes(resource),
     page = query.data?.page ?? 1,
     pages = Math.max(
       1,
@@ -715,7 +695,8 @@ export function ControlPanel({
           Venta neta menos materiales y mano de obra registrada. El margen de
           una orden abierta es provisional. Las órdenes sin venta muestran sus
           costos en el detalle. No incluye arriendos ni otros gastos generales.
-          Las horas sin tarifa impiden calcular el margen completo.
+          Configura los salarios en Equipo. Las horas sin costo laboral impiden
+          calcular el margen completo.
         </p>
       )}
       {!orderId && (
@@ -736,13 +717,19 @@ export function ControlPanel({
           </label>
           {resourceStatuses[resource] && (
             <label>
-              Estado
+              {resource === "assets" ? "Tipo" : "Estado"}
               <Choice
-                label="Estado"
+                label={resource === "assets" ? "Tipo" : "Estado"}
                 value={params.get("status") ?? ""}
                 onChange={(status) => update({ status })}
                 options={[
-                  { id: "", label: "Todos los estados" },
+                  {
+                    id: "",
+                    label:
+                      resource === "assets"
+                        ? "Vehículos y componentes"
+                        : "Todos los estados",
+                  },
                   ...resourceStatuses[resource]!.map((value) => ({
                     id: value,
                     label: statusNames[value],
@@ -829,8 +816,11 @@ export function ControlPanel({
                 <TableRow>
                   {[
                     ["title", "Registro"],
-                    ["date", "Fecha"],
-                    ["", "Estado"],
+                    [
+                      "date",
+                      resource === "assets" ? "Último ingreso" : "Fecha",
+                    ],
+                    ["", resource === "assets" ? "Tipo" : "Estado"],
                     [
                       "amount",
                       units

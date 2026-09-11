@@ -15,7 +15,6 @@ import {
   applyCount,
 } from "@/server/stock-workflows";
 import {
-  saveLaborRate,
   openWarranty,
   reviewWarranty,
   recordCheck,
@@ -47,7 +46,6 @@ const commands = {
   "stock-transfer": transferStock,
   "count-preview": previewCount,
   "count-apply": applyCount,
-  "labor-rate": saveLaborRate,
   warranty: openWarranty,
   "warranty-review": reviewWarranty,
   check: recordCheck,

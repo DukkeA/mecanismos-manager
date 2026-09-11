@@ -1,4 +1,7 @@
 "use client";
+import { TeamWorkspace } from "@/features/team/team-workspace";
+import { InventoryWorkspace } from "@/features/inventory/inventory-workspace";
+import { CustomersWorkspace } from "@/features/contacts/customers-workspace";
 import { FormSheet } from "./form-sheet";
 import { ObservationHistory } from "@/features/orders/observation-history";
 import { OrderAgreement } from "@/features/commerce/order-agreement";
@@ -419,13 +422,47 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 setCreating(true);
               }}
             />
+          ) : section === "Equipo" && !demo ? (
+            <TeamWorkspace
+              section={section}
+              data={operations}
+              orders={orders}
+              locations={locations}
+              role={actor.role}
+              demo={demo}
+              run={runOperation}
+              openOrder={setSelectedId}
+            />
           ) : [
-              "Compras",
+              "Inventario",
               "Control de inventario",
-              "Garantías",
+              "Clientes",
               "Activos",
-              "Rentabilidad",
             ].includes(section) ? (
+            ["Inventario", "Control de inventario"].includes(section) ? (
+              <InventoryWorkspace
+                section={section}
+                data={operations}
+                orders={orders}
+                locations={locations}
+                role={actor.role}
+                demo={demo}
+                run={runOperation}
+                openOrder={setSelectedId}
+              />
+            ) : (
+              <CustomersWorkspace
+                section={section}
+                data={operations}
+                orders={orders}
+                locations={locations}
+                role={actor.role}
+                demo={demo}
+                run={runOperation}
+                openOrder={setSelectedId}
+              />
+            )
+          ) : ["Compras", "Garantías", "Rentabilidad"].includes(section) ? (
             <ControlPanel
               key={section}
               data={operations}
@@ -435,19 +472,13 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               resources={
                 section === "Compras"
                   ? ["purchases"]
-                  : section === "Control de inventario"
-                    ? actor.role === "ADMIN"
-                      ? ["reservations", "transfers", "counts", "units"]
-                      : ["reservations", "transfers", "units"]
-                    : section === "Garantías"
-                      ? ["warranties"]
-                      : section === "Activos"
-                        ? ["assets"]
-                        : section === "Rentabilidad"
-                          ? ["margins", "rates"]
-                          : actor.role === "ADMIN"
-                            ? ["closures", "recurring", "coverage", "audit"]
-                            : ["closures", "recurring"]
+                  : section === "Garantías"
+                    ? ["warranties"]
+                    : section === "Rentabilidad"
+                      ? ["margins"]
+                      : actor.role === "ADMIN"
+                        ? ["closures", "recurring", "coverage", "audit"]
+                        : ["closures", "recurring"]
               }
             />
           ) : (
@@ -849,7 +880,10 @@ function TimeForm({
         onSubmit(new FormData(e.currentTarget), e.currentTarget);
       }}
     >
-      <h3>Registrar tiempo</h3>
+      <h3>Registrar tiempo ordinario</h3>
+      <p className="text-sm text-muted-foreground">
+        El administrador registra las horas extra desde Equipo.
+      </p>
       <FieldGroup>
         <input type="hidden" name="requestKey" value={requestKey} />
         <Field>

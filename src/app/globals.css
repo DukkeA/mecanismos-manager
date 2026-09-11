@@ -442,3 +442,41 @@ textarea.form-control{min-height:96px;padding:10px 12px}
 .commercial-filters .range-filter{max-width:none}
 .commercial-filters>.commercial-date-filter{flex:0 1 270px}
 @media(max-width:767px){.commercial-filters>label,.commercial-filters>.commercial-date-filter{flex-basis:100%;width:100%}.workspace-tabs [data-slot=tabs-trigger]{padding-inline:12px}.commercial-filters+*{min-width:0}}
+
+.team-cost-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--border);
+}
+.team-cost-summary > div {
+  background: var(--card);
+  padding: 1.25rem;
+}
+.team-cost-summary > div:last-child {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.team-cost-summary dt {
+  font-size: 0.875rem;
+}
+.team-cost-summary dd {
+  font-size: clamp(1.4rem, 2.1vw, 2rem);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  margin: 0.5rem 0;
+  letter-spacing: -0.025em;
+}
+.team-cost-summary p {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+@media (max-width: 700px) {
+  .team-cost-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .team-cost-summary > div { padding: .875rem; }
+  .team-cost-summary > div:last-child { grid-column: 1 / -1; }
+  .team-cost-summary dd { font-size: 1.2rem; }
+}

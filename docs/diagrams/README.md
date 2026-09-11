@@ -5,7 +5,7 @@ Actualizados con Archify el 11 de septiembre de 2026. Describen la implementaci�
 | Diagrama | Contenido | Especificación |
 | --- | --- | --- |
 | [Arquitectura](architecture.html) | PWA, TanStack Query, Next.js, permisos, Prisma y Storage privado | [JSON](architecture.json) |
-| [Modelo de datos](data-model.html) | 47 modelos agrupados y relaciones seleccionadas | [JSON](data-model.json) |
+| [Modelo de datos](data-model.html) | 48 modelos agrupados y relaciones seleccionadas | [JSON](data-model.json) |
 | [Reparación](repair.html) | Recepción, acuerdo comercial, ejecución, pruebas, entrega y garantía | [JSON](repair.json) |
 | [Caja](finance.html) | Cobros aplicados a ventas, pagos, cuentas, transferencias y cierres | [JSON](finance.json) |
 | [Reconstrucción propia](reconditioning.html) | Identificación, costos, unidad vendible, venta y devolución | [JSON](reconditioning.json) |
@@ -47,3 +47,5 @@ node C:/Users/andre/.agents/skills/archify/bin/archify.mjs visual-check docs/dia
 ```
 
 Guardar el nuevo recibo de entrega y revisar las capturas antes de actualizar la revisión perceptual. Para reparación, caja y reconstrucción, usar el tipo `workflow`. Los PNG se regeneran con `visual-check` y están excluidos de Git; no editar el HTML generado.
+
+El modelo incluye las condiciones salariales mensuales en `LaborRate` y `OvertimeEntry`. Consulta [Inventario y Equipo](../inventory-and-team.md) para las fórmulas y la relación con Dinero.

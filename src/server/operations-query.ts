@@ -63,9 +63,21 @@ export async function getOperations(
     },
     orderBy: { createdAt: "desc" },
   });
+  const overtime = await db().overtimeEntry.findMany({
+    where: { taskId: { in: tasks.map((t) => t.id) }, voidedAt: null },
+    select: {
+      id: true,
+      memberId: true,
+      taskId: true,
+      minutes: true,
+      workedOn: true,
+      note: true,
+    },
+  });
   const actorIds = [
     ...new Set([
       ...history.map((h) => h.actorId),
+      ...overtime.map((e) => e.memberId),
       ...tasks.flatMap((t) => [
         ...t.notes.map((n) => n.actorId),
         ...t.photos.map((p) => p.actorId),
@@ -109,13 +121,25 @@ export async function getOperations(
           createdAt: h.createdAt.toISOString(),
           details: h.details as Record<string, unknown>,
         })),
-      timeEntries: t.timeEntries.map((e) => ({
-        id: e.id,
-        minutes: e.minutes,
-        workedOn: e.workedOn.toISOString(),
-        note: e.note,
-        author: e.member.name,
-      })),
+      timeEntries: [
+        ...t.timeEntries.map((e) => ({
+          id: e.id,
+          minutes: e.minutes,
+          workedOn: e.workedOn.toISOString(),
+          note: e.note,
+          author: e.member.name,
+        })),
+        ...overtime
+          .filter((e) => e.taskId === t.id)
+          .map((e) => ({
+            id: e.id,
+            minutes: e.minutes,
+            workedOn: e.workedOn.toISOString(),
+            note: e.note,
+            author: author(e.memberId),
+            overtime: true,
+          })),
+      ],
       orderId: t.orderId,
       status: t.status,
       createdAt: t.createdAt.toISOString(),

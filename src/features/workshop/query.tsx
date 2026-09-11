@@ -154,9 +154,10 @@ export function useOperationMutation(feature: string) {
       if (!scope.demo)
         await Promise.all([
           client.invalidateQueries({ queryKey: key }),
-          ...(["control", "commerce", "records", "observations"] as const).map(
-            (feature) =>
-              client.invalidateQueries({ queryKey: [feature, scope.actorId] }),
+          ...(
+            ["control", "commerce", "records", "observations", "team"] as const
+          ).map((feature) =>
+            client.invalidateQueries({ queryKey: [feature, scope.actorId] }),
           ),
         ]);
     },

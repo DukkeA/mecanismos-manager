@@ -1,3 +1,5 @@
+import { compensationInput } from "@/domain/team";
+import { writeCompensation } from "./team-service";
 import { DomainError } from "@/domain/errors";
 import "server-only";
 import { z } from "zod";
@@ -11,10 +13,11 @@ const memberInput = z.object({
   email: z.email().transform((v) => v.toLowerCase()),
   role: z.enum(["ADMIN", "OFFICE", "MECHANIC"]),
   active: z.boolean(),
+  compensation: compensationInput.optional(),
 });
 export async function saveMember(actor: Actor, raw: unknown) {
   requirePermission(actor.role, "members:write");
-  const input = memberInput.parse(raw);
+  const { compensation, ...input } = memberInput.parse(raw);
   return serializable(async (tx) => {
     if (input.id === actor.id && (!input.active || input.role !== "ADMIN"))
       throw new DomainError(
@@ -40,6 +43,8 @@ export async function saveMember(actor: Actor, raw: unknown) {
     const member = input.id
       ? await tx.member.update({ where: { id: input.id }, data: input })
       : await tx.member.create({ data: input });
+    if (compensation)
+      await writeCompensation(tx, actor, member.id, compensation);
     await tx.auditEvent.create({
       data: {
         actorId: actor.id,

@@ -705,11 +705,38 @@ model LaborRate {
   memberId    String   @db.Uuid
   effectiveOn DateTime @db.Date
   hourlyCost  Decimal  @db.Decimal(18, 2)
+  monthlySalary Decimal? @db.Decimal(18, 2)
+  monthlyEmployerCost Decimal? @db.Decimal(18, 2)
+  monthlyHours Decimal? @db.Decimal(8, 2)
   note        String   @db.Text
   actorId     String   @db.Uuid
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
 
   @@unique([memberId, effectiveOn])
+  @@schema("workshop")
+}
+
+model OvertimeEntry {
+  id String @id @default(uuid()) @db.Uuid
+  memberId String @db.Uuid
+  taskId String? @db.Uuid
+  rateId String @db.Uuid
+  workedOn DateTime @db.Date
+  minutes Int
+  kind String @db.VarChar(20)
+  surchargePercent Decimal @db.Decimal(7, 2)
+  baseHourlyPay Decimal @db.Decimal(18, 6)
+  pay Decimal @db.Decimal(18, 2)
+  employerCost Decimal @db.Decimal(18, 2)
+  note String @db.VarChar(1000)
+  actorId String @db.Uuid
+  voidedAt DateTime? @db.Timestamptz(3)
+  voidReason String? @db.VarChar(1000)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([memberId, workedOn])
+  @@index([taskId])
+  @@index([workedOn, id])
   @@schema("workshop")
 }
 

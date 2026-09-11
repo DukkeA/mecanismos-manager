@@ -17,7 +17,7 @@ export const tableColumns = {
   ],
   tasks: ["title", "order", "members", "status", "dueAt", null],
   customers: ["name", "document", "contact", "orders", null],
-  members: ["name", "email", "role", "active", null],
+  members: ["name", "email", "role", "active", "monthlySalary", null],
   suppliers: ["name", "phone", "email", "address", null],
   items: ["code", "name", "brand", "unit"],
   services: ["code", "name", "notes"],

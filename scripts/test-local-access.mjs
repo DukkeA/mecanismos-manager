@@ -55,6 +55,10 @@ for (const [role, name] of [
     ["/api/control?resource=margins", role === "admin"],
     ["/api/control?resource=audit", role === "admin"],
     ["/api/reports", role === "admin"],
+    ["/api/team?period=2026-09", role === "admin"],
+    ["/api/team?resource=overtime", role === "admin"],
+    [`/api/team?resource=history&memberId=${snapshot.actorId}`, role === "admin"],
+    ["/api/records?table=members&orderBy=monthlySalary&direction=desc", role === "admin"],
     ["/api/records?table=members", role === "admin"],
   ]) {
     const result = await fetch(base + path, { headers: { cookie } });
@@ -93,7 +97,7 @@ console.log("Solicitud desde otro origen rechazada.");
 
 assert.equal((await fetch(base + "/api/workshop")).status, 401);
 
-for (const path of ["/api/records?table=customers", "/api/control?resource=purchases", "/api/commerce?resource=sales"]) {
+for (const path of ["/api/team?period=2026-09", "/api/records?table=customers", "/api/control?resource=purchases", "/api/commerce?resource=sales"]) {
   assert.equal((await fetch(base + path)).status, 401, path);
 }
 assert.equal((await fetch(base + "/api/attachments?entityType=ORDER&entityId=00000000-0000-4000-a000-000000000000")).status, 404);
