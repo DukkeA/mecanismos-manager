@@ -80,16 +80,13 @@ export function useWorkshopQuery<T = WorkshopSnapshot>(
       }).toString()
     : "";
   return useQuery({
-    queryKey:
-      !demo && suffix
-        ? [...snapshotKey(actorId), suffix]
-        : snapshotKey(actorId),
+    queryKey:snapshotKey(actorId),
     placeholderData: (previous) =>
       previous ?? client.getQueryData<WorkshopSnapshot>(snapshotKey(actorId)),
     enabled: !demo,
     queryFn: async ({ signal }) => {
       const response = await fetch(
-        `/api/workshop${suffix ? `?${suffix}` : ""}`,
+        "/api/workshop",
         {
           signal,
           cache: "no-store",
@@ -115,7 +112,7 @@ export function useWorkshopQuery<T = WorkshopSnapshot>(
       return result;
     },
     select: (data: WorkshopSnapshot) => {
-      const value = demo ? sortSnapshot(data, sort) : data;
+      const value = sortSnapshot(data, sort);
       return select ? select(value) : (value as T);
     },
   });
@@ -156,7 +153,7 @@ export function useOperationMutation(feature: string) {
         });
     },
     onSuccess: async () => {
-      if (!scope.demo) await client.invalidateQueries({ queryKey: key });
+      if (!scope.demo) await Promise.all([client.invalidateQueries({ queryKey: key }),...(["control","commerce","records","observations"] as const).map(feature=>client.invalidateQueries({queryKey:[feature,scope.actorId]}))]);
     },
   });
 }

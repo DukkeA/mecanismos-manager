@@ -91,6 +91,7 @@ export function FinancialOverview({
         <Card className="finance-coverage">
           <CardHeader>
             <CardTitle>Gastos del mes</CardTitle>
+            <Badge variant="secondary">{role!=="ADMIN"?"Vista sin nómina":data.coverage.some(m=>m.period===period&&m.confirmed)?"Gastos completos confirmados":"Gastos pendientes de revisión"}</Badge>
             <CardDescription>
               {role === "ADMIN"
                 ? "Arriendos, servicios, nómina y otros gastos registrados."
@@ -272,7 +273,9 @@ export function FinancialOverview({
               </CardTitle>
               <CardDescription>
                 {summary.overdue.length
-                  ? `${summary.overdue.length} obligaciones vencidas en los períodos registrados.`
+                  ? summary.overdue.length === 1
+                    ? "1 obligación vencida en los períodos registrados."
+                    : `${summary.overdue.length} obligaciones vencidas en los períodos registrados.`
                   : "Próximos vencimientos registrados."}
               </CardDescription>
             </CardHeader>

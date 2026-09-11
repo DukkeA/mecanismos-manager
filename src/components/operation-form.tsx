@@ -1,4 +1,5 @@
 "use client";
+import {SalePicker} from "@/features/commerce/sale-picker";
 import { validateForm, type FormField } from "@/domain/form-validation";
 export type { FormField } from "@/domain/form-validation";
 import { useFormSheet } from "./form-sheet";
@@ -132,7 +133,7 @@ export function OperationForm({
                 {field.label}
                 {field.optional ? " (opcional)" : ""}
               </FieldLabel>
-              {field.type === "select" ? (
+              {field.type === "sale" ? (<SalePicker id={`${formId}-${field.key}`} name={field.key} customerId={field.customerId}/>) : field.type === "select" ? (
                 <Choice
                   id={`${formId}-${field.key}`}
                   name={field.key}

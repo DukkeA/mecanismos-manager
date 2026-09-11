@@ -233,6 +233,26 @@ export function TaskDetail({
                       minutos
                     </dd>
                   </div>
+                  <div>
+                    <dt>Tiempo previsto</dt>
+                    <dd>
+                      {task.plannedMinutes
+                        ? `${task.plannedMinutes} minutos`
+                        : "Sin estimar"}
+                    </dd>
+                  </div>
+                  {task.plannedMinutes && (
+                    <div>
+                      <dt>Diferencia con lo previsto</dt>
+                      <dd>
+                        {(task.timeEntries ?? []).reduce(
+                          (n, e) => n + e.minutes,
+                          0,
+                        ) - task.plannedMinutes}{" "}
+                        minutos
+                      </dd>
+                    </div>
+                  )}
                 </dl>
                 <section className="detail-section">
                   <h3>Trabajo por realizar</h3>

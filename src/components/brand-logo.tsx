@@ -7,6 +7,7 @@ export function BrandLogo({ compact = false, className }: { compact?: boolean; c
     alt="Mecanismos Técnicos"
     width={compact ? 652 : 1755}
     height={328}
+    loading="eager"
     unoptimized
     className={cn("brand-logo", className)}
   />;

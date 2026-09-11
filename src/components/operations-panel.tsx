@@ -397,6 +397,28 @@ export function OperationsPanel({
                         : "Clientes y datos de contacto."}
           </p>
         </div>
+        {!demo && role === "ADMIN" && section === "Inventario" && (
+          <Button
+            variant="outline"
+            className="ml-auto"
+            onClick={() => {
+              const params = new URLSearchParams(window.location.search);
+              params.set(
+                "table",
+                tab === "movements"
+                  ? "movements"
+                  : tab === "offers"
+                    ? "offers"
+                    : tab === "catalog"
+                      ? "items"
+                      : "balances",
+              );
+              window.open(`/api/export?${params}`, "_blank", "noopener");
+            }}
+          >
+            Exportar inventario
+          </Button>
+        )}
         {role !== "MECHANIC" &&
           (section !== "Inventario" || tab === "catalog") && (
             <Button onClick={() => setDialog(primary())}>
@@ -596,12 +618,9 @@ export function OperationsPanel({
           tableKey="customers"
           headers={["Cliente", "Documento", "Contacto", "Órdenes", "Acciones"]}
           empty="No hay clientes con esos datos."
-        >
-          {data.customers
-            .filter((c) =>
-              filter(`${c.name} ${c.document} ${c.phone} ${c.email}`),
-            )
-            .map((c) => (
+          renderRow={(row) => {
+            const c = row as OperationsView["customers"][number];
+            return (
               <TableRow key={c.id}>
                 <TableCell>
                   <strong>{c.name}</strong>
@@ -643,8 +662,12 @@ export function OperationsPanel({
                   />
                 </TableCell>
               </TableRow>
-            ))}
-        </DataTable>
+            );
+          }}
+          fallbackRows={data.customers.filter((c) =>
+            filter(`${c.name} ${c.document} ${c.phone} ${c.email}`),
+          )}
+        ></DataTable>
       )}
 
       {section === "Equipo" && (
@@ -652,10 +675,9 @@ export function OperationsPanel({
           tableKey="members"
           headers={["Nombre", "Correo", "Rol", "Acceso", "Acciones"]}
           empty="No hay miembros autorizados."
-        >
-          {data.members
-            .filter((m) => filter(`${m.name} ${m.email ?? ""}`))
-            .map((m) => (
+          renderRow={(row) => {
+            const m = row as OperationsView["members"][number];
+            return (
               <TableRow key={m.id}>
                 <TableCell>{m.name}</TableCell>
                 <TableCell>{m.email}</TableCell>
@@ -701,8 +723,12 @@ export function OperationsPanel({
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
-        </DataTable>
+            );
+          }}
+          fallbackRows={data.members.filter((m) =>
+            filter(`${m.name} ${m.email ?? ""}`),
+          )}
+        ></DataTable>
       )}
 
       {section === "Proveedores" && (
@@ -717,14 +743,9 @@ export function OperationsPanel({
               "Acciones",
             ]}
             empty="Aún no hay proveedores."
-          >
-            {data.suppliers
-              .filter((s) =>
-                filter(
-                  `${s.name} ${s.phone} ${s.email ?? ""} ${s.address ?? ""}`,
-                ),
-              )
-              .map((s) => (
+            renderRow={(row) => {
+              const s = row as OperationsView["suppliers"][number];
+              return (
                 <TableRow key={s.id}>
                   <TableCell>
                     <strong>{s.name}</strong>
@@ -750,8 +771,14 @@ export function OperationsPanel({
                     />
                   </TableCell>
                 </TableRow>
-              ))}
-          </DataTable>
+              );
+            }}
+            fallbackRows={data.suppliers.filter((s) =>
+              filter(
+                `${s.name} ${s.phone} ${s.email ?? ""} ${s.address ?? ""}`,
+              ),
+            )}
+          ></DataTable>
           <div className="operations-heading">
             <div>
               <h3>Registro de precios</h3>
@@ -830,14 +857,9 @@ export function OperationsPanel({
               "Disponibilidad / soporte",
             ]}
             empty="Registra un repuesto y un proveedor para guardar su primer precio."
-          >
-            {data.offers
-              .filter((o) =>
-                filter(
-                  `${itemName(o.itemId)} ${itemSearch(o.itemId)} ${source.items.find((i) => i.id === o.itemId)?.code} ${source.suppliers.find((s) => s.id === o.supplierId)?.name} ${o.evidence}`,
-                ),
-              )
-              .map((o) => (
+            renderRow={(row) => {
+              const o = row as OperationsView["offers"][number];
+              return (
                 <TableRow key={o.id}>
                   <TableCell>
                     <Button
@@ -858,8 +880,14 @@ export function OperationsPanel({
                     <small className="cell-detail">{o.evidence}</small>
                   </TableCell>
                 </TableRow>
-              ))}
-          </DataTable>
+              );
+            }}
+            fallbackRows={data.offers.filter((o) =>
+              filter(
+                `${itemName(o.itemId)} ${itemSearch(o.itemId)} ${source.items.find((i) => i.id === o.itemId)?.code} ${source.suppliers.find((s) => s.id === o.supplierId)?.name} ${o.evidence}`,
+              ),
+            )}
+          ></DataTable>
         </>
       )}
 
@@ -906,14 +934,9 @@ export function OperationsPanel({
                 "Costo material COP",
               ]}
               empty="No hay existencias registradas."
-            >
-              {data.balances
-                .filter((b) =>
-                  filter(
-                    `${itemName(b.itemId)} ${itemSearch(b.itemId)} ${source.items.find((i) => i.id === b.itemId)?.code} ${locationName(b.locationId)}`,
-                  ),
-                )
-                .map((b) => (
+              renderRow={(row) => {
+                const b = row as OperationsView["balances"][number];
+                return (
                   <TableRow key={`${b.itemId}-${b.locationId}-${b.condition}`}>
                     <TableCell>
                       <Button
@@ -933,8 +956,14 @@ export function OperationsPanel({
                     </TableCell>
                     <TableCell>{money(b.materialCost)}</TableCell>
                   </TableRow>
-                ))}
-            </DataTable>
+                );
+              }}
+              fallbackRows={data.balances.filter((b) =>
+                filter(
+                  `${itemName(b.itemId)} ${itemSearch(b.itemId)} ${source.items.find((i) => i.id === b.itemId)?.code} ${locationName(b.locationId)}`,
+                ),
+              )}
+            ></DataTable>
           </TabsContent>
           <TabsContent value="suppliers">
             <div className="operations-heading">
@@ -1015,14 +1044,9 @@ export function OperationsPanel({
                 "Disponibilidad / soporte",
               ]}
               empty="Registra un repuesto y un proveedor para guardar su primer precio."
-            >
-              {data.offers
-                .filter((o) =>
-                  filter(
-                    `${itemName(o.itemId)} ${itemSearch(o.itemId)} ${source.items.find((i) => i.id === o.itemId)?.code} ${source.suppliers.find((s) => s.id === o.supplierId)?.name} ${o.evidence}`,
-                  ),
-                )
-                .map((o) => (
+              renderRow={(row) => {
+                const o = row as OperationsView["offers"][number];
+                return (
                   <TableRow key={o.id}>
                     <TableCell>
                       <Button
@@ -1043,8 +1067,14 @@ export function OperationsPanel({
                       <small className="cell-detail">{o.evidence}</small>
                     </TableCell>
                   </TableRow>
-                ))}
-            </DataTable>
+                );
+              }}
+              fallbackRows={data.offers.filter((o) =>
+                filter(
+                  `${itemName(o.itemId)} ${itemSearch(o.itemId)} ${source.items.find((i) => i.id === o.itemId)?.code} ${source.suppliers.find((s) => s.id === o.supplierId)?.name} ${o.evidence}`,
+                ),
+              )}
+            ></DataTable>
           </TabsContent>
           <TabsContent value="catalog">
             <h3>Catálogo de repuestos</h3>
@@ -1056,16 +1086,9 @@ export function OperationsPanel({
               tableKey="items"
               headers={["Referencia", "Repuesto", "Marca", "Unidad"]}
               empty="Aún no hay repuestos."
-            >
-              {data.items
-                .filter(
-                  (i) =>
-                    i.kind === "PART" &&
-                    filter(
-                      `${i.name} ${i.code} ${i.brand} ${i.reference ?? ""} ${i.notes ?? ""}`,
-                    ),
-                )
-                .map((i) => (
+              renderRow={(row) => {
+                const i = row as OperationsView["items"][number];
+                return (
                   <TableRow key={i.id}>
                     <TableCell>
                       {i.code}
@@ -1082,8 +1105,16 @@ export function OperationsPanel({
                     <TableCell>{i.brand || "Sin marca"}</TableCell>
                     <TableCell>{i.unit}</TableCell>
                   </TableRow>
-                ))}
-            </DataTable>
+                );
+              }}
+              fallbackRows={data.items.filter(
+                (i) =>
+                  i.kind === "PART" &&
+                  filter(
+                    `${i.name} ${i.code} ${i.brand} ${i.reference ?? ""} ${i.notes ?? ""}`,
+                  ),
+              )}
+            ></DataTable>
           </TabsContent>
           <TabsContent value="movements">
             <h3>Movimientos recientes</h3>
@@ -1097,14 +1128,9 @@ export function OperationsPanel({
                 "Acciones",
               ]}
               empty="El primer movimiento aparecerá aquí."
-            >
-              {data.movements
-                .filter((m) =>
-                  filter(
-                    `${itemName(m.itemId)} ${itemSearch(m.itemId)} ${m.reason}`,
-                  ),
-                )
-                .map((m) => (
+              renderRow={(row) => {
+                const m = row as OperationsView["movements"][number];
+                return (
                   <TableRow key={m.id}>
                     <TableCell>
                       {itemName(m.itemId)}
@@ -1133,7 +1159,13 @@ export function OperationsPanel({
                     <TableCell>
                       {m.reversed ? (
                         <Badge variant="outline">Revertido</Badge>
-                      ) : role === "ADMIN" && m.kind !== "REVERSAL" ? (
+                      ) : role === "ADMIN" &&
+                        [
+                          "RECEIPT",
+                          "CONSUMPTION",
+                          "ADJUSTMENT_IN",
+                          "ADJUSTMENT_OUT",
+                        ].includes(m.kind) ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1159,8 +1191,14 @@ export function OperationsPanel({
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
-            </DataTable>
+                );
+              }}
+              fallbackRows={data.movements.filter((m) =>
+                filter(
+                  `${itemName(m.itemId)} ${itemSearch(m.itemId)} ${m.reason}`,
+                ),
+              )}
+            ></DataTable>
           </TabsContent>
         </Tabs>
       )}
@@ -1170,14 +1208,9 @@ export function OperationsPanel({
           tableKey="services"
           headers={["Código", "Servicio", "Alcance"]}
           empty="No hay servicios registrados."
-        >
-          {source.items
-            .filter(
-              (i) =>
-                i.kind === "SERVICE" &&
-                filter(`${i.code} ${i.name} ${i.notes ?? ""}`),
-            )
-            .map((i) => (
+          renderRow={(row) => {
+            const i = row as OperationsView["items"][number];
+            return (
               <TableRow key={i.id}>
                 <TableCell>{i.code}</TableCell>
                 <TableCell>
@@ -1190,8 +1223,14 @@ export function OperationsPanel({
                 </TableCell>
                 <TableCell>{i.notes || "Sin descripción"}</TableCell>
               </TableRow>
-            ))}
-        </DataTable>
+            );
+          }}
+          fallbackRows={source.items.filter(
+            (i) =>
+              i.kind === "SERVICE" &&
+              filter(`${i.code} ${i.name} ${i.notes ?? ""}`),
+          )}
+        ></DataTable>
       )}
       <ItemDetail
         item={selectedItem}

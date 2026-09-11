@@ -81,7 +81,7 @@ export function useOrderCommand() {
       else await createOrder(command.input);
     },
     onSuccess: async () => {
-      if (!scope.demo) await client.invalidateQueries({ queryKey: key });
+      if (!scope.demo) await Promise.all([client.invalidateQueries({ queryKey: key }),...(["control","commerce","records","observations"] as const).map(feature=>client.invalidateQueries({queryKey:[feature,scope.actorId]}))]);
     },
   });
 }

@@ -160,6 +160,13 @@ export function TasksPanel({
         },
         { key: "dueAt", label: "Fecha límite", type: "date", optional: true },
         {
+          key: "plannedMinutes",
+          label: "Tiempo previsto (minutos)",
+          type: "quantity",
+          optional: true,
+          hint: "Tiempo total estimado del trabajo, sumando a sus responsables.",
+        },
+        {
           key: "memberIds",
           label: "Responsables",
           type: "members",
@@ -179,6 +186,7 @@ export function TasksPanel({
         version: t.version ?? 0,
         title: t.title,
         description: t.description ?? "",
+        plannedMinutes: t.plannedMinutes ?? undefined,
         dueAt: t.dueAt?.slice(0, 10),
         memberIds: t.members,
       },
@@ -191,6 +199,13 @@ export function TasksPanel({
           optional: true,
         },
         { key: "dueAt", label: "Fecha límite", type: "date", optional: true },
+        {
+          key: "plannedMinutes",
+          label: "Tiempo previsto (minutos)",
+          type: "quantity",
+          optional: true,
+          hint: "Tiempo total estimado del trabajo, sumando a sus responsables.",
+        },
         {
           key: "memberIds",
           label: "Responsables",
@@ -366,65 +381,78 @@ export function TasksPanel({
             "Fecha límite",
             "Acciones",
           ]}
-          mobileRows={filtered.map((t) => (
-            <li
-              key={t.id}
-              className="mobile-task-row"
-              data-task-state={t.status}
-            >
-              <div className="mobile-task-heading">
-                <TaskStatusDropdown task={t} locked={locked(t)} />
-                {t.orderId && (
-                  <Button variant="link" onClick={() => openOrder(t.orderId!)}>
-                    OT-{orders.find((o) => o.id === t.orderId)?.number}
-                  </Button>
-                )}
-              </div>
-              <Button variant="link" onClick={() => setSelectedId(t.id)}>
-                {t.title}
-              </Button>
-              <p>{names(t) || "Sin responsables"}</p>
-              <div className="mobile-task-footer">
-                <span>
-                  {t.dueAt
-                    ? `Límite: ${dateLabel(t.dueAt)}`
-                    : "Sin fecha límite"}
-                </span>
-                {actions(t)}
-              </div>
-              {locked(t) && <small>La orden está cerrada o cancelada.</small>}
-            </li>
-          ))}
+
           empty="No hay tareas con estos filtros."
-        >
-          {filtered.map((t) => (
-            <TableRow key={t.id} data-task-state={t.status}>
-              <TableCell>
+          renderRow={(row) => {
+            const t = row as OperationsView["tasks"][number];
+            return (
+              <TableRow key={t.id} data-task-state={t.status}>
+                <TableCell>
+                  <Button variant="link" onClick={() => setSelectedId(t.id)}>
+                    {t.title}
+                  </Button>
+                  <small className="cell-detail">
+                    {t.createdAt ? `Creada ${dateLabel(t.createdAt)}` : ""}
+                  </small>
+                </TableCell>
+                <TableCell>
+                  {t.orderId ? (
+                    <Button
+                      variant="link"
+                      onClick={() => openOrder(t.orderId!)}
+                    >
+                      OT-{orders.find((o) => o.id === t.orderId)?.number}
+                    </Button>
+                  ) : (
+                    "General"
+                  )}
+                </TableCell>
+                <TableCell>{names(t)}</TableCell>
+                <TableCell>
+                  <TaskStatusDropdown task={t} locked={locked(t)} />
+                </TableCell>
+                <TableCell>{dateLabel(t.dueAt)}</TableCell>
+                <TableCell>{actions(t)}</TableCell>
+              </TableRow>
+            );
+          }}
+          renderMobileRow={(row) => {
+            const t = row as OperationsView["tasks"][number];
+            return (
+              <li
+                key={t.id}
+                className="mobile-task-row"
+                data-task-state={t.status}
+              >
+                <div className="mobile-task-heading">
+                  <TaskStatusDropdown task={t} locked={locked(t)} />
+                  {t.orderId && (
+                    <Button
+                      variant="link"
+                      onClick={() => openOrder(t.orderId!)}
+                    >
+                      OT-{orders.find((o) => o.id === t.orderId)?.number}
+                    </Button>
+                  )}
+                </div>
                 <Button variant="link" onClick={() => setSelectedId(t.id)}>
                   {t.title}
                 </Button>
-                <small className="cell-detail">
-                  {t.createdAt ? `Creada ${dateLabel(t.createdAt)}` : ""}
-                </small>
-              </TableCell>
-              <TableCell>
-                {t.orderId ? (
-                  <Button variant="link" onClick={() => openOrder(t.orderId!)}>
-                    OT-{orders.find((o) => o.id === t.orderId)?.number}
-                  </Button>
-                ) : (
-                  "General"
-                )}
-              </TableCell>
-              <TableCell>{names(t)}</TableCell>
-              <TableCell>
-                <TaskStatusDropdown task={t} locked={locked(t)} />
-              </TableCell>
-              <TableCell>{dateLabel(t.dueAt)}</TableCell>
-              <TableCell>{actions(t)}</TableCell>
-            </TableRow>
-          ))}
-        </DataTable>
+                <p>{names(t) || "Sin responsables"}</p>
+                <div className="mobile-task-footer">
+                  <span>
+                    {t.dueAt
+                      ? `Límite: ${dateLabel(t.dueAt)}`
+                      : "Sin fecha límite"}
+                  </span>
+                  {actions(t)}
+                </div>
+                {locked(t) && <small>La orden está cerrada o cancelada.</small>}
+              </li>
+            );
+          }}
+          fallbackRows={filtered}
+        ></DataTable>
       </TabsContent>
       <TabsContent value="kanban">
         <p className="kanban-help">
