@@ -84,6 +84,9 @@ export function Choice({
           : defaultValue || "__none"
       }
       onValueChange={(v) => {
+        // Radix may emit an empty native-select value while registering new options.
+        // The explicit empty choice uses __none, so that transient value is never a user choice.
+        if (!v) return;
         draft.change();
         onChange?.(v === "__none" ? "" : v);
       }}

@@ -1,5 +1,7 @@
 "use client";
-import {SalePicker} from "@/features/commerce/sale-picker";
+import { SalePicker } from "@/features/commerce/sale-picker";
+import { CustomerFormField } from "@/features/contacts/customer-picker";
+import { useWorkshopScope } from "@/features/workshop/query";
 import { validateForm, type FormField } from "@/domain/form-validation";
 export type { FormField } from "@/domain/form-validation";
 import { useFormSheet } from "./form-sheet";
@@ -36,6 +38,7 @@ export function OperationForm({
   submit: (input: Record<string, unknown>) => Promise<void>;
 }) {
   const formId = useId();
+  const { demo } = useWorkshopScope();
   const draft = useFormSheet();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
@@ -113,7 +116,10 @@ export function OperationForm({
                     onCheckedChange={draft.change}
                     name={field.key}
                     value={option.id}
-                    defaultChecked={Array.isArray(dialog.extra?.[field.key]) && (dialog.extra[field.key] as string[]).includes(option.id)}
+                    defaultChecked={
+                      Array.isArray(dialog.extra?.[field.key]) &&
+                      (dialog.extra[field.key] as string[]).includes(option.id)
+                    }
                   />
                   <FieldLabel htmlFor={`${formId}-${option.id}`}>
                     {option.label}
@@ -127,13 +133,27 @@ export function OperationForm({
                 </FieldDescription>
               )}
             </FieldSet>
+          ) : field.key === "customerId" && field.type === "select" && !demo ? (
+            <FieldGroup key={field.key}>
+              <CustomerFormField
+                id={`${formId}-${field.key}`}
+                defaultValue={String(dialog.extra?.[field.key] ?? "")}
+              />
+              <FieldError>{fieldErrors[field.key]}</FieldError>
+            </FieldGroup>
           ) : (
             <Field key={field.key} data-invalid={!!fieldErrors[field.key]}>
               <FieldLabel htmlFor={`${formId}-${field.key}`}>
                 {field.label}
                 {field.optional ? " (opcional)" : ""}
               </FieldLabel>
-              {field.type === "sale" ? (<SalePicker id={`${formId}-${field.key}`} name={field.key} customerId={field.customerId}/>) : field.type === "select" ? (
+              {field.type === "sale" ? (
+                <SalePicker
+                  id={`${formId}-${field.key}`}
+                  name={field.key}
+                  customerId={field.customerId}
+                />
+              ) : field.type === "select" ? (
                 <Choice
                   id={`${formId}-${field.key}`}
                   name={field.key}

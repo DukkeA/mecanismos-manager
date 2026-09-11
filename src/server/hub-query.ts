@@ -37,6 +37,7 @@ const inputSchema = z.object({
   to: z.iso.date().optional(),
   orderId: z.uuid().optional(),
   customerId: z.uuid().optional(),
+  outstanding: z.enum(["true", "false"]).optional(),
 });
 const sql = Prisma.sql;
 const definition: Record<HubResource, Prisma.Sql> = {
@@ -80,6 +81,8 @@ export async function hubPage(
       sql`(v.title ILIKE ${q} OR COALESCE(v.subtitle,'') ILIKE ${q})`,
     ];
   if (input.status) filters.push(sql`v.status=${input.status}`);
+  if (input.resource === "purchases" && input.outstanding === "true")
+    filters.push(sql`v.amount > 0`);
   if (input.from) filters.push(sql`v.date>=${new Date(input.from)}`);
   if (input.to)
     filters.push(

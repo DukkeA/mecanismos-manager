@@ -65,7 +65,8 @@ export async function saveQuote(actor: Actor, raw: unknown) {
       });
       if (
         latest?.id !== previous.id ||
-        previous.customerId !== input.customerId
+        previous.customerId !== input.customerId ||
+        previous.orderId !== (input.orderId ?? null)
       )
         throw new DomainError(
           "Abre la última versión de esta cotización para revisarla.",
@@ -125,7 +126,16 @@ export async function decideQuote(actor: Actor, raw: unknown) {
       throw new DomainError(
         "Solo puedes decidir sobre la última versión pendiente.",
       );
-    if(input.decision==="APPROVED" && quote.validUntil.toISOString().slice(0,10)<new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota"}).format(new Date()))throw new DomainError("La cotización venció. Crea una nueva versión con vigencia actualizada.");
+    if (
+      input.decision === "APPROVED" &&
+      quote.validUntil.toISOString().slice(0, 10) <
+        new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(
+          new Date(),
+        )
+    )
+      throw new DomainError(
+        "La cotización venció. Crea una nueva versión con vigencia actualizada.",
+      );
     await tx.quote.update({
       where: { id: quote.id },
       data: {

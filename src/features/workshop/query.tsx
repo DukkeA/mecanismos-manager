@@ -80,18 +80,15 @@ export function useWorkshopQuery<T = WorkshopSnapshot>(
       }).toString()
     : "";
   return useQuery({
-    queryKey:snapshotKey(actorId),
+    queryKey: snapshotKey(actorId),
     placeholderData: (previous) =>
       previous ?? client.getQueryData<WorkshopSnapshot>(snapshotKey(actorId)),
     enabled: !demo,
     queryFn: async ({ signal }) => {
-      const response = await fetch(
-        "/api/workshop",
-        {
-          signal,
-          cache: "no-store",
-        },
-      );
+      const response = await fetch("/api/workshop", {
+        signal,
+        cache: "no-store",
+      });
       if (response.status === 401 || response.status === 403) {
         client.clear();
         window.location.assign("/login");
@@ -151,9 +148,17 @@ export function useOperationMutation(feature: string) {
         throw Object.assign(new Error(result.error), {
           fields: result.fields ?? {},
         });
+      return result;
     },
     onSuccess: async () => {
-      if (!scope.demo) await Promise.all([client.invalidateQueries({ queryKey: key }),...(["control","commerce","records","observations"] as const).map(feature=>client.invalidateQueries({queryKey:[feature,scope.actorId]}))]);
+      if (!scope.demo)
+        await Promise.all([
+          client.invalidateQueries({ queryKey: key }),
+          ...(["control", "commerce", "records", "observations"] as const).map(
+            (feature) =>
+              client.invalidateQueries({ queryKey: [feature, scope.actorId] }),
+          ),
+        ]);
     },
   });
 }

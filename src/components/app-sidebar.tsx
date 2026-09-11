@@ -1,5 +1,5 @@
 "use client";
-import {useWorkshopScope} from "@/features/workshop/query";
+import { useWorkshopScope } from "@/features/workshop/query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { BrandLogo } from "@/components/brand-logo";
 import {
@@ -67,10 +67,30 @@ export const workshopSections = [
   { label: "Control de caja", icon: Wallet },
   { label: "Equipo", icon: Users },
 ];
-export function sectionAvailable(label:string, role:Role, demo:boolean){
- if(role === "MECHANIC" && !["Resumen","Órdenes","Tareas"].includes(label))return false;
- if(role !== "ADMIN" && ["Equipo","Rentabilidad"].includes(label))return false;
- return !demo || !["Cotizaciones","Ventas","Cartera","Compras","Control de inventario","Garantías","Activos","Rentabilidad","Control de caja"].includes(label);
+export function sectionTitle(section: string) {
+  if (["Caja", "Cartera", "Control de caja"].includes(section)) return "Dinero";
+  if (section === "Cotizaciones") return "Ventas";
+  return section;
+}
+export function sectionAvailable(label: string, role: Role, demo: boolean) {
+  if (role === "MECHANIC" && !["Resumen", "Órdenes", "Tareas"].includes(label))
+    return false;
+  if (role !== "ADMIN" && ["Equipo", "Rentabilidad"].includes(label))
+    return false;
+  return (
+    !demo ||
+    ![
+      "Cotizaciones",
+      "Ventas",
+      "Cartera",
+      "Compras",
+      "Control de inventario",
+      "Garantías",
+      "Activos",
+      "Rentabilidad",
+      "Control de caja",
+    ].includes(label)
+  );
 }
 export function AppSidebar({
   actor,
@@ -85,8 +105,12 @@ export function AppSidebar({
 }) {
   const { isMobile, setOpenMobile } = useSidebar();
   const logout = useSignOut();
-  const {demo}=useWorkshopScope();
-  const visible=workshopSections.filter(s=>sectionAvailable(s.label,actor.role,demo));
+  const { demo } = useWorkshopScope();
+  const visible = workshopSections.filter(
+    (s) =>
+      sectionAvailable(s.label, actor.role, demo) &&
+      !["Cotizaciones", "Cartera", "Control de caja"].includes(s.label),
+  );
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
@@ -109,7 +133,20 @@ export function AppSidebar({
         {["Taller", "Comercial", "Administración"].map((group) => {
           const items = visible.filter(
             (s) =>
-              (["Caja", "Equipo", "Rentabilidad", "Control de caja"].includes(s.label) ? "Administración" : ["Clientes","Proveedores","Cotizaciones","Ventas","Cartera","Compras"].includes(s.label) ? "Comercial" : "Taller") === group,
+              (["Caja", "Equipo", "Rentabilidad", "Control de caja"].includes(
+                s.label,
+              )
+                ? "Administración"
+                : [
+                      "Clientes",
+                      "Proveedores",
+                      "Cotizaciones",
+                      "Ventas",
+                      "Cartera",
+                      "Compras",
+                    ].includes(s.label)
+                  ? "Comercial"
+                  : "Taller") === group,
           );
           return (
             items.length > 0 && (
@@ -120,16 +157,22 @@ export function AppSidebar({
                     {items.map(({ label, icon: Icon }) => (
                       <SidebarMenuItem key={label}>
                         <SidebarMenuButton
-                          isActive={section === label}
-                          tooltip={label}
+                          isActive={
+                            sectionTitle(section) === sectionTitle(label)
+                          }
+                          tooltip={sectionTitle(label)}
                           onClick={() => {
                             navigate(label);
                             setOpenMobile(false);
                           }}
-                          aria-current={section === label ? "page" : undefined}
+                          aria-current={
+                            sectionTitle(section) === sectionTitle(label)
+                              ? "page"
+                              : undefined
+                          }
                         >
                           <Icon />
-                          <span>{label}</span>
+                          <span>{sectionTitle(label)}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}
@@ -139,7 +182,6 @@ export function AppSidebar({
             )
           );
         })}
-
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

@@ -52,6 +52,7 @@ export async function saveMember(actor: Actor, raw: unknown) {
   });
 }
 const customerInput = z.object({
+  requestId: z.uuid().optional(),
   id: z.uuid().optional(),
   name: z.string().trim().min(2).max(180),
   document: z.string().trim().max(40).optional(),
@@ -60,8 +61,8 @@ const customerInput = z.object({
 });
 export async function saveCustomer(actor: Actor, raw: unknown) {
   requirePermission(actor.role, "customers:write");
-  const input = customerInput.parse(raw);
-  return db().$transaction(async (tx) => {
+  const { requestId, ...input } = customerInput.parse(raw);
+  const save = async (tx: import("./commands").Tx) => {
     const customer = input.id
       ? await tx.customer.update({
           where: { id: input.id, deletedAt: null },
@@ -77,11 +78,15 @@ export async function saveCustomer(actor: Actor, raw: unknown) {
       },
     });
     return { id: customer.id };
-  });
+  };
+  return requestId
+    ? once(actor, requestId, "CUSTOMER_SAVED", input, save)
+    : db().$transaction(save);
 }
 const orderInput = z
   .object({
     assetId: z.uuid().optional(),
+    quoteId: z.uuid().optional(),
     dueAt: z.iso.date().optional(),
     requestId: z.uuid(),
     title: z.string().trim().min(3).max(250),
@@ -116,6 +121,44 @@ export async function receiveOrder(actor: Actor, raw: unknown) {
         : parsed.reference.trim(),
   };
   return once(actor, input.requestId, "ORDER_RECEIVED", input, async (tx) => {
+    const quote = input.quoteId
+      ? await tx.quote.findUniqueOrThrow({
+          where: { id: input.quoteId },
+          include: { sale: true },
+        })
+      : null;
+    if (
+      quote &&
+      (quote.status !== "APPROVED" ||
+        quote.orderId ||
+        quote.sale ||
+        quote.customerId !== input.customerId ||
+        input.purpose !== "CUSTOMER_REPAIR")
+    )
+      throw new DomainError(
+        "La cotización debe estar aprobada, sin venta ni orden y pertenecer al cliente seleccionado.",
+      );
+    if (
+      quote &&
+      (await tx.quote.findFirst({
+        where: { groupId: quote.groupId, revision: { gt: quote.revision } },
+      }))
+    )
+      throw new DomainError(
+        "Abre la última versión de la cotización antes de recibir el trabajo.",
+      );
+    if (
+      quote &&
+      (await tx.quote.findFirst({
+        where: {
+          groupId: quote.groupId,
+          OR: [{ orderId: { not: null } }, { sale: { isNot: null } }],
+        },
+      }))
+    )
+      throw new DomainError(
+        "Esta cotización ya tiene un trabajo o una venta. Abre su detalle.",
+      );
     await tx.location.findUniqueOrThrow({ where: { id: input.locationId } });
     let customerId =
       input.purpose === "OWN_REBUILD" ? null : (input.customerId ?? null);
@@ -194,12 +237,21 @@ export async function receiveOrder(actor: Actor, raw: unknown) {
         assets: { create: { assetId: asset.id } },
       },
     });
+    if (quote)
+      await tx.quote.updateMany({
+        where: { groupId: quote.groupId },
+        data: { orderId: order.id },
+      });
     await tx.auditEvent.create({
       data: {
         actorId: actor.id,
         entityId: order.id,
         action: "ORDER_RECEIVED",
-        details: { number: order.number, purpose: input.purpose },
+        details: {
+          number: order.number,
+          purpose: input.purpose,
+          quoteId: quote?.id ?? null,
+        },
       },
     });
     return { id: order.id, number: order.number };

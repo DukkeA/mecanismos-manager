@@ -6,7 +6,7 @@ Aplicación interna de Mecanismos Técnicos SAS. Bogotá, COP, dos sedes.
 
 Disponible para pruebas locales: cotizaciones, ventas, cartera, compras, inventario, órdenes, tareas, garantías, unidades propias, costos y control de caja. Incluye 47 modelos privados, 13 migraciones y cinco diagramas Archify. Los datos ficticios persisten en Docker. Con los accesos locales habilitados, `/login` permite elegir administración, oficina o mecánico; `/` valida la sesión y `/demo` redirige a este flujo.
 
-**El acceso remoto sigue pendiente**: Google, credenciales y Storage de producción, despliegue HTTPS e instalación PWA deben comprobarse antes de usarla como registro principal. El [estado de implementación](docs/implementation-status.md) detalla resultados y límites; el [manual del piloto](docs/pilot-runbook.md) contiene recorridos de prueba, preparación de datos y recuperación. Los [diagramas](docs/diagrams/README.md) describen el código actual.
+**El acceso remoto sigue pendiente**: Google, credenciales y Storage de producción, despliegue HTTPS e instalación PWA deben comprobarse antes de usarla como registro principal. El [estado de implementación](docs/implementation-status.md) detalla resultados y límites; el [manual del piloto](docs/pilot-runbook.md) contiene recorridos de prueba, preparación de datos y recuperación. Los [diagramas](docs/diagrams/README.md) describen la arquitectura y los registros internos; los [recorridos simplificados](docs/workflows-simplified.md) describen la navegación y las acciones actuales.
 
 ## Desarrollo reproducible
 

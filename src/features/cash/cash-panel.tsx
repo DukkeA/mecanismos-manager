@@ -39,7 +39,13 @@ import { FinancialOverview } from "./financial-overview";
 import { useCash, useCashMutation } from "./hooks";
 import { cop, todayInBogota } from "./summary";
 
-export function CashPanel({ role }: { role: Role }) {
+export function CashPanel({
+  role,
+  fixedTab,
+}: {
+  role: Role;
+  fixedTab?: "obligations" | "entries" | "accounts";
+}) {
   const { demo } = useWorkshopScope();
   const { data: cash } = useCash();
   const mutation = useCashMutation();
@@ -55,13 +61,15 @@ export function CashPanel({ role }: { role: Role }) {
       "period",
       todayInBogota().slice(0, 7),
     ),
-    [tab, setTab] = useQueryState("cashTab", "obligations"),
+    [queryTab, setTab] = useQueryState("cashTab", "obligations"),
     [q, setQ] = useQueryState("q"),
     [status, setStatus] = useQueryState("status", "ALL"),
     [from, setFrom] = useQueryState("from"),
     [to, setTo] = useQueryState("to"),
     [min, setMin] = useQueryState("min"),
     [max, setMax] = useQueryState("max");
+  const tab = fixedTab ?? queryTab;
+  const [reviewLegacy, setReviewLegacy] = useState(false);
   if (!cash) return null;
   const accountOptions = [...cash.accounts]
     .sort(
@@ -317,10 +325,10 @@ export function CashPanel({ role }: { role: Role }) {
   const linkPayment = (e: OperationsView["cashEntries"][number]) =>
     setDialog({
       kind: "link-payment",
-      title: "Vincular cobro a un cliente",
-      submitLabel: "Vincular cobro",
+      title: "Completar datos de un cobro antiguo",
+      submitLabel: "Guardar cliente del cobro",
       description:
-        "El dinero ya está en caja. Esta acción identifica el cliente y deja el importe disponible en Cartera.",
+        "Este movimiento ya está en la cuenta. Identifica al cliente para que aparezca en su saldo, sin volver a cobrar.",
       extra: {
         existingEntryId: e.id,
         amount: e.amount,
@@ -338,6 +346,8 @@ export function CashPanel({ role }: { role: Role }) {
       ],
     });
   const canLink = (e: OperationsView["cashEntries"][number]) =>
+    reviewLegacy &&
+    role === "ADMIN" &&
     !demo &&
     !e.paymentId &&
     !e.reversed &&
@@ -366,7 +376,7 @@ export function CashPanel({ role }: { role: Role }) {
         <footer>
           {canLink(e) && (
             <Button variant="outline" onClick={() => linkPayment(e)}>
-              Vincular cliente
+              Completar datos
             </Button>
           )}
           {e.reversed ? (
@@ -409,7 +419,7 @@ export function CashPanel({ role }: { role: Role }) {
         <TableCell>
           {canLink(e) && (
             <Button variant="outline" onClick={() => linkPayment(e)}>
-              Vincular cliente
+              Completar datos
             </Button>
           )}
           {e.reversed ? (
@@ -427,12 +437,33 @@ export function CashPanel({ role }: { role: Role }) {
     ));
   return (
     <div className="cash-feature">
-      <FinancialOverview
-        period={period}
-        setPeriod={setPeriod}
-        role={role}
-        compact
-      />
+      {!fixedTab && (
+        <FinancialOverview
+          period={period}
+          setPeriod={setPeriod}
+          role={role}
+          compact
+        />
+      )}
+      {tab === "entries" &&
+        role === "ADMIN" &&
+        !demo &&
+        cash.entries.some(
+          (e) =>
+            !e.paymentId &&
+            !e.reversed &&
+            ["CUSTOMER_PAYMENT", "CUSTOMER_ADVANCE"].includes(e.kind),
+        ) && (
+          <Button
+            variant="ghost"
+            className="self-start"
+            onClick={() => setReviewLegacy((value) => !value)}
+          >
+            {reviewLegacy
+              ? "Cerrar revisión de cobros antiguos"
+              : "Revisar cobros antiguos sin cliente"}
+          </Button>
+        )}
       <Tabs
         value={
           ["obligations", "entries", "accounts"].includes(tab)
@@ -446,11 +477,13 @@ export function CashPanel({ role }: { role: Role }) {
         }}
       >
         <div className="cash-tabs-header">
-          <TabsList aria-label="Registros de caja">
-            <TabsTrigger value="obligations">Gastos por pagar</TabsTrigger>
-            <TabsTrigger value="entries">Movimientos</TabsTrigger>
-            <TabsTrigger value="accounts">Cuentas</TabsTrigger>
-          </TabsList>
+          {!fixedTab && (
+            <TabsList aria-label="Registros de caja">
+              <TabsTrigger value="obligations">Gastos por pagar</TabsTrigger>
+              <TabsTrigger value="entries">Movimientos</TabsTrigger>
+              <TabsTrigger value="accounts">Cuentas</TabsTrigger>
+            </TabsList>
+          )}
           <div className="row-actions flex-wrap">
             {!demo && role === "ADMIN" && (
               <Button
@@ -476,10 +509,14 @@ export function CashPanel({ role }: { role: Role }) {
               <Button
                 variant="outline"
                 onClick={() => {
-                  window.history.pushState({}, "", "/?view=Cartera");
+                  window.history.pushState(
+                    {},
+                    "",
+                    "/?view=Caja&moneyTab=receivables",
+                  );
                 }}
               >
-                Registrar cobro
+                Ver deudas y cobrar
               </Button>
             )}
 
@@ -611,7 +648,6 @@ export function CashPanel({ role }: { role: Role }) {
               "Pendiente COP",
               "Acciones",
             ]}
-
             empty="No hay gastos registrados para este mes con estos filtros."
             renderRow={(row) => {
               const o = row as OperationsView["obligations"][number];
