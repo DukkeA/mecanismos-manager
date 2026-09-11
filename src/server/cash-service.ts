@@ -1,17 +1,20 @@
+import { reverseTransfer } from "./cash-transfers";
 import { DomainError } from "@/domain/errors";
 import "server-only";
 import { z } from "zod";
 import Decimal from "decimal.js";
 import { once,type Actor } from "./commands";
 import { requirePermission } from "@/domain/permissions";
+import { accountNames } from "@/domain/accounts";
 import { cashKinds } from "@/domain/cash";
 
 const money=z.string().regex(/^\d{1,12}(\.\d{1,2})?$/);
 const positiveMoney=money.refine(v=>new Decimal(v).gt(0));
 export async function createAccount(actor:Actor,raw:unknown) {
   requirePermission(actor.role,"members:write");
-  const input=z.object({requestId:z.uuid(),name:z.string().trim().min(3).max(120),openingBalance:money}).parse(raw);
+  const input=z.object({requestId:z.uuid(),name:z.enum(accountNames),openingBalance:money}).parse(raw);
   return once(actor,input.requestId,"ACCOUNT_CREATED",input,async tx=>{
+    if(await tx.moneyAccount.findUnique({where:{name:input.name}})) throw new DomainError("Esta cuenta ya existe.");
     const account=await tx.moneyAccount.create({data:{name:input.name,openingBalance:input.openingBalance,balance:input.openingBalance}});
     await tx.auditEvent.create({data:{actorId:actor.id,entityId:account.id,action:"ACCOUNT_CREATED",details:{openingBalance:input.openingBalance}}});
     return {id:account.id};
@@ -57,6 +60,7 @@ export async function reverseCash(actor:Actor,raw:unknown) {
   return once(actor,input.requestId,"CASH_REVERSED",input,async tx=>{
     const original=await tx.cashEntry.findUniqueOrThrow({where:{id:input.entryId}});
     if(original.reversalOfId||await tx.cashEntry.findUnique({where:{reversalOfId:original.id}}))throw new DomainError("Ese movimiento no admite otra reversión.");
+    if(original.transferId) return reverseTransfer(tx,actor,original.transferId,input);
     const account=await tx.moneyAccount.findUniqueOrThrow({where:{id:original.accountId}});
     const direction=original.direction==="IN"?"OUT":"IN";
     const next=new Decimal(account.balance.toString()).plus(direction==="IN"?original.amount.toString():new Decimal(original.amount.toString()).negated());

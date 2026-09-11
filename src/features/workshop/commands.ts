@@ -13,13 +13,19 @@ export function useWorkshopCommands() {
     team = useTeamMutation(),
     order = useOrderTransition();
   return async (kind: string, input: Record<string, unknown>) => {
-    const mutation = ["task", "task-status"].includes(kind)
+    const mutation = [
+      "task",
+      "task-status",
+      "task-edit",
+      "task-note",
+      "task-archive",
+    ].includes(kind)
       ? task
-      : ["account", "obligation", "cash", "cash-reversal"].includes(kind)
+      : ["account", "obligation", "cash", "cash-reversal", "cash-transfer"].includes(kind)
         ? cash
         : ["item", "offer", "stock", "stock-reversal"].includes(kind)
           ? inventory
-          : ["customer", "supplier"].includes(kind)
+          : ["customer", "supplier", "customer-delete", "supplier-delete"].includes(kind)
             ? contact
             : kind === "member"
               ? team

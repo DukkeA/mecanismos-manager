@@ -1,9 +1,10 @@
 "use client";
+import { TaskActions, TaskDetail } from "./task-detail";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FormSheet } from "@/components/form-sheet";
 import { DataTable } from "@/components/data-table";
 import { OperationForm, type Dialog } from "@/components/operation-form";
-import { TaskBadge, states } from "./task-status";
+import { TaskBadge, TaskStatusDropdown, states } from "./task-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -71,7 +72,11 @@ export function TasksPanel({
   openOrder: (id: string) => void;
 }) {
   const reducedMotion = useReducedMotion();
-  const { data: tasks = [] } = useTasks(),
+  const [archiveView, setArchiveView] = useQueryState("archive", "active");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { data: tasks = [] } = useTasks(
+      role === "ADMIN" && archiveView === "deleted",
+    ),
     { data: orders = [] } = useOrders(),
     { data: members = [] } = useTeam();
   const mutation = useTaskMutation();
@@ -116,10 +121,10 @@ export function TasksPanel({
     .map((t) =>
       optimistic?.id === t.id ? { ...t, status: optimistic.status } : t,
     );
-  const edit = (t: Task) =>
+  const changeStatus = (t: Task) =>
     setDialog({
       kind: "task-status",
-      title: "Actualizar tarea",
+      title: "Cambiar estado de tarea",
       submitLabel: "Actualizar estado",
       extra: { taskId: t.id, status: t.status },
       fields: [
@@ -138,6 +143,12 @@ export function TasksPanel({
       submitLabel: "Asignar tarea",
       fields: [
         { key: "title", label: "Trabajo por realizar" },
+        {
+          key: "description",
+          label: "Instrucciones",
+          type: "textarea",
+          optional: true,
+        },
         {
           key: "orderId",
           label: "Orden",
@@ -158,6 +169,68 @@ export function TasksPanel({
         },
       ],
     });
+  const edit = (t: Task) => {
+    setSelectedId(null);
+    setDialog({
+      kind: "task-edit",
+      title: "Editar tarea",
+      extra: {
+        taskId: t.id,
+        version: t.version ?? 0,
+        title: t.title,
+        description: t.description ?? "",
+        dueAt: t.dueAt?.slice(0, 10),
+        memberIds: t.members,
+      },
+      fields: [
+        { key: "title", label: "Trabajo por realizar" },
+        {
+          key: "description",
+          label: "Instrucciones",
+          type: "textarea",
+          optional: true,
+        },
+        { key: "dueAt", label: "Fecha límite", type: "date", optional: true },
+        {
+          key: "memberIds",
+          label: "Responsables",
+          type: "members",
+          options: members
+            .filter((m) => m.active)
+            .map((m) => ({ id: m.id, label: m.name })),
+        },
+      ],
+    });
+  };
+  const archive = (t: Task) => {
+    setSelectedId(null);
+    setDialog({
+      kind: "task-archive",
+      title: t.deletedAt ? "Restaurar tarea" : "Eliminar tarea",
+      description:
+        "Se conserva el historial. Las tareas eliminadas se pueden restaurar.",
+      submitLabel: t.deletedAt ? "Restaurar tarea" : "Eliminar tarea",
+      extra: { taskId: t.id, restore: !!t.deletedAt },
+      fields: [{ key: "reason", label: "Motivo", type: "textarea" }],
+    });
+  };
+  const actions = (t: Task, inline = false) => (
+    <TaskActions
+      task={t}
+      role={role}
+      presentation={inline ? "buttons" : "menu"}
+      showStatus={layout === "kanban"}
+      locked={locked(t) || mutation.isPending}
+      onOpen={() => setSelectedId(t.id)}
+      onEdit={() => edit(t)}
+      onStatus={() => {
+        setSelectedId(null);
+        changeStatus(t);
+      }}
+      onArchive={() => archive(t)}
+    />
+  );
+  const selected = tasks.find((t) => t.id === selectedId);
   async function drop({ active, over }: DragEndEvent) {
     setActive(null);
     if (!over || busy.current || !Object.keys(states).includes(String(over.id)))
@@ -196,6 +269,17 @@ export function TasksPanel({
           <p>{filtered.length} tareas con estos filtros</p>
         </div>
         <div className="task-view-actions">
+          {role === "ADMIN" && (
+            <Choice
+              label="Tareas activas o eliminadas"
+              value={archiveView}
+              onChange={setArchiveView}
+              options={[
+                { id: "active", label: "Activas" },
+                { id: "deleted", label: "Eliminadas" },
+              ]}
+            />
+          )}
           <TabsList aria-label="Presentación de tareas">
             <TabsTrigger value="list">
               <List />
@@ -273,6 +357,7 @@ export function TasksPanel({
       </FilterBar>
       <TabsContent value="list">
         <DataTable
+          tableKey="tasks"
           headers={[
             "Tarea",
             "Orden",
@@ -288,14 +373,16 @@ export function TasksPanel({
               data-task-state={t.status}
             >
               <div className="mobile-task-heading">
-                <TaskBadge status={t.status} />
+                <TaskStatusDropdown task={t} locked={locked(t)} />
                 {t.orderId && (
                   <Button variant="link" onClick={() => openOrder(t.orderId!)}>
                     OT-{orders.find((o) => o.id === t.orderId)?.number}
                   </Button>
                 )}
               </div>
-              <strong>{t.title}</strong>
+              <Button variant="link" onClick={() => setSelectedId(t.id)}>
+                {t.title}
+              </Button>
               <p>{names(t) || "Sin responsables"}</p>
               <div className="mobile-task-footer">
                 <span>
@@ -303,14 +390,7 @@ export function TasksPanel({
                     ? `Límite: ${dateLabel(t.dueAt)}`
                     : "Sin fecha límite"}
                 </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={locked(t) || mutation.isPending}
-                  onClick={() => edit(t)}
-                >
-                  Actualizar
-                </Button>
+                {actions(t)}
               </div>
               {locked(t) && <small>La orden está cerrada o cancelada.</small>}
             </li>
@@ -320,7 +400,9 @@ export function TasksPanel({
           {filtered.map((t) => (
             <TableRow key={t.id} data-task-state={t.status}>
               <TableCell>
-                <strong>{t.title}</strong>
+                <Button variant="link" onClick={() => setSelectedId(t.id)}>
+                  {t.title}
+                </Button>
                 <small className="cell-detail">
                   {t.createdAt ? `Creada ${dateLabel(t.createdAt)}` : ""}
                 </small>
@@ -336,22 +418,10 @@ export function TasksPanel({
               </TableCell>
               <TableCell>{names(t)}</TableCell>
               <TableCell>
-                <TaskBadge status={t.status} />
+                <TaskStatusDropdown task={t} locked={locked(t)} />
               </TableCell>
               <TableCell>{dateLabel(t.dueAt)}</TableCell>
-              <TableCell>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={locked(t) || mutation.isPending}
-                  title={
-                    locked(t) ? "La orden está cerrada o cancelada." : undefined
-                  }
-                  onClick={() => edit(t)}
-                >
-                  Actualizar
-                </Button>
-              </TableCell>
+              <TableCell>{actions(t)}</TableCell>
             </TableRow>
           ))}
         </DataTable>
@@ -409,8 +479,11 @@ export function TasksPanel({
                       task={t}
                       names={names(t)}
                       order={orders.find((o) => o.id === t.orderId)}
-                      disabled={locked(t) || mutation.isPending}
-                      onEdit={() => edit(t)}
+                      disabled={
+                        !!t.deletedAt || locked(t) || mutation.isPending
+                      }
+                      actions={actions(t)}
+                      onOpen={() => setSelectedId(t.id)}
                       openOrder={openOrder}
                     />
                   ))}
@@ -430,6 +503,22 @@ export function TasksPanel({
           </DragOverlay>
         </DndContext>
       </TabsContent>
+      <TaskDetail
+        task={selected}
+        names={selected ? names(selected) : ""}
+        orderLabel={
+          selected?.orderId
+            ? `OT-${orders.find((o) => o.id === selected.orderId)?.number}`
+            : "Tarea general"
+        }
+        locked={selected ? locked(selected) : true}
+        onClose={() => setSelectedId(null)}
+        actions={selected ? actions(selected, true) : null}
+        onNote={async (input) => {
+          await mutation.mutateAsync({ kind: "task-note", input });
+          toast.success("Observación guardada.");
+        }}
+      />
       <FormSheet
         open={!!dialog}
         onOpenChange={(open) => {
@@ -440,7 +529,7 @@ export function TasksPanel({
           <SheetHeader>
             <SheetTitle>{dialog?.title}</SheetTitle>
             <SheetDescription>
-              Registra el trabajo y sus responsables.
+              {dialog?.description ?? "Registra el trabajo y sus responsables."}
             </SheetDescription>
           </SheetHeader>
           {dialog && (
@@ -492,14 +581,16 @@ function TaskCard({
   names,
   order,
   disabled,
-  onEdit,
+  actions,
+  onOpen,
   openOrder,
 }: {
   task: Task;
   names: string;
   order?: { id: string; number: number; reference: string };
   disabled: boolean;
-  onEdit: () => void;
+  actions: ReactNode;
+  onOpen: () => void;
   openOrder: (id: string) => void;
 }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
@@ -515,7 +606,9 @@ function TaskCard({
       data-dragging={isDragging}
     >
       <div className="kanban-card-heading">
-        <strong>{task.title}</strong>
+        <Button variant="link" onClick={onOpen}>
+          {task.title}
+        </Button>
         <Button
           variant="ghost"
           size="icon-sm"
@@ -541,9 +634,7 @@ function TaskCard({
           <Clock3 aria-hidden="true" />
           {task.dueAt ? dateLabel(task.dueAt) : "Sin fecha límite"}
         </span>
-        <Button variant="ghost" size="sm" disabled={disabled} onClick={onEdit}>
-          Actualizar
-        </Button>
+        {actions}
       </div>
     </article>
   );

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import { useIsMutating } from "@tanstack/react-query";
@@ -18,7 +19,12 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "./ui/alert-dialog";
-const DraftContext = createContext({ change: () => {}, cancel: () => {} });
+const DraftContext = createContext({
+  change: () => {},
+  cancel: () => {},
+  saved: () => {},
+  proceed: (action: () => void) => action(),
+});
 export const useFormSheet = () => useContext(DraftContext);
 export function FormSheet({
   open,
@@ -32,10 +38,12 @@ export function FormSheet({
   const [dirty, setDirty] = useState(false),
     [confirm, setConfirm] = useState(false);
   const saving = useIsMutating() > 0;
+  const pendingAction = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!open) {
       setDirty(false);
       setConfirm(false);
+      pendingAction.current = null;
     }
   }, [open]);
   useEffect(() => {
@@ -47,17 +55,27 @@ export function FormSheet({
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
   }, [open, dirty]);
-  const changeOpen = (next: boolean) => {
-    if (!next && saving) return;
-    if (!next && dirty) {
+  const proceed = (action: () => void) => {
+    if (saving) return;
+    if (dirty) {
+      pendingAction.current = action;
       setConfirm(true);
       return;
     }
-    onOpenChange(next);
+    action();
+  };
+  const changeOpen = (next: boolean) => {
+    if (next) onOpenChange(true);
+    else proceed(() => onOpenChange(false));
   };
   return (
     <DraftContext.Provider
-      value={{ change: () => setDirty(true), cancel: () => changeOpen(false) }}
+      value={{
+        change: () => setDirty(true),
+        cancel: () => changeOpen(false),
+        saved: () => setDirty(false),
+        proceed,
+      }}
     >
       <Sheet open={open} onOpenChange={changeOpen}>
         <div onChangeCapture={() => setDirty(true)}>{children}</div>
@@ -67,7 +85,7 @@ export function FormSheet({
           <AlertDialogHeader>
             <AlertDialogTitle>Hay cambios sin guardar</AlertDialogTitle>
             <AlertDialogDescription>
-              Puedes seguir editando o cerrar y descartar los datos de este
+              Puedes seguir editando o continuar y descartar los datos de este
               formulario.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -77,7 +95,9 @@ export function FormSheet({
               onClick={() => {
                 setDirty(false);
                 setConfirm(false);
-                onOpenChange(false);
+                const action = pendingAction.current;
+                pendingAction.current = null;
+                action?.();
               }}
             >
               Descartar cambios

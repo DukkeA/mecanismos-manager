@@ -5,12 +5,12 @@ import type { OrderView } from "@/domain/workshop-view";
 
 export async function getOrders(actor: {id:string; role:Role}): Promise<OrderView[]> {
   const orders = await db().workOrder.findMany({
-    where: actor.role === "MECHANIC" ? {tasks: {some:{assignments:{some:{memberId:actor.id}}}}} : {},
+    where: actor.role === "MECHANIC" ? {tasks: {some:{deletedAt:null,assignments:{some:{memberId:actor.id}}}}} : {},
     orderBy: {receivedAt:"desc"},
     select: {id:true,number:true,title:true,reportedProblem:true,status:true,purpose:true,version:true,receivedAt:true,dueAt:true,closedAt:true,
       customer:{select:{name:true}},location:{select:{name:true}},
       assets:{select:{asset:{select:{kind:true,plate:true,serial:true,description:true}}}},
-      tasks:{select:{id:true,title:true,status:true,assignments:{select:{member:{select:{name:true}}}},timeEntries:{select:{minutes:true}}}},
+      tasks:{where:{deletedAt:null},select:{id:true,title:true,status:true,assignments:{select:{member:{select:{name:true}}}},timeEntries:{select:{minutes:true}}}},
       observations:{orderBy:{createdAt:"desc"},take:30,select:{id:true,body:true,createdAt:true,member:{select:{name:true}}}},
     },
   });

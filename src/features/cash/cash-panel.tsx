@@ -1,4 +1,5 @@
 "use client";
+import { accountNames } from "@/domain/accounts";
 import { FormSheet } from "@/components/form-sheet";
 import { DataTable } from "@/components/data-table";
 import { OperationForm, type Dialog } from "@/components/operation-form";
@@ -28,7 +29,7 @@ import { cashKinds, obligationCategories } from "@/domain/cash";
 import type { OperationsView } from "@/domain/operations-view";
 import type { Role } from "@/domain/permissions";
 import Decimal from "decimal.js";
-import { Plus, ReceiptText, Undo2, Wallet } from "lucide-react";
+import { ArrowLeftRight, Plus, ReceiptText, Undo2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { FinancialOverview } from "./financial-overview";
@@ -40,6 +41,7 @@ export function CashPanel({ role }: { role: Role }) {
   const mutation = useCashMutation();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [history, setHistory] = useState<string | null>(null);
+  const [sortTable] = useQueryState("table");
   const [period, setPeriod] = useQueryState(
       "period",
       todayInBogota().slice(0, 7),
@@ -60,6 +62,47 @@ export function CashPanel({ role }: { role: Role }) {
       id: a.id,
       label: `${a.name} · ${cop(a.balance)}`,
     }));
+  const transferForm: Dialog = {
+    kind: "cash-transfer",
+    title: "Transferir entre cuentas",
+    submitLabel: "Transferir dinero",
+    description:
+      "El dinero saldrá de la cuenta de origen y entrará en la de destino. El saldo total del taller se conserva.",
+    extra: {
+      sourceAccountId: accountOptions[0]?.id,
+      destinationAccountId: accountOptions[1]?.id,
+      occurredOn: todayInBogota(),
+    },
+    fields: [
+      {
+        key: "sourceAccountId",
+        label: "Cuenta de origen",
+        type: "select",
+        options: accountOptions,
+      },
+      {
+        key: "destinationAccountId",
+        label: "Cuenta de destino",
+        type: "select",
+        options: accountOptions,
+        hint: "Debe ser diferente a la cuenta de origen.",
+      },
+      { key: "amount", label: "Valor COP", type: "money" },
+      { key: "occurredOn", label: "Fecha de transferencia", type: "date" },
+      { key: "reference", label: "Comprobante / referencia", optional: true },
+      { key: "note", label: "Motivo", type: "textarea" },
+    ],
+  };
+  const entryLabel = (e: OperationsView["cashEntries"][number]) =>
+    e.transferId
+      ? e.kind === "REVERSAL"
+        ? "Reversión de transferencia"
+        : e.direction === "OUT"
+          ? "Transferencia enviada"
+          : "Transferencia recibida"
+      : e.kind === "REVERSAL"
+        ? "Reversión"
+        : cashKinds[e.kind as keyof typeof cashKinds]?.label;
   const cashForm: Dialog = {
     kind: "cash",
     title: "Registrar entrada o salida",
@@ -135,17 +178,24 @@ export function CashPanel({ role }: { role: Role }) {
   const reverse = (entry: OperationsView["cashEntries"][number]) =>
     setDialog({
       kind: "cash-reversal",
-      title: "Revertir pago o movimiento",
-      submitLabel: "Revertir movimiento",
-      description:
-        "Se registrará un movimiento contrario. El original se conserva en el historial.",
+      title: entry.transferId
+        ? "Revertir transferencia"
+        : "Revertir pago o movimiento",
+      submitLabel: entry.transferId
+        ? "Revertir transferencia"
+        : "Revertir movimiento",
+      description: entry.transferId
+        ? "Se devolverá el dinero a la cuenta de origen. Se revertirán ambos movimientos y se conservará el historial."
+        : "Se registrará un movimiento contrario. El original se conserva en el historial.",
       extra: { entryId: entry.id, occurredOn: todayInBogota() },
       fields: [
         {
           key: "reason",
           label: "Motivo de la reversión",
           type: "textarea",
-          hint: `Se registrará la contrapartida de ${cop(entry.amount)} en ${cash.accounts.find((a) => a.id === entry.accountId)?.name}.`,
+          hint: entry.transferId
+            ? `Se devolverán ${cop(entry.amount)} entre las dos cuentas.`
+            : `Se registrará la contrapartida de ${cop(entry.amount)} en ${cash.accounts.find((a) => a.id === entry.accountId)?.name}.`,
         },
         { key: "occurredOn", label: "Fecha de reversión", type: "date" },
       ],
@@ -179,7 +229,14 @@ export function CashPanel({ role }: { role: Role }) {
     description:
       "Indica el dinero disponible al comenzar el registro de esta caja o banco.",
     fields: [
-      { key: "name", label: "Nombre de caja o banco" },
+      {
+        key: "name",
+        label: "Cuenta",
+        type: "select",
+        options: accountNames
+          .filter((name) => !cash.accounts.some((a) => a.name === name))
+          .map((name) => ({ id: name, label: name })),
+      },
       {
         key: "openingBalance",
         label: "Saldo inicial COP",
@@ -208,11 +265,12 @@ export function CashPanel({ role }: { role: Role }) {
       matches(o.title, q) &&
       (status === "ALL" || paymentState(o) === status),
   );
-  obligations.sort(
-    (a, b) =>
-      Number(paymentState(a) === "paid") - Number(paymentState(b) === "paid") ||
-      a.dueOn.localeCompare(b.dueOn),
-  );
+  if (sortTable !== "obligations")
+    obligations.sort(
+      (a, b) =>
+        Number(paymentState(a) === "paid") -
+          Number(paymentState(b) === "paid") || a.dueOn.localeCompare(b.dueOn),
+    );
   const entries = cash.entries.filter(
     (e) =>
       matches(
@@ -222,7 +280,8 @@ export function CashPanel({ role }: { role: Role }) {
       inDates(e.occurredOn, from, to) &&
       (!min || Number(e.amount) >= Number(min)) &&
       (!max || Number(e.amount) <= Number(max)) &&
-      (status === "ALL" || e.direction === status),
+      (status === "ALL" ||
+        (status === "TRANSFERS" ? !!e.transferId : e.direction === status)),
   );
   const mobileEntries = (rows: typeof entries) =>
     rows.map((e) => (
@@ -232,9 +291,7 @@ export function CashPanel({ role }: { role: Role }) {
             variant="outline"
             data-payment-state={e.direction === "IN" ? "paid" : "pending"}
           >
-            {e.kind === "REVERSAL"
-              ? "Reversión"
-              : cashKinds[e.kind as keyof typeof cashKinds]?.label}
+            {entryLabel(e)}
           </Badge>
           <strong className="money-cell">
             {e.direction === "IN" ? "+" : "−"}
@@ -278,9 +335,7 @@ export function CashPanel({ role }: { role: Role }) {
             variant="outline"
             data-payment-state={e.direction === "IN" ? "paid" : "pending"}
           >
-            {e.kind === "REVERSAL"
-              ? "Reversión"
-              : cashKinds[e.kind as keyof typeof cashKinds]?.label}
+            {entryLabel(e)}
           </Badge>
         </TableCell>
         <TableCell className="money-cell">
@@ -327,27 +382,41 @@ export function CashPanel({ role }: { role: Role }) {
             <TabsTrigger value="entries">Movimientos</TabsTrigger>
             <TabsTrigger value="accounts">Cuentas</TabsTrigger>
           </TabsList>
-          {(tab !== "accounts" || role === "ADMIN") && (
+          <div className="row-actions flex-wrap">
             <Button
-              onClick={() =>
-                setDialog(
-                  tab === "accounts"
-                    ? accountForm
-                    : tab === "obligations"
-                      ? obligationForm
-                      : cashForm,
-                )
-              }
-              disabled={!cash.accounts.length && tab === "entries"}
+              variant="outline"
+              onClick={() => setDialog(transferForm)}
+              disabled={cash.accounts.length < 2 || mutation.isPending}
             >
-              <Plus data-icon="inline-start" />
-              {tab === "accounts"
-                ? "Crear cuenta"
-                : tab === "obligations"
-                  ? "Registrar gasto"
-                  : "Registrar movimiento"}
+              <ArrowLeftRight />
+              Transferir
             </Button>
-          )}
+            {(tab !== "accounts" ||
+              (role === "ADMIN" &&
+                accountNames.some(
+                  (name) => !cash.accounts.some((a) => a.name === name),
+                ))) && (
+              <Button
+                onClick={() =>
+                  setDialog(
+                    tab === "accounts"
+                      ? accountForm
+                      : tab === "obligations"
+                        ? obligationForm
+                        : cashForm,
+                  )
+                }
+                disabled={!cash.accounts.length && tab === "entries"}
+              >
+                <Plus data-icon="inline-start" />
+                {tab === "accounts"
+                  ? "Crear cuenta"
+                  : tab === "obligations"
+                    ? "Registrar gasto"
+                    : "Registrar movimiento"}
+              </Button>
+            )}
+          </div>
         </div>
         <FilterBar>
           <label className="search-filter">
@@ -378,6 +447,7 @@ export function CashPanel({ role }: { role: Role }) {
                     : [
                         { id: "IN", label: "Entradas" },
                         { id: "OUT", label: "Salidas" },
+                        { id: "TRANSFERS", label: "Transferencias" },
                       ]),
                 ]}
               />
@@ -432,6 +502,7 @@ export function CashPanel({ role }: { role: Role }) {
         </FilterBar>
         <TabsContent value="obligations">
           <DataTable
+            tableKey="obligations"
             headers={[
               "Concepto / vencimiento",
               "Estado",
@@ -544,6 +615,7 @@ export function CashPanel({ role }: { role: Role }) {
         </TabsContent>
         <TabsContent value="entries">
           <DataTable
+            tableKey="cashEntries"
             headers={[
               "Fecha / cuenta",
               "Beneficiario / soporte",
@@ -559,6 +631,7 @@ export function CashPanel({ role }: { role: Role }) {
         </TabsContent>
         <TabsContent value="accounts">
           <DataTable
+            tableKey="accounts"
             headers={["Cuenta", "Saldo actual COP"]}
             empty="No hay cuentas registradas."
           >
@@ -592,6 +665,7 @@ export function CashPanel({ role }: { role: Role }) {
           </SheetHeader>
           <div className="sheet-body">
             <DataTable
+              tableKey="cashEntries"
               headers={[
                 "Fecha / cuenta",
                 "Beneficiario / soporte",

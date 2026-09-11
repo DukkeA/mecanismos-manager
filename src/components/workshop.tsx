@@ -1,5 +1,13 @@
 "use client";
 import { FormSheet } from "./form-sheet";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "./ui/breadcrumb";
 import { TaskBadge } from "@/features/tasks/task-status";
 
 import { useOrderCommand } from "@/features/orders/hooks";
@@ -271,7 +279,19 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
         <div className="app-topbar">
           <SidebarTrigger aria-label="Alternar menú lateral" />
           <Separator orientation="vertical" />
-          <span>Mecanismos Técnicos SAS</span>
+          <Breadcrumb aria-label="Ubicación">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <button onClick={() => navigate("Resumen")}>Taller</button>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{section}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <span className="sync-indicator">
             {query.isFetching ? "Actualizando…" : "Datos del taller"}
           </span>
@@ -294,21 +314,6 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
           )}
           <header className="workspace-header">
             <h1>{section === "Órdenes" ? "Órdenes de trabajo" : section}</h1>
-            {section === "Órdenes" && actor.role !== "MECHANIC" && (
-              <Button
-                size="default"
-                onClick={() => {
-                  setOrderPurpose("CUSTOMER_REPAIR");
-                  setOrderCustomer("");
-                  setCreating(true);
-                  setError("");
-                  setNotice("");
-                }}
-              >
-                <Plus data-icon="inline-start" />
-                Nueva orden
-              </Button>
-            )}
           </header>
 
           {query.isError && (
@@ -333,7 +338,28 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               navigate={navigate}
             />
           ) : section === "Órdenes" ? (
-            <OrdersList orders={orders} openOrder={setSelectedId} />
+            <OrdersList
+              orders={orders}
+              openOrder={setSelectedId}
+              createAction={
+                section === "Órdenes" &&
+                actor.role !== "MECHANIC" && (
+                  <Button
+                    size="default"
+                    onClick={() => {
+                      setOrderPurpose("CUSTOMER_REPAIR");
+                      setOrderCustomer("");
+                      setCreating(true);
+                      setError("");
+                      setNotice("");
+                    }}
+                  >
+                    <Plus data-icon="inline-start" />
+                    Nueva orden
+                  </Button>
+                )
+              }
+            />
           ) : section === "Tareas" ? (
             <TasksPanel role={actor.role} openOrder={setSelectedId} />
           ) : section === "Caja" ? (
@@ -555,7 +581,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                       onChange={setOrderCustomer}
                       options={[
                         { id: "", label: "Cliente nuevo / unidad propia" },
-                        ...operations.customers.map((c) => ({
+                        ...operations.customers.filter(c => !c.deletedAt).map((c) => ({
                           id: c.id,
                           label: c.name,
                         })),

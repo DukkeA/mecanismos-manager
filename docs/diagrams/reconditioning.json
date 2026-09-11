@@ -1,15 +1,151 @@
 {
- "schema_version":2,"diagram_type":"workflow",
- "meta":{"title":"Mecanismos · Reconstrucción de unidades propias","quality_profile":"showcase"},
- "lanes":[{"id":"inventory","label":"Inventario"},{"id":"workshop","label":"Taller"},{"id":"commercial","label":"Venta posterior"}],
- "mainPath":["unit","internal","materials","labor","restock","sale"],
- "nodes":[
- {"id":"unit","lane":"inventory","col":0,"type":"database","label":"Unidad propia","sublabel":"Costo identificado"},
- {"id":"internal","lane":"workshop","col":1,"type":"backend","label":"Orden interna","sublabel":"No genera ingresos"},
- {"id":"materials","lane":"workshop","col":2,"type":"database","label":"Materiales","sublabel":"Consumos auditados"},
- {"id":"labor","lane":"workshop","col":3,"type":"backend","label":"Trabajo técnico","sublabel":"Horas y revisión","width":120},
- {"id":"restock","lane":"inventory","col":4,"type":"database","label":"Unidad reparada","sublabel":"Material y labor separados","width":130},
- {"id":"sale","lane":"commercial","col":5,"type":"frontend","label":"Venta","sublabel":"Ingreso y garantía"}],
- "edges":[{"from":"unit","to":"internal","label":"Retirar"},{"from":"internal","to":"materials","label":"Reconstruir"},{"from":"materials","to":"labor","label":"Registrar"},{"from":"labor","to":"restock","label":"Conforme"},{"from":"restock","to":"sale","label":"Vender después"}],
- "cards":[{"dot":"emerald","title":"Identidad física","items":["Cada unidad conserva su historia y condición","Un casco recibido se evalúa antes de ingresar como disponible"]},{"dot":"amber","title":"Costos sin duplicación","items":["La mano de obra se imputa para análisis técnico","El resultado mensual descuenta la nómina una sola vez"]}]
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Mecanismos · Reconstrucción propia: alcance",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Operación"
+        },
+        "backend": {
+          "label": "Trabajo"
+        },
+        "database": {
+          "label": "Registro"
+        },
+        "security": {
+          "label": "Control"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "current",
+      "label": "Disponible"
+    },
+    {
+      "id": "pending",
+      "label": "Por implementar"
+    }
+  ],
+  "mainPath": [
+    "internal",
+    "materials",
+    "labor",
+    "unit",
+    "sale",
+    "warranty"
+  ],
+  "nodes": [
+    {
+      "id": "internal",
+      "lane": "current",
+      "col": 0,
+      "type": "frontend",
+      "label": "Orden interna",
+      "sublabel": "OWN_REBUILD"
+    },
+    {
+      "id": "materials",
+      "lane": "current",
+      "col": 1,
+      "type": "database",
+      "label": "Consumos",
+      "sublabel": "Materiales de la orden"
+    },
+    {
+      "id": "labor",
+      "lane": "current",
+      "col": 2,
+      "type": "backend",
+      "label": "Trabajo",
+      "sublabel": "Tareas · Horas · Fotos"
+    },
+    {
+      "id": "unit",
+      "lane": "pending",
+      "col": 3,
+      "type": "database",
+      "label": "Unidad lista",
+      "sublabel": "Serie y costo acumulado"
+    },
+    {
+      "id": "sale",
+      "lane": "pending",
+      "col": 4,
+      "type": "frontend",
+      "label": "Venta",
+      "sublabel": "Precio · Cobro · Salida"
+    },
+    {
+      "id": "warranty",
+      "lane": "pending",
+      "col": 5,
+      "type": "security",
+      "label": "Garantía",
+      "sublabel": "Unidad y venta original"
+    }
+  ],
+  "edges": [
+    {
+      "from": "internal",
+      "to": "materials"
+    },
+    {
+      "from": "materials",
+      "to": "labor"
+    },
+    {
+      "from": "labor",
+      "to": "unit",
+      "variant": "dashed",
+      "label": "Falta implementar"
+    },
+    {
+      "from": "unit",
+      "to": "sale",
+      "variant": "dashed"
+    },
+    {
+      "from": "sale",
+      "to": "warranty",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Lo que ya se puede registrar",
+      "items": [
+        "Una orden propia permite seguir el trabajo y los consumos",
+        "Las horas quedan registradas; aún no se valorizan por trabajo"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Antes de vender unidades reconstruidas",
+      "items": [
+        "Falta identificar cada unidad y convertirla en stock disponible",
+        "Faltan costo de reconstrucción, venta y trazabilidad de garantía"
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "id": "available",
+      "label": "Implementado",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "planned",
+      "label": "Pendiente",
+      "fromCol": 3,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ]
 }

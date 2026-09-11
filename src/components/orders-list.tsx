@@ -1,4 +1,5 @@
 "use client";
+import { SortableHead } from "./sortable-head";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,9 @@ import {
 export function OrdersList({
   orders,
   openOrder,
+  createAction,
 }: {
+  createAction?: React.ReactNode;
   orders: OrderView[];
   openOrder: (id: string) => void;
 }) {
@@ -54,6 +57,10 @@ export function OrdersList({
   const pagination = usePagination(filtered.length, "orders");
   return (
     <section className="orders-list">
+      <div className="operations-heading">
+        <p>Ingresos, reparaciones y entregas del taller.</p>
+        {createAction}
+      </div>
       <FilterBar>
         <label className="search-filter">
           Buscar
@@ -152,8 +159,10 @@ export function OrdersList({
                 "Ingreso",
                 "Entrega prevista",
                 "Salida",
-              ].map((h) => (
-                <TableHead key={h}>{h}</TableHead>
+              ].map((h, index) => (
+                <SortableHead key={h} table="orders" index={index}>
+                  {h}
+                </SortableHead>
               ))}
             </TableRow>
           </TableHeader>

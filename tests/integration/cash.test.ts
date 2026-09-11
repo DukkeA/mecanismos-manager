@@ -11,7 +11,8 @@ let accountId:string;let obligationId:string;let payrollId:string;
 const payment=(amount:string)=>({requestId:randomUUID(),accountId,obligationId,kind:"EXPENSE_PAYMENT",amount,counterparty:"Test landlord",reference:"Test",note:"Integration payment",occurredOn:"2026-09-09"});
 beforeAll(async()=>{
   await db().member.createMany({data:[admin,office].map(a=>({...a,name:"Cash test",email:`${a.id}@example.invalid`}))});
-  accountId=(await createAccount(admin,{requestId:randomUUID(),name:randomUUID(),openingBalance:"1000"})).id;
+  // Isolated ledger fixture: configured workshop accounts must never be changed by this test.
+  accountId=(await db().moneyAccount.create({data:{name:randomUUID(),openingBalance:"1000",balance:"1000"}})).id;
   obligationId=(await createObligation(office,{requestId:randomUUID(),title:"Test rent",category:"RENT",period:"2026-09",amount:"100",dueOn:"2026-09-15"})).id;
   payrollId=(await createObligation(admin,{requestId:randomUUID(),title:"Confidential payroll",category:"PAYROLL",period:"2026-09",amount:"200",dueOn:"2026-09-30"})).id;
 });
@@ -25,6 +26,12 @@ afterAll(async()=>{
   await db().$disconnect();
 });
 describe("cash ledger against PostgreSQL",()=>{
+  it("restricts account creation to the four names and administrators",async()=>{
+    await expect(createAccount(admin,{requestId:randomUUID(),name:"Otra caja",openingBalance:"0"})).rejects.toThrow();
+    await expect(createAccount(office,{requestId:randomUUID(),name:"Oficina",openingBalance:"0"})).rejects.toThrow("permiso");
+    const existing=await db().moneyAccount.findUnique({where:{name:"Oficina"}});
+    if(existing) await expect(createAccount(admin,{requestId:randomUUID(),name:"Oficina",openingBalance:"0"})).rejects.toThrow("ya existe");
+  });
   it("prevents simultaneous payments from exceeding an obligation and reverses once",async()=>{
     const results=await Promise.allSettled([recordCash(office,payment("75")),recordCash(office,payment("75"))]);
     expect(results.filter(r=>r.status==="fulfilled")).toHaveLength(1);

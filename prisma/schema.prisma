@@ -89,6 +89,7 @@ model Location {
 }
 
 model Customer {
+  deletedAt  DateTime? @db.Timestamptz(3)
   id         String @id @default(uuid()) @db.Uuid
   name       String @db.VarChar(180)
   document   String? @db.VarChar(40)
@@ -158,6 +159,11 @@ model Task {
   order       WorkOrder? @relation(fields: [orderId], references: [id], onDelete: Restrict)
   dueAt       DateTime? @db.Timestamptz(3)
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  description String @default("") @db.Text
+  deletedAt DateTime? @db.Timestamptz(3)
+  version Int @default(0)
+  notes TaskNote[]
+  photos TaskPhoto[]
   assignments TaskAssignment[]
   timeEntries TimeEntry[]
   @@index([orderId, status])
@@ -210,6 +216,8 @@ model CatalogItem {
   brand       String? @db.VarChar(100)
   kind        ItemKind
   unit        String @default("unidad") @db.VarChar(30)
+  reference   String @default("") @db.VarChar(200)
+  notes       String @default("") @db.Text
   serialized  Boolean @default(false)
   offers      SupplierOffer[]
   balances    StockBalance[]
@@ -219,6 +227,9 @@ model CatalogItem {
 }
 
 model Supplier {
+  email   String? @db.VarChar(254)
+  address String? @db.VarChar(300)
+  deletedAt DateTime? @db.Timestamptz(3)
   id      String @id @default(uuid()) @db.Uuid
   name    String @db.VarChar(180)
   phone   String? @db.VarChar(40)
@@ -329,6 +340,7 @@ model Obligation {
 }
 
 model CashEntry {
+  transferId   String? @db.Uuid
   id           String @id @default(uuid()) @db.Uuid
   accountId    String @db.Uuid
   account      MoneyAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
@@ -348,7 +360,31 @@ model CashEntry {
   reversal     CashEntry? @relation("CashReversal")
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   @@index([accountId, occurredOn])
+  @@unique([transferId, kind, direction])
   @@index([obligationId])
   @@index([actorId])
+  @@schema("workshop")
+}
+
+model TaskNote {
+  id String @id @default(uuid()) @db.Uuid
+  taskId String @db.Uuid
+  actorId String @db.Uuid
+  body String @db.Text
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  task Task @relation(fields:[taskId],references:[id],onDelete:Restrict)
+  @@index([taskId, createdAt])
+  @@schema("workshop")
+}
+
+model TaskPhoto {
+  id String @id @default(uuid()) @db.Uuid
+  taskId String @db.Uuid
+  actorId String @db.Uuid
+  caption String @db.VarChar(250)
+  content Bytes
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  task Task @relation(fields:[taskId],references:[id],onDelete:Restrict)
+  @@index([taskId, createdAt])
   @@schema("workshop")
 }

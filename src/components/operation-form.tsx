@@ -80,6 +80,7 @@ export function OperationForm({
         setError("");
         try {
           await submit(values);
+          draft.saved();
         } catch (e) {
           setError(e instanceof Error ? e.message : "No se pudo guardar.");
           if (e && typeof e === "object" && "fields" in e) {
@@ -111,6 +112,7 @@ export function OperationForm({
                     onCheckedChange={draft.change}
                     name={field.key}
                     value={option.id}
+                    defaultChecked={Array.isArray(dialog.extra?.[field.key]) && (dialog.extra[field.key] as string[]).includes(option.id)}
                   />
                   <FieldLabel htmlFor={`${formId}-${option.id}`}>
                     {option.label}

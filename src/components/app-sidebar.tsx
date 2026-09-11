@@ -1,5 +1,6 @@
 "use client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { BrandLogo } from "@/components/brand-logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +28,7 @@ import type { Role } from "@/domain/permissions";
 import { useSignOut } from "@/features/workshop/session";
 import {
   Boxes,
-  Building2,
+  Wrench as ServiceIcon,
   ChartNoAxesCombined,
   ChevronsUpDown,
   ClipboardList,
@@ -49,6 +50,7 @@ export const workshopSections = [
   { label: "Clientes", icon: ContactRound },
   { label: "Proveedores", icon: Truck },
   { label: "Inventario", icon: Boxes },
+  { label: "Servicios", icon: ServiceIcon },
   { label: "Caja", icon: Wallet },
   { label: "Equipo", icon: Users },
 ];
@@ -81,13 +83,11 @@ export function AppSidebar({
               size="lg"
               onClick={() => navigate("Resumen")}
               tooltip="Mecanismos Manager"
+              aria-label="Mecanismos Técnicos · Ir al resumen"
+              className="sidebar-brand-button"
             >
-              <div className="sidebar-brand-mark">
-                <Wrench aria-hidden="true" />
-              </div>
-              <span className="sidebar-wordmark">
-                Mecanismos<small>Manager</small>
-              </span>
+              <BrandLogo className="sidebar-logo-full" />
+              <BrandLogo compact className="sidebar-logo-compact" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -127,14 +127,7 @@ export function AppSidebar({
             )
           );
         })}
-        <SidebarGroup className="mt-auto group-data-[collapsible=icon]:hidden">
-          <div className="sidebar-location">
-            <Building2 aria-hidden="true" />
-            <div>
-              Bogotá<small>Oficina y bodega / taller</small>
-            </div>
-          </div>
-        </SidebarGroup>
+
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

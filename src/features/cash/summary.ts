@@ -30,7 +30,7 @@ export function cashSummary(
     (o) => o.dueOn < today && new Decimal(o.amount).gt(o.paid),
   );
   const entries = data.cashEntries.filter((e) =>
-    e.occurredOn.startsWith(period),
+    e.occurredOn.startsWith(period) && !e.transferId && e.kind !== "TRANSFER",
   );
   const inflow = entries
     .filter((e) => e.direction === "IN")

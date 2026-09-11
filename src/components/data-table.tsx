@@ -1,13 +1,17 @@
 "use client";
+import { SortableHead } from "./sortable-head";
+import type { TableKey } from "@/domain/table-sort";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Pager, usePagination } from "./workshop-controls";
 export function DataTable({
+  tableKey,
   headers,
   empty,
   children,
   mobileRows,
 }: {
+  tableKey?: TableKey;
   headers: string[];
   empty: string;
   children: React.ReactNode[];
@@ -37,8 +41,8 @@ export function DataTable({
           <Table>
             <TableHeader>
               <TableRow>
-                {headers.map((h) => (
-                  <TableHead key={h}>{h}</TableHead>
+                {headers.map((h,index) => (
+                  tableKey ? <SortableHead key={h} table={tableKey} index={index}>{h}</SortableHead> : <TableHead key={h}>{h}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>

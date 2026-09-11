@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Mecanismos · Modelo de datos actual",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1360,
+      780
+    ],
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Clientes"
+        },
+        "backend": {
+          "label": "Operación"
+        },
+        "database": {
+          "label": "Inventario y caja"
+        },
+        "security": {
+          "label": "Equipo y registro"
+        },
+        "external": {
+          "label": "Proveedores"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "customers",
+      "type": "frontend",
+      "label": "Clientes y activos",
+      "sublabel": "Customer · Asset · OrderAsset",
+      "pos": [
+        30,
+        320
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "orders",
+      "type": "backend",
+      "label": "Órdenes",
+      "sublabel": "WorkOrder · Observation",
+      "pos": [
+        380,
+        320
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "tasks",
+      "type": "backend",
+      "label": "Tareas y evidencia",
+      "sublabel": "Task · Notas · Fotos · Horas",
+      "pos": [
+        730,
+        320
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "members",
+      "type": "security",
+      "label": "Equipo y asignaciones",
+      "sublabel": "Member · TaskAssignment",
+      "pos": [
+        1080,
+        320
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "suppliers",
+      "type": "external",
+      "label": "Proveedores y precios",
+      "sublabel": "Supplier · SupplierOffer",
+      "pos": [
+        30,
+        620
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "inventory",
+      "type": "database",
+      "label": "Repuestos y servicios",
+      "sublabel": "Catálogo · Stock · Sedes",
+      "pos": [
+        380,
+        620
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "audit",
+      "type": "security",
+      "label": "Auditoría y comandos",
+      "sublabel": "AuditEvent · CommandReceipt",
+      "pos": [
+        730,
+        40
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "cash",
+      "type": "database",
+      "label": "Caja y obligaciones",
+      "sublabel": "MoneyAccount · CashEntry · Obligation",
+      "pos": [
+        1080,
+        620
+      ],
+      "size": [
+        260,
+        80
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "customers",
+      "to": "orders",
+      "label": "Cliente y activo",
+      "variant": "emphasis"
+    },
+    {
+      "from": "orders",
+      "to": "tasks",
+      "label": "Orden opcional",
+      "variant": "emphasis"
+    },
+    {
+      "from": "tasks",
+      "to": "members",
+      "label": "Asignaciones N:M"
+    },
+    {
+      "from": "suppliers",
+      "to": "inventory",
+      "label": "Ofertas"
+    },
+    {
+      "from": "inventory",
+      "to": "orders",
+      "label": "Sede y consumos"
+    },
+    {
+      "from": "cash",
+      "to": "members",
+      "label": "Autor del movimiento"
+    },
+    {
+      "from": "members",
+      "to": "audit",
+      "label": "Autor del comando",
+      "fromSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "22 modelos · relaciones agrupadas",
+      "items": [
+        "El esquema Prisma y las migraciones SQL definen campos y restricciones",
+        "Servicios usan CatalogItem(kind=SERVICE), sin existencias",
+        "Una transferencia agrupa dos CashEntry; no crea otra tabla"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Relaciones comerciales que faltan",
+      "items": [
+        "CashEntry no está vinculado a cliente, proveedor u orden",
+        "No existen cotizaciones, ventas, aplicaciones de cobro ni garantías",
+        "El inventario aún no identifica unidades reconstruidas por serie"
+      ]
+    }
+  ]
+}

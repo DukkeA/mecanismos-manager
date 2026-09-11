@@ -4,9 +4,9 @@ Aplicación interna de Mecanismos Técnicos SAS. Bogotá, COP, dos sedes.
 
 ## Estado
 
-Implementación en curso. Incluye diagramas Archify, 20 tablas privadas, roles, órdenes y tareas, clientes, proveedores y precios fechados, inventario valorizado y caja con obligaciones mensuales. El entorno local tiene datos ficticios persistentes en Docker. En `/login` puedes elegir administración, oficina o mecánico; `/` valida su sesión. Con los accesos locales habilitados, `/demo` redirige a este flujo.
+Implementación en curso. Incluye cinco diagramas Archify, 22 modelos privados, roles, órdenes y tareas con notas/fotos/historial, clientes, proveedores y precios fechados, inventario valorizado y caja con obligaciones y transferencias entre cuentas. El entorno local tiene datos ficticios persistentes en Docker. Con los accesos locales habilitados, `/login` permite elegir administración, oficina o mecánico; `/` valida su sesión y `/demo` redirige a este flujo.
 
-**Todavía no está lista para el piloto completo**: faltan cotizaciones, garantías, unidades serializadas, reportes de rentabilidad, importaciones, acceso Google real, despliegue público y APK. Los módulos pendientes están identificados en la navegación.
+**Todavía no está lista para el piloto completo**: faltan cotizaciones, ventas y aplicación de cobros, garantías, unidades serializadas, rentabilidad, importaciones, acceso Google real y despliegue público. La [revisión del 11 de septiembre](docs/platform-review-2026-09-11.md) propone las siguientes entregas y cómo comprobarlas. Los [diagramas actualizados](docs/diagrams/README.md) distinguen el código disponible de los flujos pendientes.
 
 ## Desarrollo reproducible
 
@@ -36,4 +36,4 @@ El primer acceso vincula una identidad de correo verificado a una invitación pr
 
 Consultar `PRODUCT.md`, `docs/implementation-status.md` y los visores de `docs/diagrams`. Los datos locales y recorridos de prueba están en [docs/local-testing.md](docs/local-testing.md). La base remota conserva únicamente las sedes; el juego ficticio se carga solo en Docker. Los cambios de texto están en [docs/copy-review.md](docs/copy-review.md).
 
-El proyecto remoto Supabase es `msocvkzvrwpsdlwzsrin`, creado en Dukke con costo confirmado de USD 0/mes. Las tres migraciones están aplicadas y verificadas allí (20 tablas privadas); sus versiones locales/remotas coinciden. La configuración pendiente está en [docs/cloud-setup.md](docs/cloud-setup.md). No hay despliegue Vercel ni APK generada.
+El proyecto remoto Supabase registrado es `msocvkzvrwpsdlwzsrin`, en Dukke. Su creación se confirmó en USD 0/mes; el último registro remoto corresponde a las tres migraciones iniciales y 20 tablas. El repositorio contiene ahora siete migraciones y 22 modelos. No se volvió a consultar cloud en la revisión del 11 de septiembre: hay que verificar y aplicar las migraciones posteriores antes de desplegar. La configuración pendiente está en [docs/cloud-setup.md](docs/cloud-setup.md). No hay despliegue Vercel ni APK documentados como completados.

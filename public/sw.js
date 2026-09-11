@@ -1,5 +1,5 @@
-const CACHE = "mecanismos-static-v1";
-const STATIC = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/maskable-512.png"];
+const CACHE = "mecanismos-static-v2";
+const STATIC = ["/offline.html", "/brand/logo.png", "/brand/monogram.png", "/icons/favicon.png", "/icons/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/maskable-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(STATIC)));
 });
