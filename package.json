@@ -15,7 +15,14 @@
     "db:validate": "prisma validate",
     "db:seed:local": "node scripts/seed-workshop.mjs && node scripts/seed-details.mjs && node scripts/seed-contact-details.mjs",
     "db:seed:details": "node scripts/seed-details.mjs",
-    "db:verify:fixtures": "node scripts/verify-fixtures.mjs"
+    "db:verify:fixtures": "node scripts/verify-fixtures.mjs",
+    "db:storage:local": "node scripts/setup-local-storage.mjs",
+    "db:seed:commerce": "node --conditions=react-server --import tsx scripts/local-job.ts commerce",
+    "db:seed:control": "node --conditions=react-server --import tsx scripts/local-job.ts control",
+    "db:seed:supports": "node --conditions=react-server --import tsx scripts/local-job.ts supports",
+    "db:migrate:photos:local": "node --conditions=react-server --import tsx scripts/local-job.ts photos",
+    "db:backup:local": "node --import tsx scripts/backup-local.ts",
+    "test:access": "node scripts/test-local-access.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -5165,7 +5165,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <path data-edge-from="backend" data-edge-to="identity" data-edge-label="Verificar sesión" data-edge-key="3" data-composition-points="845,340;845,146" d="M 845 340 L 845 146" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         <path data-edge-from="app" data-edge-to="offline" data-edge-label="Sin red" data-edge-key="4" data-composition-points="495,340;495,146" d="M 495 340 L 495 146" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="backend" data-edge-to="photos" data-edge-label="Validar acceso" data-edge-key="5" data-composition-points="845,416;845,610" d="M 845 416 L 845 610" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="photos" data-edge-to="postgres" data-edge-label="TaskPhoto · bytea" data-edge-key="6" data-composition-points="960,648;1030,648;1030,385;1100,385" d="M 960 648 L 1022 648 Q 1030 648 1030 640 L 1030 393 Q 1030 385 1038 385 L 1100 385" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="photos" data-edge-to="postgres" data-edge-label="Referencias y metadatos" data-edge-key="6" data-composition-points="960,648;1030,648;1030,385;1100,385" d="M 960 648 L 1022 648 Q 1030 648 1030 640 L 1030 393 Q 1030 385 1038 385 L 1100 385" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 
         <!-- Components -->
         <g id="node-team" data-node-id="team" data-node-label="Equipo del taller" tabindex="0" role="button" aria-label="Focus Equipo del taller, Admin · Oficina · Mecánico, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="Admin · Oficina · Mecánico" data-node-context="Architecture component">
@@ -5205,8 +5205,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="context" x="845" y="392" class="t-muted" font-size="9" text-anchor="middle">Sesión · Permisos · Reglas</text>
         </g>
 
-        <g id="node-postgres" data-node-id="postgres" data-node-label="PostgreSQL privado" tabindex="0" role="button" aria-label="Focus PostgreSQL privado, workshop · 22 modelos, Architecture component" aria-pressed="false" data-node-kind="database" data-node-sublabel="workshop · 22 modelos" data-node-context="Architecture component">
-          <title>PostgreSQL privado · workshop · 22 modelos · Architecture component</title>
+        <g id="node-postgres" data-node-id="postgres" data-node-label="PostgreSQL privado" tabindex="0" role="button" aria-label="Focus PostgreSQL privado, workshop · 47 modelos, Architecture component" aria-pressed="false" data-node-kind="database" data-node-sublabel="workshop · 47 modelos" data-node-context="Architecture component">
+          <title>PostgreSQL privado · workshop · 47 modelos · Architecture component</title>
           <rect x="1100" y="340" width="230" height="76" rx="6" class="c-mask"/>
           <rect x="1100" y="340" width="230" height="76" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(1106 346) scale(0.6875)">
@@ -5214,7 +5214,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="1215" y="376" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">PostgreSQL privado</text>
-        <text data-detail="context" x="1215" y="392" class="t-muted" font-size="9" text-anchor="middle">workshop · 22 modelos</text>
+        <text data-detail="context" x="1215" y="392" class="t-muted" font-size="9" text-anchor="middle">workshop · 47 modelos</text>
         </g>
 
         <g id="node-identity" data-node-id="identity" data-node-label="Supabase Auth" tabindex="0" role="button" aria-label="Focus Supabase Auth, Identidad y cookies, Architecture component" aria-pressed="false" data-node-kind="security" data-node-sublabel="Identidad y cookies" data-node-context="Architecture component">
@@ -5243,15 +5243,16 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="context" x="495" y="122" class="t-muted" font-size="9" text-anchor="middle">Pantalla de reconexión</text>
         </g>
 
-        <g id="node-photos" data-node-id="photos" data-node-label="Fotos de tareas" tabindex="0" role="button" aria-label="Focus Fotos de tareas, Acceso por asignación y rol, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Acceso por asignación y rol" data-node-context="Architecture component">
-          <title>Fotos de tareas · Acceso por asignación y rol · Architecture component</title>
+        <g id="node-photos" data-node-id="photos" data-node-label="Storage privado" tabindex="0" role="button" aria-label="Focus Storage privado, Fotos y documentos, Architecture component" aria-pressed="false" data-node-kind="database" data-node-sublabel="Fotos y documentos" data-node-context="Architecture component">
+          <title>Storage privado · Fotos y documentos · Architecture component</title>
           <rect x="730" y="610" width="230" height="76" rx="6" class="c-mask"/>
-          <rect x="730" y="610" width="230" height="76" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(736 616) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          <rect x="730" y="610" width="230" height="76" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(736 616) scale(0.6875)">
+            <ellipse cx="8" cy="4" rx="5" ry="2"/>
+            <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="845" y="646" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Fotos de tareas</text>
-        <text data-detail="context" x="845" y="662" class="t-muted" font-size="9" text-anchor="middle">Acceso por asignación y rol</text>
+          <text data-node-label="" data-detail-anchor="" x="845" y="646" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Storage privado</text>
+        <text data-detail="context" x="845" y="662" class="t-muted" font-size="9" text-anchor="middle">Fotos y documentos</text>
         </g>
 
         <!-- Connection labels -->
@@ -5279,9 +5280,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="806.4" y="476" width="77.2" height="14" rx="3" class="c-mask"/>
           <text x="845" y="486" class="t-security" font-size="8" text-anchor="middle">Validar acceso</text>
         </g>
-        <g data-detail="context" data-edge-from="photos" data-edge-to="postgres" data-edge-label="TaskPhoto · bytea" data-edge-key="6">
-          <rect x="984.2" y="496.5" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="1030" y="506.5" class="t-muted" font-size="8" text-anchor="middle">TaskPhoto · bytea</text>
+        <g data-detail="context" data-edge-from="photos" data-edge-to="postgres" data-edge-label="Referencias y metadatos" data-edge-key="6">
+          <rect x="969.8" y="496.5" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="1030" y="506.5" class="t-muted" font-size="8" text-anchor="middle">Referencias y metadatos</text>
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
@@ -5503,9 +5504,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Código actual · entorno local</h3>
         </div>
         <ul>
-          <li>&bull; GET /api/workshop y Server Actions; fotos por API privada</li>
-          <li>&bull; La sesión no basta: Member define el rol y las asignaciones</li>
-          <li>&bull; Caja y stock: transacciones, auditoría y reversión</li>
+          <li>&bull; Consultas paginadas por módulo y comandos con TanStack Query</li>
+          <li>&bull; Member define el rol; las asignaciones limitan la evidencia técnica</li>
+          <li>&bull; Ventas, compras, stock y caja conservan compensaciones y auditoría</li>
         </ul>
       </div>
 
@@ -5515,9 +5516,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Pendiente de puesta en marcha</h3>
         </div>
         <ul>
-          <li>&bull; Google real, migraciones remotas y despliegue en Vercel</li>
-          <li>&bull; La PWA requiere red para operar; APK aún no generada</li>
-          <li>&bull; Sin conexión con Siigo ni almacenamiento de PDF</li>
+          <li>&bull; Google y despliegue requieren completar la configuración cloud</li>
+          <li>&bull; La PWA usa el backend conectado; APK aún no generada</li>
+          <li>&bull; Los adjuntos se autorizan en servidor; el bucket no es público</li>
         </ul>
       </div>
     </div>

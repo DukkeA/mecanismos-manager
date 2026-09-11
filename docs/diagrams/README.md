@@ -1,18 +1,32 @@
 # Diagramas de Mecanismos Manager
 
-Actualizados el 11 de septiembre de 2026 con Archify. Reflejan el código local, incluidos cambios aún sin commit. Los pasos futuros se identifican como pendientes.
+Actualizados con Archify el 11 de septiembre de 2026. Describen la implementación actual; Google, despliegue y APK siguen pendientes de configuración y comprobación. El [estado de implementación](../implementation-status.md) registra las verificaciones de aplicación y cloud por separado.
 
-| Diagrama | Qué explica | Especificación |
+| Diagrama | Contenido | Especificación |
 | --- | --- | --- |
-| [Arquitectura implementada](architecture.html) | Web/PWA, TanStack Query, Next.js, autenticación, Prisma y fotos privadas en PostgreSQL | [JSON](architecture.json) |
-| [Modelo de datos actual](data-model.html) | Los 22 modelos agrupados y las relaciones comerciales que faltan | [JSON](data-model.json) |
-| [Reparación](repair.html) | Recepción, diagnóstico, tareas, revisión y cierre operativo | [JSON](repair.json) |
-| [Caja y transferencias](finance.html) | Registro, saldos, obligaciones y reversión de traslados | [JSON](finance.json) |
-| [Reconstrucción propia](reconditioning.html) | Trabajo disponible y pasos pendientes para vender una unidad con trazabilidad | [JSON](reconditioning.json) |
+| [Arquitectura](architecture.html) | PWA, TanStack Query, Next.js, permisos, Prisma y Storage privado | [JSON](architecture.json) |
+| [Modelo de datos](data-model.html) | 47 modelos agrupados y relaciones seleccionadas | [JSON](data-model.json) |
+| [Reparación](repair.html) | Recepción, acuerdo comercial, ejecución, pruebas, entrega y garantía | [JSON](repair.json) |
+| [Caja](finance.html) | Cobros aplicados a ventas, pagos, cuentas, transferencias y cierres | [JSON](finance.json) |
+| [Reconstrucción propia](reconditioning.html) | Identificación, costos, unidad vendible, venta y devolución | [JSON](reconditioning.json) |
 
-El modelo agrupado muestra relaciones seleccionadas, sin pretender reemplazar el esquema Prisma. Los carriles de reparación distinguen etapas del trabajo; el cambio de estado de una orden lo realizan oficina/admin. El cierre no implica pago ni aceptación documentada de entrega. En reconstrucción, las conexiones hacia los pasos futuros son discontinuas.
+El mapa agrupado no sustituye las claves y restricciones de [schema.prisma](../../prisma/schema.prisma) y las migraciones SQL. Cerrar una reparación exige pruebas aprobadas y constancia de entrega; no obliga a que la venta esté pagada. Una unidad propia conserva un flujo distinto de las piezas del cliente en custodia.
 
-Se retiraron afirmaciones de los diagramas anteriores que no correspondían al código: `/api/v1`, alojamiento ya activo en Vercel, archivos en Supabase Storage, PDF de Siigo, aplicación de cobros y garantías terminadas. El [informe de revisión](../platform-review-2026-09-11.md) desarrolla esas diferencias y propone el orden de implementación.
+## Inventario de modelos
+
+| Grupo | Modelos |
+| --- | --- |
+| Identidad y equipo | `Member`, `TaskAssignment` |
+| Clientes y activos | `Customer`, `Asset`, `OrderAsset`, `AssetOwnership` |
+| Trabajo | `WorkOrder`, `Observation`, `Task`, `TaskNote`, `TaskPhoto`, `TimeEntry` |
+| Catálogo y sedes | `CatalogItem`, `Location` |
+| Inventario | `StockBalance`, `StockMovement`, `StockReservation`, `StockTransfer`, `InventoryCount`, `SerializedUnit` |
+| Proveedores y compras | `Supplier`, `SupplierOffer`, `Purchase`, `PurchaseLine`, `PurchaseReceipt`, `SupplierPayment` |
+| Cotizaciones y ventas | `Quote`, `QuoteLine`, `Sale`, `SaleLine`, `SaleReturn`, `SaleReturnLine` |
+| Cartera | `CustomerPayment`, `PaymentAllocation` |
+| Costos y calidad | `LaborRate`, `WarrantyCase`, `OrderCheck`, `OrderHandover` |
+| Caja | `MoneyAccount`, `Obligation`, `CashEntry`, `CashClosure`, `RecurringExpense`, `MonthCoverage` |
+| Evidencia y auditoría | `Attachment`, `AuditEvent`, `CommandReceipt` |
 
 ## Verificación
 

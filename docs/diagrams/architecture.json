@@ -75,7 +75,7 @@
       "id": "postgres",
       "type": "database",
       "label": "PostgreSQL privado",
-      "sublabel": "workshop · 22 modelos",
+      "sublabel": "workshop · 47 modelos",
       "pos": [
         1100,
         340
@@ -115,9 +115,9 @@
     },
     {
       "id": "photos",
-      "type": "backend",
-      "label": "Fotos de tareas",
-      "sublabel": "Acceso por asignación y rol",
+      "type": "database",
+      "label": "Storage privado",
+      "sublabel": "Fotos y documentos",
       "pos": [
         730,
         610
@@ -168,7 +168,7 @@
     {
       "from": "photos",
       "to": "postgres",
-      "label": "TaskPhoto · bytea"
+      "label": "Referencias y metadatos"
     }
   ],
   "cards": [
@@ -176,18 +176,18 @@
       "dot": "emerald",
       "title": "Código actual · entorno local",
       "items": [
-        "GET /api/workshop y Server Actions; fotos por API privada",
-        "La sesión no basta: Member define el rol y las asignaciones",
-        "Caja y stock: transacciones, auditoría y reversión"
+        "Consultas paginadas por módulo y comandos con TanStack Query",
+        "Member define el rol; las asignaciones limitan la evidencia técnica",
+        "Ventas, compras, stock y caja conservan compensaciones y auditoría"
       ]
     },
     {
       "dot": "amber",
       "title": "Pendiente de puesta en marcha",
       "items": [
-        "Google real, migraciones remotas y despliegue en Vercel",
-        "La PWA requiere red para operar; APK aún no generada",
-        "Sin conexión con Siigo ni almacenamiento de PDF"
+        "Google y despliegue requieren completar la configuración cloud",
+        "La PWA usa el backend conectado; APK aún no generada",
+        "Los adjuntos se autorizan en servidor; el bucket no es público"
       ]
     }
   ]

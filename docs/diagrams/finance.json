@@ -54,7 +54,7 @@
       "col": 1,
       "type": "security",
       "label": "Validar",
-      "sublabel": "Permisos y saldo"
+      "sublabel": "Saldo y cierre vigente"
     },
     {
       "id": "post",
@@ -78,7 +78,8 @@
       "col": 4,
       "type": "frontend",
       "label": "Consultar caja",
-      "sublabel": "Disponible · Pendientes"
+      "sublabel": "Disponible · Pendientes",
+      "width": 140
     },
     {
       "id": "reverse",
@@ -129,9 +130,9 @@
       "dot": "amber",
       "title": "Qué miden los indicadores",
       "items": [
-        "Trasladar dinero no aumenta entradas/salidas ni el saldo total",
-        "Los pagos se aplican a obligaciones; no hay cartera por cliente",
-        "Caja disponible no equivale a ganancia ni a conciliación bancaria"
+        "Trasladar dinero no aumenta las entradas ni las salidas externas",
+        "Los cobros se aplican a ventas; las compras reciben pagos propios",
+        "Los cierres guardan diferencias y bloquean movimientos anteriores"
       ]
     }
   ]

@@ -46,7 +46,8 @@
       "col": 0,
       "type": "frontend",
       "label": "Recepción",
-      "sublabel": "Cliente y activo"
+      "sublabel": "Cliente · Activo · Constancia",
+      "width": 140
     },
     {
       "id": "diagnose",
@@ -54,7 +55,8 @@
       "col": 1,
       "type": "backend",
       "label": "Diagnóstico",
-      "sublabel": "Problema y autorización"
+      "sublabel": "Problema y autorización",
+      "width": 120
     },
     {
       "id": "execute",
@@ -70,7 +72,7 @@
       "col": 3,
       "type": "security",
       "label": "Revisión",
-      "sublabel": "Tareas terminadas"
+      "sublabel": "Pruebas aprobadas"
     },
     {
       "id": "ready",
@@ -86,7 +88,7 @@
       "col": 5,
       "type": "database",
       "label": "Cierre",
-      "sublabel": "Fecha y versión"
+      "sublabel": "Entrega aceptada"
     }
   ],
   "edges": [
@@ -119,19 +121,20 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "Seguimiento disponible",
+      "title": "Acuerdo y ejecución",
       "items": [
-        "Lista o kanban; detalles, observaciones, fotos e historial",
-        "Mecánicos: tareas asignadas; oficina/admin: gestión de órdenes",
-        "Pausas y correcciones tienen transiciones limitadas y motivo"
+        "La orden consulta la cotización aprobada y la venta vinculada",
+        "Reservas y consumos conservan disponibilidad y costo",
+        "Pruebas técnicas y constancia de entrega permiten cerrar"
       ]
     },
     {
-      "dot": "amber",
-      "title": "Cierre operativo, no liquidación comercial",
+      "dot": "cyan",
+      "title": "Cobro y garantía",
       "items": [
-        "Cerrar no cobra, factura ni registra aceptación de entrega",
-        "Pendientes: cotización, saldo del cliente y garantía vinculada"
+        "La entrega y el pago son operaciones independientes",
+        "Los anticipos se aplican sin volver a sumar dinero a caja",
+        "La garantía conserva venta, activo y orden de origen"
       ]
     }
   ]

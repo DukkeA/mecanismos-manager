@@ -2,7 +2,7 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Mecanismos · Reconstrucción propia: alcance",
+    "title": "Mecanismos · Reconstrucción y venta de unidades",
     "quality_profile": "showcase",
     "legend": {
       "entries": {
@@ -24,11 +24,11 @@
   "lanes": [
     {
       "id": "current",
-      "label": "Disponible"
+      "label": "Taller"
     },
     {
       "id": "pending",
-      "label": "Por implementar"
+      "label": "Oficina / Admin"
     }
   ],
   "mainPath": [
@@ -46,7 +46,8 @@
       "col": 0,
       "type": "frontend",
       "label": "Orden interna",
-      "sublabel": "OWN_REBUILD"
+      "sublabel": "OWN_REBUILD",
+      "width": 120
     },
     {
       "id": "materials",
@@ -70,7 +71,8 @@
       "col": 3,
       "type": "database",
       "label": "Unidad lista",
-      "sublabel": "Serie y costo acumulado"
+      "sublabel": "Serie y costo acumulado",
+      "width": 120
     },
     {
       "id": "sale",
@@ -101,51 +103,35 @@
     {
       "from": "labor",
       "to": "unit",
-      "variant": "dashed",
-      "label": "Falta implementar"
+      "label": "Pruebas y cierre"
     },
     {
       "from": "unit",
-      "to": "sale",
-      "variant": "dashed"
+      "to": "sale"
     },
     {
       "from": "sale",
-      "to": "warranty",
-      "variant": "dashed"
+      "to": "warranty"
     }
   ],
   "cards": [
     {
       "dot": "emerald",
-      "title": "Lo que ya se puede registrar",
+      "title": "Costo antes de vender",
       "items": [
-        "Una orden propia permite seguir el trabajo y los consumos",
-        "Las horas quedan registradas; aún no se valorizan por trabajo"
+        "Código y serie identifican una unidad propia",
+        "Costo del casco más materiales y mano de obra con tarifa vigente",
+        "La orden debe estar cerrada y sus costos completos"
       ]
     },
     {
-      "dot": "amber",
-      "title": "Antes de vender unidades reconstruidas",
+      "dot": "cyan",
+      "title": "Trazabilidad posterior",
       "items": [
-        "Falta identificar cada unidad y convertirla en stock disponible",
-        "Faltan costo de reconstrucción, venta y trazabilidad de garantía"
+        "La venta cambia la unidad de disponible a vendida",
+        "La devolución completa conserva el documento y libera la unidad",
+        "La garantía parte de la venta y crea una orden vinculada"
       ]
-    }
-  ],
-  "phases": [
-    {
-      "id": "available",
-      "label": "Implementado",
-      "fromCol": 0,
-      "toCol": 2
-    },
-    {
-      "id": "planned",
-      "label": "Pendiente",
-      "fromCol": 3,
-      "toCol": 5,
-      "variant": "dashed"
     }
   ]
 }
