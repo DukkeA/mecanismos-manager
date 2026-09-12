@@ -61,6 +61,10 @@ for (const [role, name] of [
     ["/api/attendance?resource=settings", role === "admin"],
     ["/api/team?period=2026-09", role === "admin"],
     ["/api/team?resource=overtime", role === "admin"],
+    ["/api/team?resource=leaves", role === "admin"],
+    ["/api/team?resource=advances", role === "admin"],
+    ["/api/team?resource=vacations", role === "admin"],
+    ["/api/team?resource=payroll&period=2026-09", role === "admin"],
     [
       `/api/team?resource=history&memberId=${snapshot.actorId}`,
       role === "admin",

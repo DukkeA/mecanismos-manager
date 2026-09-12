@@ -322,6 +322,11 @@ export function AttendanceWorkspace({
               <TableCell>{duration(row.workedMinutes)}</TableCell>
               <TableCell className={row.lateMinutes ? "text-destructive" : ""}>
                 {duration(row.lateMinutes)}
+                {row.authorizedMinutes > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Permiso: {duration(row.authorizedMinutes)}
+                  </p>
+                )}
               </TableCell>
               <TableCell>{duration(row.extraMinutes)}</TableCell>
               {team && (
@@ -370,7 +375,7 @@ export function AttendanceWorkspace({
       </div>
       {query.data && (
         <p className="border-t pt-4 text-sm text-muted-foreground">
-          Horario del equipo: {timeOfDay(query.data.settings.startMinute)}–
+          Lunes a viernes: {timeOfDay(query.data.settings.startMinute)}–
           {timeOfDay(query.data.settings.endMinute)} · Tolerancia:{" "}
           {query.data.settings.graceMinutes} min. Administración puede cambiarlo
           en Configuración.

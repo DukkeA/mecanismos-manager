@@ -4,7 +4,7 @@ Aplicación interna de Mecanismos Técnicos SAS. Bogotá, COP, dos sedes.
 
 ## Estado
 
-Disponible para pruebas locales: cotizaciones, ventas, cartera, compras, inventario, órdenes, tareas, garantías, unidades propias, costos y control de caja. Incluye 53 modelos privados, 17 migraciones locales y cinco diagramas Archify. Los datos ficticios persisten en Docker. Con los accesos locales habilitados, `/login` permite elegir administración, oficina o mecánico; `/` valida la sesión y `/demo` redirige a este flujo.
+Disponible para pruebas locales: cotizaciones, ventas, cartera, compras, inventario, órdenes, tareas, garantías, unidades propias, costos y control de caja. Incluye 58 modelos privados, 19 migraciones locales y cinco diagramas Archify. Los datos ficticios persisten en Docker. Con los accesos locales habilitados, `/login` permite elegir administración, oficina o mecánico; `/` valida la sesión y `/demo` redirige a este flujo.
 
 **El acceso remoto sigue pendiente**: Google, credenciales y Storage de producción, despliegue HTTPS e instalación PWA deben comprobarse antes de usarla como registro principal. El [estado de implementación](docs/implementation-status.md) detalla resultados y límites; el [manual del piloto](docs/pilot-runbook.md) contiene recorridos de prueba, preparación de datos y recuperación. Los [diagramas](docs/diagrams/README.md) describen la arquitectura y los registros internos; los [recorridos simplificados](docs/workflows-simplified.md) describen la navegación y las acciones actuales.
 
@@ -15,7 +15,7 @@ Requisitos: Node 24, pnpm 11.5.2 y Docker.
 1. `pnpm install`
 2. `pnpm dlx supabase@2.116.0 start -x realtime,imgproxy,studio,edge-runtime,logflare,vector,supavisor`
 3. `pnpm dlx supabase@2.116.0 migration up --local` y `node scripts/setup-local.mjs` para aplicar migraciones y crear `.env.local` con el rol local dedicado. Conserva archivos existentes; no imprime secretos.
-4. `pnpm db:generate`, `pnpm db:seed:local`, `pnpm db:storage:local`, `pnpm db:migrate:photos:local`, `pnpm db:seed:commerce`, `pnpm db:seed:control`, `pnpm db:seed:team` y `pnpm db:seed:supports`.
+4. `pnpm db:generate`, `pnpm db:seed:local`, `pnpm db:storage:local`, `pnpm db:migrate:photos:local`, `pnpm db:seed:commerce`, `pnpm db:seed:control`, `pnpm db:seed:team`, `pnpm db:seed:attendance`, `pnpm db:seed:benefits` y `pnpm db:seed:supports`.
 5. `pnpm test` y `pnpm typecheck`
 6. `node scripts/verify-db.mjs` y `pnpm test:integration`
 7. `pnpm dev`, abrir http://localhost:3100/login
@@ -41,3 +41,5 @@ El proyecto remoto Supabase es `msocvkzvrwpsdlwzsrin`, en Dukke. Su creación se
 La organización de Inventario, vehículos y componentes, salarios y horas extra está documentada en [Inventario y Equipo](docs/inventory-and-team.md). Esta ampliación y su migración se aplicaron solo en local.
 
 Bonos fijos, asistencia por QR y resultados por producto: [uso, cálculos y configuración pendiente](docs/bonuses-attendance-and-results.md). Carga local adicional: `pnpm db:seed:attendance`.
+
+Permisos con descuento salarial o de vacaciones, anticipos en cuotas y horario de sábado: [uso y cálculos](docs/employee-permissions-and-advances.md). Seed adicional: `pnpm db:seed:benefits`.

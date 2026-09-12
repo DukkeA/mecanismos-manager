@@ -315,22 +315,62 @@ it("changes future schedule snapshots only and rejects stale settings edits", as
     requestId: uuid(),
     memberId: office.id,
     locationId,
-    startedAt: "2026-08-08T09:03:00-05:00",
-    endedAt: "2026-08-08T17:00:00-05:00",
+    startedAt: "2026-08-10T09:03:00-05:00",
+    endedAt: "2026-08-10T17:00:00-05:00",
     breakMinutes: 0,
     note: "Nuevo horario para futuras marcaciones",
   });
   const shift = await db().attendanceShift.findUniqueOrThrow({
     where: { id: created.id },
   });
-  expect(shift.expectedStart?.toISOString()).toBe("2026-08-08T14:00:00.000Z");
+  expect(shift.expectedStart?.toISOString()).toBe("2026-08-10T14:00:00.000Z");
   expect(shift.breakMinutes).toBe(0);
   expect(
     (
       await attendancePage(
         office,
-        new URLSearchParams({ from: "2026-08-08", to: "2026-08-08" }),
+        new URLSearchParams({ from: "2026-08-10", to: "2026-08-10" }),
       )
     ).rows[0].lateMinutes,
   ).toBe(0);
+});
+
+it("uses the separate Saturday schedule and leaves Sunday unscheduled", async () => {
+  const settings = await workshopSettings();
+  await saveWorkshopSettings(admin, {
+    requestId: uuid(),
+    version: settings.version,
+    start: "08:30",
+    end: "17:00",
+    saturdayStart: "08:00",
+    saturdayEnd: "12:00",
+    graceMinutes: 0,
+  });
+  const saturday = await correctAttendance(admin, {
+    requestId: uuid(),
+    memberId: office.id,
+    locationId,
+    startedAt: "2026-08-15T08:00:00-05:00",
+    endedAt: "2026-08-15T12:00:00-05:00",
+    breakMinutes: 0,
+    note: "Jornada del sábado registrada",
+  });
+  const shift = await db().attendanceShift.findUniqueOrThrow({
+    where: { id: saturday.id },
+  });
+  expect(shift.expectedStart?.toISOString()).toBe("2026-08-15T13:00:00.000Z");
+  expect(shift.expectedEnd?.toISOString()).toBe("2026-08-15T17:00:00.000Z");
+  const sunday = await correctAttendance(admin, {
+    requestId: uuid(),
+    memberId: office.id,
+    locationId,
+    startedAt: "2026-08-16T09:00:00-05:00",
+    endedAt: "2026-08-16T11:00:00-05:00",
+    breakMinutes: 0,
+    note: "Trabajo ocasional el domingo",
+  });
+  expect(
+    (await db().attendanceShift.findUniqueOrThrow({ where: { id: sunday.id } }))
+      .expectedStart,
+  ).toBeNull();
 });

@@ -19,6 +19,7 @@
     "db:storage:local": "node scripts/setup-local-storage.mjs",
     "db:seed:commerce": "node --conditions=react-server --import tsx scripts/local-job.ts commerce",
     "db:seed:attendance": "node --conditions=react-server --import tsx scripts/local-job.ts attendance",
+    "db:seed:benefits": "node --conditions=react-server --import tsx scripts/local-job.ts benefits",
     "db:seed:team": "node --conditions=react-server --import tsx scripts/local-job.ts team",
     "db:seed:control": "node --conditions=react-server --import tsx scripts/local-job.ts control",
     "db:seed:supports": "node --conditions=react-server --import tsx scripts/local-job.ts supports",

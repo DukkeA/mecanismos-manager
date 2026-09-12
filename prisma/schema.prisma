@@ -900,14 +900,95 @@ model AttendanceStation {
 }
 
 model WorkshopSettings {
-  id           String   @id @db.VarChar(20)
-  version      Int      @default(1)
-  startMinute  Int      @default(510)
-  endMinute    Int      @default(1020)
-  graceMinutes Int      @default(0)
-  actorId      String?  @db.Uuid
-  updatedAt    DateTime @default(now()) @db.Timestamptz(3)
+  id                  String   @id @db.VarChar(20)
+  version             Int      @default(1)
+  startMinute         Int      @default(510)
+  endMinute           Int      @default(1020)
+  saturdayStartMinute Int      @default(480)
+  saturdayEndMinute   Int      @default(720)
+  graceMinutes        Int      @default(0)
+  actorId             String?  @db.Uuid
+  updatedAt           DateTime @default(now()) @db.Timestamptz(3)
 
+  @@schema("workshop")
+}
+
+model EmployeeLeave {
+  id         String             @id @default(uuid()) @db.Uuid
+  memberId   String             @db.Uuid
+  treatment  String             @db.VarChar(20)
+  startsAt   DateTime           @db.Timestamptz(3)
+  endsAt     DateTime           @db.Timestamptz(3)
+  note       String             @db.VarChar(1000)
+  actorId    String             @db.Uuid
+  createdAt  DateTime           @default(now()) @db.Timestamptz(3)
+  voidedAt   DateTime?          @db.Timestamptz(3)
+  voidReason String?            @db.VarChar(1000)
+  days       EmployeeLeaveDay[]
+
+  @@index([memberId, startsAt])
+  @@schema("workshop")
+}
+
+model EmployeeLeaveDay {
+  id              String        @id @default(uuid()) @db.Uuid
+  leaveId         String        @db.Uuid
+  leave           EmployeeLeave @relation(fields: [leaveId], references: [id])
+  workedOn        DateTime      @db.Date
+  startsAt        DateTime      @db.Timestamptz(3)
+  endsAt          DateTime      @db.Timestamptz(3)
+  minutes         Int
+  vacationDays    Decimal       @db.Decimal(10, 4)
+  salaryDeduction Decimal       @db.Decimal(18, 2)
+  rateId          String?       @db.Uuid
+
+  @@unique([leaveId, workedOn])
+  @@index([workedOn])
+  @@schema("workshop")
+}
+
+model VacationAdjustment {
+  id        String   @id @default(uuid()) @db.Uuid
+  memberId  String   @db.Uuid
+  days      Decimal  @db.Decimal(10, 4)
+  note      String   @db.VarChar(1000)
+  actorId   String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([memberId, createdAt])
+  @@schema("workshop")
+}
+
+model SalaryAdvance {
+  id           String               @id @default(uuid()) @db.Uuid
+  memberId     String               @db.Uuid
+  entryId      String               @unique @db.Uuid
+  amount       Decimal              @db.Decimal(18, 2)
+  disbursedOn  DateTime             @db.Date
+  note         String               @db.VarChar(1000)
+  version      Int                  @default(1)
+  actorId      String               @db.Uuid
+  createdAt    DateTime             @default(now()) @db.Timestamptz(3)
+  voidedAt     DateTime?            @db.Timestamptz(3)
+  voidReason   String?              @db.VarChar(1000)
+  installments AdvanceInstallment[]
+
+  @@index([memberId, disbursedOn])
+  @@schema("workshop")
+}
+
+model AdvanceInstallment {
+  id          String        @id @default(uuid()) @db.Uuid
+  advanceId   String        @db.Uuid
+  advance     SalaryAdvance @relation(fields: [advanceId], references: [id])
+  period      String        @db.VarChar(7)
+  amount      Decimal       @db.Decimal(18, 2)
+  appliedOn   DateTime?     @db.Date
+  appliedBy   String?       @db.Uuid
+  cancelledAt DateTime?     @db.Timestamptz(3)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@index([period, advanceId])
   @@schema("workshop")
 }
 

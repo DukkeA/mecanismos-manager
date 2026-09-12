@@ -8,7 +8,23 @@ import {
 import { DomainError } from "@/domain/errors";
 import { AccessDenied } from "@/domain/permissions";
 import { ZodError } from "zod";
+import {
+  recordLeave,
+  voidLeave,
+  adjustVacation,
+  recordSalaryAdvance,
+  rescheduleAdvance,
+  applyAdvanceInstallment,
+  voidSalaryAdvance,
+} from "@/server/employee-benefits-service";
 const actions = {
+  leave: recordLeave,
+  "leave-void": voidLeave,
+  vacation: adjustVacation,
+  advance: recordSalaryAdvance,
+  "advance-plan": rescheduleAdvance,
+  "advance-deduction": applyAdvanceInstallment,
+  "advance-void": voidSalaryAdvance,
   compensation: saveCompensation,
   overtime: recordOvertime,
   "overtime-void": voidOvertime,

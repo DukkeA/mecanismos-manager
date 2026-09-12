@@ -12,7 +12,7 @@ export const useTeam = () =>
   useWorkshopQuery((data) => data.operations.members);
 export const useTeamMutation = () => useOperationMutation("team");
 
-function useTeamRequest<T>(params: URLSearchParams, enabled = true) {
+export function useTeamRequest<T>(params: URLSearchParams, enabled = true) {
   const { actorId, demo } = useWorkshopScope();
   return useQuery({
     queryKey: ["team", actorId, params.toString()],
@@ -62,8 +62,9 @@ export function useTeamCommand() {
     },
     onSuccess: async () => {
       await Promise.all([
-        ...["team", "records", "control"].map((feature) =>
-          client.invalidateQueries({ queryKey: [feature, actorId] }),
+        ...["team", "records", "control", "cash", "attendance", "reports"].map(
+          (feature) =>
+            client.invalidateQueries({ queryKey: [feature, actorId] }),
         ),
         client.invalidateQueries({ queryKey: snapshotKey(actorId) }),
       ]);

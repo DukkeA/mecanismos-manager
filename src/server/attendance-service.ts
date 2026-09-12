@@ -1,3 +1,4 @@
+import { scheduleForDate } from "@/domain/workshop-settings";
 import "server-only";
 import {
   createHash,
@@ -159,18 +160,23 @@ export async function saveStation(actor: Actor, raw: unknown) {
   });
 }
 async function expected(tx: Tx, date: string) {
-  const s = await tx.workshopSettings.findUniqueOrThrow({
+  const settings = await tx.workshopSettings.findUniqueOrThrow({
     where: { id: "global" },
   });
+  const s = scheduleForDate(settings, date);
+  if (!s)
+    return {
+      expectedStart: null,
+      expectedEnd: null,
+      breakMinutes: 0,
+      graceMinutes: settings.graceMinutes,
+    };
   const midnight = new Date(`${date}T00:00:00-05:00`).getTime();
   return {
     expectedStart: new Date(midnight + s.startMinute * 60000),
-    expectedEnd: new Date(
-      midnight +
-        (s.endMinute + (s.endMinute < s.startMinute ? 1440 : 0)) * 60000,
-    ),
+    expectedEnd: new Date(midnight + s.endMinute * 60000),
     breakMinutes: 0,
-    graceMinutes: s.graceMinutes,
+    graceMinutes: settings.graceMinutes,
   };
 }
 async function noOverlap(

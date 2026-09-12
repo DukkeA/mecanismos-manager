@@ -23,6 +23,8 @@ function ScheduleForm({ settings }: { settings: WorkshopSettings }) {
               version: settings.version,
               start: values.get("start"),
               end: values.get("end"),
+              saturdayStart: values.get("saturdayStart"),
+              saturdayEnd: values.get("saturdayEnd"),
               graceMinutes: values.get("graceMinutes"),
             },
           });
@@ -34,7 +36,7 @@ function ScheduleForm({ settings }: { settings: WorkshopSettings }) {
     >
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
-          <Label htmlFor="global-start">Hora de entrada</Label>
+          <Label htmlFor="global-start">Entrada · lunes a viernes</Label>
           <Input
             id="global-start"
             name="start"
@@ -44,7 +46,7 @@ function ScheduleForm({ settings }: { settings: WorkshopSettings }) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="global-end">Hora de salida</Label>
+          <Label htmlFor="global-end">Salida · lunes a viernes</Label>
           <Input
             id="global-end"
             name="end"
@@ -67,14 +69,38 @@ function ScheduleForm({ settings }: { settings: WorkshopSettings }) {
           />
         </div>
       </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-2">
+          <Label htmlFor="saturday-start">Entrada · sábado</Label>
+          <Input
+            id="saturday-start"
+            name="saturdayStart"
+            type="time"
+            required
+            defaultValue={timeOfDay(settings.saturdayStartMinute)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="saturday-end">Salida · sábado</Label>
+          <Input
+            id="saturday-end"
+            name="saturdayEnd"
+            type="time"
+            required
+            defaultValue={timeOfDay(settings.saturdayEndMinute)}
+          />
+        </div>
+      </div>
       <p className="text-sm text-muted-foreground">
-        Se aplica a todo el equipo. Se registra la entrada y la salida, sin
-        descontar almuerzo. Los cambios se aplican a las jornadas que se
-        registren después de guardar; las anteriores conservan su horario.
+        Se aplica a todo el equipo de lunes a sábado. Los domingos no tienen
+        jornada programada. Se registra la entrada y la salida, sin descontar
+        almuerzo. Los cambios se aplican a las jornadas que se registren después
+        de guardar; las anteriores conservan su horario.
       </p>
       <p className="text-sm text-muted-foreground">
         La tolerancia evita marcar retrasos dentro de ese margen. Al superarlo,
-        se cuenta el retraso completo desde la hora de entrada.
+        se cuenta desde la hora de entrada, excluyendo el tiempo cubierto por
+        permisos autorizados.
       </p>
       {command.error && (
         <p role="alert" className="text-destructive">

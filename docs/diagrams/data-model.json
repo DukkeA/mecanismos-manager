@@ -31,8 +31,8 @@
   "components": [
     {
       "id": "identity",
-      "label": "Equipo y jornadas",
-      "sublabel": "Salarios · Bonos · Asistencia",
+      "label": "Equipo y permisos",
+      "sublabel": "Salarios · Jornada · Vacaciones",
       "type": "security",
       "pos": [
         18,
@@ -129,8 +129,8 @@
     },
     {
       "id": "cash",
-      "label": "Caja y control mensual",
-      "sublabel": "Cuentas · Cierres · Obligaciones",
+      "label": "Caja y anticipos",
+      "sublabel": "Cuentas · Cuotas · Obligaciones",
       "type": "database",
       "pos": [
         1044,
@@ -264,20 +264,20 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "53 modelos en el esquema privado",
+      "title": "58 modelos en el esquema privado",
       "items": [
         "Flechas de dominio seleccionadas; consultar Prisma y SQL para todas las claves",
         "Las líneas comerciales conservan precio, descripción y condiciones acordadas",
-        "WorkshopSettings define el horario; cada AttendanceShift conserva su copia"
+        "WorkshopSettings separa sábado; cada jornada y permiso conserva su cálculo"
       ]
     },
     {
       "dot": "cyan",
       "title": "Registros que se conservan",
       "items": [
-        "Salarios por vigencia y bonos conservan el costo del trabajo",
-        "Storage conserva binarios; PostgreSQL guarda acceso, referencias y metadatos",
-        "AttendanceStation vincula pantallas QR; AttendanceScan registra su uso"
+        "EmployeeLeaveDay conserva horas, vacaciones y descuento por fecha",
+        "VacationAdjustment conserva saldos iniciales y correcciones manuales",
+        "SalaryAdvance registra el desembolso; AdvanceInstallment distribuye los descuentos"
       ]
     }
   ]

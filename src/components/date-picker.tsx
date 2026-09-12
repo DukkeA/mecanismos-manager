@@ -10,7 +10,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format, isValid, parseISO, startOfMonth, subDays } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { DateRange } from "react-day-picker";
 
@@ -32,6 +32,104 @@ const labels = {
   ) =>
     `${modifiers.today ? "Hoy, " : ""}${format(date, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}${modifiers.selected ? ", seleccionado" : ""}`,
 };
+
+export function MonthField({
+  id,
+  value,
+  onChange,
+  label = "Mes",
+}: {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
+}) {
+  const draft = useFormSheet(),
+    [open, setOpen] = useState(false);
+  const current = parse(`${value}-01`),
+    [year, setYear] = useState(
+      current?.getFullYear() ?? new Date().getFullYear(),
+    );
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setYear(current?.getFullYear() ?? new Date().getFullYear());
+        setOpen(next);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="input"
+          className="w-full min-w-0 justify-start"
+          aria-label={`${label}: ${current ? format(current, "MMMM yyyy", { locale: es }) : "Seleccionar mes"}`}
+        >
+          <CalendarDays className="shrink-0" />
+          <span className="truncate">
+            {current
+              ? format(current, "MMM yyyy", { locale: es })
+              : "Elegir mes"}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        collisionPadding={12}
+        className="w-72 space-y-3 p-3"
+      >
+        <div className="flex items-center justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Año anterior"
+            disabled={year <= 1900}
+            onClick={() => setYear((v) => v - 1)}
+          >
+            <ChevronLeft />
+          </Button>
+          <span className="font-semibold tabular-nums" aria-live="polite">
+            {year}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Año siguiente"
+            disabled={year >= 2200}
+            onClick={() => setYear((v) => v + 1)}
+          >
+            <ChevronRight />
+          </Button>
+        </div>
+        <div className="grid grid-cols-3 gap-1">
+          {Array.from({ length: 12 }, (_, month) => {
+            const date = new Date(year, month, 1),
+              next = `${year}-${String(month + 1).padStart(2, "0")}`;
+            return (
+              <Button
+                key={month}
+                type="button"
+                variant={next === value ? "default" : "ghost"}
+                aria-pressed={next === value}
+                aria-label={format(date, "MMMM yyyy", { locale: es })}
+                onClick={() => {
+                  draft.change();
+                  onChange(next);
+                  setOpen(false);
+                }}
+              >
+                {format(date, "MMM", { locale: es })}
+              </Button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function DateRangePicker({
   from,

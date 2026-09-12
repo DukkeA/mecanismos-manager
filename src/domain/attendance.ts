@@ -8,11 +8,17 @@ export function attendanceMetrics(s: {
   expectedEnd: string | Date | null;
   breakMinutes: number;
   graceMinutes: number;
+  excusedLateMinutes?: number;
 }) {
   const start = new Date(s.startedAt).getTime(),
     planned = s.expectedStart ? new Date(s.expectedStart).getTime() : null;
   const delay =
-    planned === null ? null : Math.max(0, Math.ceil((start - planned) / 60000));
+    planned === null
+      ? null
+      : Math.max(
+          0,
+          Math.ceil((start - planned) / 60000) - (s.excusedLateMinutes ?? 0),
+        );
   const lateMinutes =
     delay === null ? null : delay > s.graceMinutes ? delay : 0;
   const workedMinutes = s.endedAt
@@ -52,6 +58,8 @@ export type AttendanceRow = {
   expectedEnd: string | null;
   breakMinutes: number;
   graceMinutes: number;
+  excusedLateMinutes: number;
+  authorizedMinutes: number;
   source: string;
   note: string;
   lateMinutes: number | null;
