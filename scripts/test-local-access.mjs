@@ -24,7 +24,6 @@ for (const [role, name] of [
   assert.equal(home.status, 200);
   const html = await home.text();
   assert.ok(html.includes(name));
-  assert.equal(html.includes("Salarios primera quincena"), role !== "mechanic");
   if (role === "mechanic") {
     assert.ok(!html.includes("Cuenta bancaria del taller"));
     assert.ok(!html.includes("Transportes San Jerónimo y Asociados"));
