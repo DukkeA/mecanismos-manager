@@ -19,7 +19,7 @@ import { pageNumber, isDateKey } from "@/domain/list-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 export { inDates, matches } from "@/domain/list-query";
-export { DateField, DateRangePicker } from "./date-picker";
+export { DateField, DateRangePicker, MonthField } from "./date-picker";
 
 export function useQueryState(key: string, fallback = "") {
   const params = useSearchParams();

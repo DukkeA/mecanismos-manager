@@ -120,7 +120,9 @@ export function CashPanel({
           : "Transferencia recibida"
       : e.kind === "REVERSAL"
         ? "Reversión"
-        : cashKinds[e.kind as keyof typeof cashKinds]?.label;
+        : e.kind === "SALARY_ADVANCE"
+          ? "Anticipo de salario"
+          : cashKinds[e.kind as keyof typeof cashKinds]?.label;
   const cashForm: Dialog = {
     kind: "cash",
     title: "Registrar entrada o salida",
@@ -382,7 +384,23 @@ export function CashPanel({
                 ? [{ label: "Completar datos", run: () => linkPayment(e) }]
                 : []),
               ...(role === "ADMIN" && !e.reversed && e.kind !== "REVERSAL"
-                ? [{ label: "Revertir", danger: true, run: () => reverse(e) }]
+                ? [
+                    e.kind === "SALARY_ADVANCE"
+                      ? {
+                          label: "Ver anticipos",
+                          run: () =>
+                            window.history.pushState(
+                              null,
+                              "",
+                              "?view=Equipo&teamTab=advances",
+                            ),
+                        }
+                      : {
+                          label: "Revertir",
+                          danger: true,
+                          run: () => reverse(e),
+                        },
+                  ]
                 : []),
             ]}
           />
@@ -424,7 +442,23 @@ export function CashPanel({
                 ? [{ label: "Completar datos", run: () => linkPayment(e) }]
                 : []),
               ...(role === "ADMIN" && !e.reversed && e.kind !== "REVERSAL"
-                ? [{ label: "Revertir", danger: true, run: () => reverse(e) }]
+                ? [
+                    e.kind === "SALARY_ADVANCE"
+                      ? {
+                          label: "Ver anticipos",
+                          run: () =>
+                            window.history.pushState(
+                              null,
+                              "",
+                              "?view=Equipo&teamTab=advances",
+                            ),
+                        }
+                      : {
+                          label: "Revertir",
+                          danger: true,
+                          run: () => reverse(e),
+                        },
+                  ]
                 : []),
             ]}
           />

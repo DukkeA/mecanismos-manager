@@ -40,35 +40,48 @@ import {
   useTeamCommand,
   useTeamOverview,
 } from "./hooks";
+import { BenefitsWorkspace } from "./benefits-workspace";
 import { CompensationSheet } from "./compensation-sheet";
 import { OvertimeForm } from "./overtime-form";
 import type { OperationsView } from "@/domain/operations-view";
 
 export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
   const params = useSearchParams();
-  if (params.get("teamTab") === "attendance")
-    return (
-      <div className="workspace-tabs flex flex-col gap-5">
-        <Tabs
-          value="attendance"
-          onValueChange={(value) =>
-            window.history.pushState(null, "", `?view=Equipo&teamTab=${value}`)
-          }
-        >
-          <TabsList aria-label="Equipo">
-            <TabsTrigger value="people">Personal y salarios</TabsTrigger>
-            <TabsTrigger value="overtime">Bonos y horas extra</TabsTrigger>
-            <TabsTrigger value="attendance">Asistencia</TabsTrigger>
-          </TabsList>
-        </Tabs>
+  const tab = params.get("teamTab") ?? "people";
+  return (
+    <div className="workspace-tabs flex flex-col gap-5">
+      <Tabs
+        value={tab}
+        onValueChange={(value) =>
+          window.history.pushState(null, "", `?view=Equipo&teamTab=${value}`)
+        }
+      >
+        <TabsList aria-label="Equipo">
+          <TabsTrigger value="people">Personal y salarios</TabsTrigger>
+          <TabsTrigger value="overtime">Bonos y horas extra</TabsTrigger>
+          <TabsTrigger value="attendance">Asistencia</TabsTrigger>
+          <TabsTrigger value="leaves">Permisos</TabsTrigger>
+          <TabsTrigger value="advances">Anticipos</TabsTrigger>
+          <TabsTrigger value="payroll">Pago del mes</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {tab === "attendance" ? (
         <AttendanceWorkspace
           team
           members={props.data.members}
           locations={props.locations}
         />
-      </div>
-    );
-  return <TeamCosts {...props} />;
+      ) : ["leaves", "advances", "payroll"].includes(tab) ? (
+        <BenefitsWorkspace
+          key={tab}
+          tab={tab as "leaves" | "advances" | "payroll"}
+          data={props.data}
+        />
+      ) : (
+        <TeamCosts {...props} />
+      )}
+    </div>
+  );
 }
 function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
   const params = useSearchParams(),
@@ -119,18 +132,6 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
   }
   return (
     <div className="workspace-tabs flex flex-col gap-5">
-      <Tabs
-        value={tab}
-        onValueChange={(value) =>
-          window.history.pushState(null, "", `?view=Equipo&teamTab=${value}`)
-        }
-      >
-        <TabsList aria-label="Equipo">
-          <TabsTrigger value="people">Personal y salarios</TabsTrigger>
-          <TabsTrigger value="overtime">Bonos y horas extra</TabsTrigger>
-          <TabsTrigger value="attendance">Asistencia</TabsTrigger>
-        </TabsList>
-      </Tabs>
       {overview.isPending ? (
         <Skeleton className="h-28" />
       ) : overview.isError ? (
