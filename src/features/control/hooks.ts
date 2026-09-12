@@ -79,3 +79,22 @@ export function useManagementReport(from?: string, to?: string) {
     },
   });
 }
+
+export function useProductResults(params: URLSearchParams) {
+  const { actorId, demo } = useWorkshopScope();
+  return useQuery({
+    queryKey: ["control", actorId, "products", params.toString()],
+    enabled: !demo,
+    queryFn: async ({ signal }) => {
+      const r = await fetch(`/api/reports?resource=products&${params}`, {
+        signal,
+        cache: "no-store",
+      });
+      if (!r.ok)
+        throw Error("No se pudieron consultar los productos y servicios.");
+      return r.json() as Promise<
+        import("@/domain/product-results").ProductResults
+      >;
+    },
+  });
+}

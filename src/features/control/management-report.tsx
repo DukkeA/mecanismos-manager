@@ -1,4 +1,5 @@
 "use client";
+import { ProductResults } from "./product-results";
 import { useManagementReport } from "./hooks";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
@@ -39,6 +40,7 @@ export function ManagementReport({ from, to }: { from?: string; to?: string }) {
       className="space-y-5 border-b pb-5"
       aria-label="Resultados y garantías"
     >
+      <ProductResults from={from} to={to} />
       <div>
         <h3 className="font-semibold">Ventas que regresan por garantía</h3>
         <p className="text-sm text-muted-foreground">
@@ -105,7 +107,8 @@ export function ManagementReport({ from, to }: { from?: string; to?: string }) {
           hours: { label: "Horas registradas", color: "var(--chart-1)" },
         }}
       >
-        <BarChart layout="vertical"
+        <BarChart
+          layout="vertical"
           data={team.map((m) => ({
             ...m,
             hours: Number((m.minutes / 60).toFixed(1)),
@@ -114,7 +117,14 @@ export function ManagementReport({ from, to }: { from?: string; to?: string }) {
         >
           <CartesianGrid vertical={false} />
           <XAxis type="number" tickLine={false} axisLine={false} />
-          <YAxis type="category" dataKey="label" width={100} tickLine={false} axisLine={false} fontSize={11} />
+          <YAxis
+            type="category"
+            dataKey="label"
+            width={100}
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+          />
           <ChartTooltip content={<ChartTooltipContent />} />
           <Bar
             dataKey="hours"

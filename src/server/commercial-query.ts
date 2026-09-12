@@ -154,7 +154,12 @@ export async function commercialPage(
           customer: true,
           order: true,
           lines: { include: { returnLines: true } },
-          allocations: true,
+          allocations: {
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            include: {
+              payment: { include: { entry: { include: { account: true } } } },
+            },
+          },
           returns: true,
         },
       }),
@@ -184,6 +189,16 @@ export async function commercialPage(
         orderNumber: r.order?.number,
         terms: r.terms,
         invoiceReference: r.invoiceReference,
+        paymentHistory: r.allocations.map((a) => ({
+          id: a.id,
+          date: a.createdAt.toISOString(),
+          receivedOn: textDate(a.payment.entry.occurredOn),
+          amount: a.amount.toFixed(2),
+          account: a.payment.entry.account.name,
+          reference: a.payment.entry.reference,
+          note: a.note,
+          reversal: !!a.reversalOfId,
+        })),
         lines: r.lines.map((l) => ({
           ...plain<CommercialLine>(l),
           returnedQuantity: l.returnLines

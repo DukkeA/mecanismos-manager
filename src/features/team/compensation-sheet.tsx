@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle } from "@/components/ui/alert";
-import { useCompensationHistory, useTeamCommand } from "./hooks";
+import { useCompensationHistory, useTeamMutation } from "./hooks";
 import type { OperationsView } from "@/domain/operations-view";
 import { todayInBogota, cop } from "@/features/cash/summary";
 import { dateLabel } from "@/components/workshop-controls";
@@ -24,7 +24,7 @@ export function CompensationSheet({
   history: ReturnType<typeof useCompensationHistory>;
   onClose: () => void;
 }) {
-  const command = useTeamCommand();
+  const command = useTeamMutation();
   const latest = history.data?.[0];
   let nextDate = todayInBogota();
   if (latest && latest.effectiveOn >= nextDate) {
@@ -41,7 +41,7 @@ export function CompensationSheet({
     >
       <SheetContent className="dossier-sheet">
         <SheetHeader>
-          <SheetTitle>Salario de {member?.name}</SheetTitle>
+          <SheetTitle>Editar empleado</SheetTitle>
           <SheetDescription>
             El costo por hora se obtiene del salario y los costos adicionales,
             divididos entre las horas mensuales.
@@ -61,21 +61,36 @@ export function CompensationSheet({
                 dialog={{
                   kind: "compensation",
                   title: "Salario mensual",
-                  submitLabel: "Guardar salario",
+                  submitLabel: "Guardar cambios",
                   extra: {
-                    memberId: member.id,
+                    ...member,
                     monthlySalary: latest?.monthlySalary ?? "",
                     monthlyEmployerCost: latest?.monthlyEmployerCost ?? "0",
                     monthlyHours: latest?.monthlyHours ?? "210",
                     effectiveOn: nextDate,
                   },
                   fields: [
+                    { key: "name", label: "Nombre" },
+                    { key: "email", label: "Correo", type: "email" },
+                    {
+                      key: "role",
+                      label: "Rol",
+                      type: "select",
+                      options: [
+                        { id: "ADMIN", label: "Administrador" },
+                        { id: "OFFICE", label: "Oficina" },
+                        { id: "MECHANIC", label: "Mecánico" },
+                      ],
+                    },
                     {
                       key: "monthlySalary",
                       label: "Salario mensual (COP)",
+                      optional: !latest,
                       type: "money",
                       allowZero: true,
-                      hint: "Usa 0 si la persona no recibe salario fijo.",
+                      hint: latest
+                        ? "Usa 0 si la persona no recibe salario fijo."
+                        : "Puedes dejarlo pendiente. Usa 0 si no recibe salario fijo.",
                     },
                     {
                       key: "monthlyEmployerCost",
@@ -97,15 +112,48 @@ export function CompensationSheet({
                     },
                     {
                       key: "note",
-                      label: "Motivo u observaciones",
+                      label: "Motivo del cambio salarial",
+                      optional: true,
+                      hint: "Obligatorio si cambias el salario o sus costos.",
                       type: "textarea",
                     },
                   ],
                 }}
                 submit={async (input) => {
-                  await command.mutateAsync({ kind: "compensation", input });
+                  const changed =
+                    String(input.monthlySalary ?? "").trim() !== "" &&
+                    [
+                      "monthlySalary",
+                      "monthlyEmployerCost",
+                      "monthlyHours",
+                    ].some(
+                      (key) =>
+                        Number(input[key]) !==
+                        Number(latest?.[key as "monthlySalary"] ?? -1),
+                    );
+                  await command.mutateAsync({
+                    kind: "member",
+                    input: {
+                      id: member.id,
+                      name: input.name,
+                      email: input.email,
+                      role: input.role,
+                      active: member.active,
+                      ...(changed
+                        ? {
+                            compensation: {
+                              monthlySalary: input.monthlySalary,
+                              monthlyEmployerCost: input.monthlyEmployerCost,
+                              monthlyHours: input.monthlyHours,
+                              effectiveOn: input.effectiveOn,
+                              note: input.note,
+                            },
+                          }
+                        : {}),
+                    },
+                  });
                   onClose();
-                  toast.success("Salario guardado.");
+                  toast.success("Empleado actualizado.");
                 }}
               />
               <section className="mx-6 mb-6 border-t pt-5">

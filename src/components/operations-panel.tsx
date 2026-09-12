@@ -1,5 +1,6 @@
 "use client";
 import { ContactActions } from "@/features/contacts/contact-actions";
+import { RowActions } from "@/components/row-actions";
 import { ItemDetail } from "@/features/inventory/item-detail";
 import { FormSheet } from "@/components/form-sheet";
 import { DataTable } from "./data-table";
@@ -432,6 +433,36 @@ export function OperationsPanel({
     );
   };
 
+  function itemActions(id: string) {
+    const item = source.items.find((i) => i.id === id);
+    return [
+      { label: "Ver detalle", run: () => setSelectedItemId(id) },
+      ...(item
+        ? [
+            {
+              label: "Editar",
+              run: () =>
+                setDialog({
+                  ...(item.kind === "SERVICE" ? serviceForm : itemForm),
+                  title:
+                    item.kind === "SERVICE"
+                      ? "Editar servicio"
+                      : "Editar repuesto",
+                  extra: { ...item },
+                }),
+            },
+          ]
+        : []),
+      ...(item?.kind === "PART"
+        ? [
+            {
+              label: "Registrar movimiento",
+              run: () => setDialog({ ...stockForm, extra: { itemId: id } }),
+            },
+          ]
+        : []),
+    ];
+  }
   return (
     <section className="operations-page" aria-labelledby="operations-title">
       <div className="operations-heading">
@@ -760,44 +791,39 @@ export function OperationsPanel({
                   </Badge>
                 </TableCell>
                 <TableCell className="tabular-nums">
-                  {onCompensation ? (
-                    <Button variant="link" onClick={() => onCompensation(m)}>
-                      {rate?.monthlySalary != null
-                        ? money(rate.monthlySalary)
-                        : "Configurar salario"}
-                    </Button>
-                  ) : (
-                    "Sin configurar"
-                  )}
+                  {rate?.monthlySalary != null
+                    ? money(rate.monthlySalary)
+                    : "Sin configurar"}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setDialog({
-                        ...memberForm,
-                        title: "Editar acceso",
-                        extra: m,
-                      })
-                    }
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setDialog({
-                        kind: "member",
-                        title: `${m.active ? "Desactivar" : "Activar"} acceso de ${m.name} (${m.email || "sin correo"})`,
-                        extra: { ...m, active: !m.active },
-                        fields: [],
-                      })
-                    }
-                  >
-                    {m.active ? "Desactivar" : "Activar"}
-                  </Button>
+                  <RowActions
+                    name={m.name}
+                    actions={[
+                      {
+                        label: "Editar",
+                        run: () =>
+                          onCompensation
+                            ? onCompensation(m)
+                            : setDialog({
+                                ...memberForm,
+                                title: "Editar empleado",
+                                extra: m,
+                              }),
+                      },
+                      {
+                        label: m.active
+                          ? "Desactivar acceso"
+                          : "Activar acceso",
+                        run: () =>
+                          setDialog({
+                            kind: "member",
+                            title: `${m.active ? "Desactivar" : "Activar"} acceso de ${m.name}`,
+                            extra: { ...m, active: !m.active },
+                            fields: [],
+                          }),
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             );
@@ -932,6 +958,7 @@ export function OperationsPanel({
               "Precio COP",
               "Consulta",
               "Disponibilidad / soporte",
+              "Acciones",
             ]}
             empty="Registra un repuesto y un proveedor para guardar su primer precio."
             renderRow={(row) => {
@@ -955,6 +982,17 @@ export function OperationsPanel({
                   <TableCell>
                     {o.reportedStock || "No confirmada"}
                     <small className="cell-detail">{o.evidence}</small>
+                  </TableCell>
+                  <TableCell>
+                    <RowActions
+                      name={itemName(o.itemId)}
+                      actions={[
+                        {
+                          label: "Ver repuesto",
+                          run: () => setSelectedItemId(o.itemId),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               );
@@ -1012,6 +1050,7 @@ export function OperationsPanel({
                 "Condición",
                 "Disponible",
                 "Costo material COP",
+                "Acciones",
               ]}
               empty="No hay existencias registradas."
               renderRow={(row) => {
@@ -1035,6 +1074,12 @@ export function OperationsPanel({
                       {Number(b.quantity) - Number(b.reserved)}
                     </TableCell>
                     <TableCell>{money(b.materialCost)}</TableCell>
+                    <TableCell>
+                      <RowActions
+                        name={itemName(b.itemId)}
+                        actions={itemActions(b.itemId)}
+                      />
+                    </TableCell>
                   </TableRow>
                 );
               }}
@@ -1122,6 +1167,7 @@ export function OperationsPanel({
                 "Precio COP",
                 "Consulta",
                 "Disponibilidad / soporte",
+                "Acciones",
               ]}
               empty="Registra un repuesto y un proveedor para guardar su primer precio."
               renderRow={(row) => {
@@ -1146,6 +1192,17 @@ export function OperationsPanel({
                       {o.reportedStock || "No confirmada"}
                       <small className="cell-detail">{o.evidence}</small>
                     </TableCell>
+                    <TableCell>
+                      <RowActions
+                        name={itemName(o.itemId)}
+                        actions={[
+                          {
+                            label: "Ver repuesto",
+                            run: () => setSelectedItemId(o.itemId),
+                          },
+                        ]}
+                      />
+                    </TableCell>
                   </TableRow>
                 );
               }}
@@ -1164,7 +1221,13 @@ export function OperationsPanel({
             </p>
             <DataTable
               tableKey="items"
-              headers={["Referencia", "Repuesto", "Marca", "Unidad"]}
+              headers={[
+                "Referencia",
+                "Repuesto",
+                "Marca",
+                "Unidad",
+                "Acciones",
+              ]}
               empty="Aún no hay repuestos."
               renderRow={(row) => {
                 const i = row as OperationsView["items"][number];
@@ -1184,6 +1247,9 @@ export function OperationsPanel({
                     </TableCell>
                     <TableCell>{i.brand || "Sin marca"}</TableCell>
                     <TableCell>{i.unit}</TableCell>
+                    <TableCell>
+                      <RowActions name={i.name} actions={itemActions(i.id)} />
+                    </TableCell>
                   </TableRow>
                 );
               }}
@@ -1246,26 +1312,7 @@ export function OperationsPanel({
                           "ADJUSTMENT_IN",
                           "ADJUSTMENT_OUT",
                         ].includes(m.kind) ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setDialog({
-                              kind: "stock-reversal",
-                              title: "Revertir movimiento",
-                              extra: { movementId: m.id },
-                              fields: [
-                                {
-                                  key: "reason",
-                                  label: "Motivo de la reversión",
-                                  type: "textarea",
-                                },
-                              ],
-                            })
-                          }
-                        >
-                          Revertir
-                        </Button>
+                        <RowActions name={itemName(m.itemId)} actions={[{label:"Revertir movimiento",danger:true,run:()=>setDialog({kind:"stock-reversal",title:"Revertir movimiento",extra:{movementId:m.id},fields:[{key:"reason",label:"Motivo de la reversión",type:"textarea"}]})}]} />
                       ) : (
                         "—"
                       )}
@@ -1286,7 +1333,7 @@ export function OperationsPanel({
       {section === "Servicios" && (
         <DataTable
           tableKey="services"
-          headers={["Código", "Servicio", "Alcance"]}
+          headers={["Código", "Servicio", "Alcance", "Acciones"]}
           empty="No hay servicios registrados."
           renderRow={(row) => {
             const i = row as OperationsView["items"][number];
@@ -1302,6 +1349,9 @@ export function OperationsPanel({
                   </Button>
                 </TableCell>
                 <TableCell>{i.notes || "Sin descripción"}</TableCell>
+                <TableCell>
+                  <RowActions name={i.name} actions={itemActions(i.id)} />
+                </TableCell>
               </TableRow>
             );
           }}
