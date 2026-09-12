@@ -484,6 +484,28 @@ it("keeps partial payments while allowing later bonuses and rejects an underfund
       (r) => r.memberId === worker.id,
     )!.salary,
   ).toBe("2000000");
+  await reversePayroll(admin, {
+    requestId: uuid(),
+    entryId: current.payments[0].entryId,
+    occurredOn: "2026-07-31",
+    reason: "Devolución del pago anterior de prueba",
+  });
+  const latest = (await activityQuery(
+    admin,
+    new URLSearchParams({ resource: "latest" }),
+  )) as Record<string, { author: string }>;
+  expect(latest[worker.id].author).toBe(`Prueba pagos ${admin.id}`);
+  expect(latest[legacyId].author).toBe(`Prueba pagos ${admin.id}`);
+  const history = (await activityQuery(
+    admin,
+    new URLSearchParams({ resource: "history", id: worker.id }),
+  )) as { author: string; after: Record<string, unknown> }[];
+  expect(
+    history.some(
+      (c) =>
+        c.author === `Prueba pagos ${admin.id}` && c.after.kind === "REVERSAL",
+    ),
+  ).toBe(true);
 });
 
 it("writes obligation corrections and their audit through the application database role", async () => {
@@ -491,7 +513,10 @@ it("writes obligation corrections and their audit through the application databa
   const connectionString = parseEnv(
     readFileSync(".env.local", "utf8"),
   ).DATABASE_URL;
-  if (!connectionString) throw new Error("Falta DATABASE_URL local para la prueba del rol de aplicación.");
+  if (!connectionString)
+    throw new Error(
+      "Falta DATABASE_URL local para la prueba del rol de aplicación.",
+    );
   const url = new URL(connectionString);
   expect(["127.0.0.1", "localhost"]).toContain(url.hostname);
   expect(url.port).toBe("56322");
