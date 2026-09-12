@@ -1,4 +1,5 @@
 "use client";
+import { RecordStamp } from "@/features/activity/activity-ui";
 import { useState, type ComponentProps } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, ArrowUpDown } from "lucide-react";
@@ -73,6 +74,7 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
         />
       ) : ["leaves", "advances", "payroll"].includes(tab) ? (
         <BenefitsWorkspace
+          role={props.role}
           key={tab}
           tab={tab as "leaves" | "advances" | "payroll"}
           data={props.data}
@@ -176,7 +178,7 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
             {overview.data.missing > 0
               ? `${overview.data.missing} personas sin salario configurado. `
               : ""}
-            Los pagos se registran en Dinero.
+            Registra los pagos y abonos en Pago del mes.
           </p>
         </>
       )}
@@ -331,6 +333,9 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
                       <TableRow key={row.id}>
                         <TableCell>
                           <strong>{row.name}</strong>
+                          <div>
+                            <RecordStamp id={row.id} />
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {row.task ?? "Trabajo general del taller"}
                           </p>
@@ -368,7 +373,7 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {!row.voidedAt && (
+                          {!row.voidedAt && props.role === "ADMIN" && (
                             <RowActions
                               name={row.name}
                               actions={[
@@ -444,6 +449,7 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
         </>
       )}
       <CompensationSheet
+        role={props.role}
         member={member}
         history={history}
         onClose={() => setMember(null)}

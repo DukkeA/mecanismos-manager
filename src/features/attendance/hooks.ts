@@ -54,7 +54,10 @@ export function useAttendanceCommand() {
       return r;
     },
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ["attendance", actorId] });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["attendance", actorId] }),
+        client.invalidateQueries({ queryKey: ["activity", actorId] }),
+      ]);
     },
   });
 }

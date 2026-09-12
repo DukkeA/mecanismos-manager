@@ -5562,7 +5562,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>58 modelos en el esquema privado</h3>
+          <h3>61 modelos en el esquema privado</h3>
         </div>
         <ul>
           <li>&bull; Flechas de dominio seleccionadas; consultar Prisma y SQL para todas las claves</li>
@@ -5577,9 +5577,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Registros que se conservan</h3>
         </div>
         <ul>
-          <li>&bull; EmployeeLeaveDay conserva horas, vacaciones y descuento por fecha</li>
-          <li>&bull; VacationAdjustment conserva saldos iniciales y correcciones manuales</li>
-          <li>&bull; SalaryAdvance registra el desembolso; AdvanceInstallment distribuye los descuentos</li>
+          <li>&bull; PayrollPayment asocia empleado y mes con CashEntry; abonos y reversiones conservados</li>
+          <li>&bull; SalaryAdvance entrega dinero una vez; AdvanceInstallment descuenta al completar el pago</li>
+          <li>&bull; RecordChange conserva autor y valores; AdminNotification agrupa los cambios de Oficina</li>
         </ul>
       </div>
     </div>

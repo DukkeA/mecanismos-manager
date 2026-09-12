@@ -1,4 +1,5 @@
 "use client";
+import { AdminNotifications } from "@/features/activity/activity-ui";
 import { SettingsWorkspace } from "@/features/attendance/settings-workspace";
 import { AttendanceWorkspace } from "@/features/attendance/attendance-workspace";
 import { TeamWorkspace } from "@/features/team/team-workspace";
@@ -322,6 +323,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
           <span className="sync-indicator">
             {query.isFetching ? "Actualizando…" : "Datos del taller"}
           </span>
+          {actor.role === "ADMIN" && !demo && <AdminNotifications />}
         </div>
         <div className="workspace-content">
           {(localTesting || demo) && (

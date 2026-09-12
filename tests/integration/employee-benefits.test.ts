@@ -1,3 +1,4 @@
+import { cleanupActivity } from "./activity-cleanup";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { randomUUID as uuid } from "node:crypto";
 import { db } from "@/server/db";
@@ -96,6 +97,11 @@ afterAll(async () => {
   await db().laborRate.deleteMany({ where: { memberId: { in: ids } } });
   await db().auditEvent.deleteMany({ where: { actorId: { in: ids } } });
   await db().commandReceipt.deleteMany({ where: { actorId: { in: ids } } });
+  await cleanupActivity(
+    (await db().member.findMany({ where: { id: { in: ids } } })).map(
+      (m) => m.id,
+    ),
+  );
   await db().member.deleteMany({ where: { id: { in: ids } } });
   await db().location.delete({ where: { id: locationId } });
 });
@@ -380,19 +386,19 @@ it("reschedules pending quotas, applies and reverses without a second cash movem
     ),
   ).toBe(true);
 });
-it("keeps salary advances and their reversals private in paginated queries and snapshots", async () => {
+it("allows office to query advances while protecting them from mechanics", async () => {
   const entries = await db().cashEntry.findMany({ where: { accountId } }),
     entryIds = entries.map((e) => e.id);
   const snapshot = await getOperations(office);
-  expect(snapshot.cashEntries.filter((e) => entryIds.includes(e.id))).toEqual(
-    [],
-  );
+  expect(
+    snapshot.cashEntries.filter((e) => entryIds.includes(e.id)),
+  ).toHaveLength(entries.length);
   const page = await recordsPage(
     office,
     new URLSearchParams({ table: "cashEntries", q: name }),
   );
-  expect(page.total).toBe(0);
-  for (const actor of [office, worker]) {
+  expect(page.total).toBeGreaterThan(0);
+  for (const actor of [worker]) {
     await expect(
       benefitsPage(actor, new URLSearchParams(), "advances"),
     ).rejects.toThrow("permiso");

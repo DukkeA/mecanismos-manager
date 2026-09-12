@@ -1,3 +1,4 @@
+import { cleanupActivity } from "./activity-cleanup";
 import { managementReport } from "@/server/management-report";
 import { recordsPage } from "@/server/records-query";
 import { beforeAll, afterAll, it, expect } from "vitest";
@@ -216,6 +217,11 @@ afterAll(async () => {
   await db().customer.delete({ where: { id: customerId } });
   await db().location.deleteMany({ where: { id: { in: [loc, dest] } } });
   await db().moneyAccount.delete({ where: { id: account } });
+  await cleanupActivity(
+    (await db().member.findMany({ where: { id: { in: actorIds } } })).map(
+      (m) => m.id,
+    ),
+  );
   await db().member.deleteMany({ where: { id: { in: actorIds } } });
   await db().$disconnect();
 });
@@ -471,7 +477,7 @@ it("generates monthly obligations without duplicates and respects payroll visibi
         }),
       )
     ).rows,
-  ).toHaveLength(0);
+  ).toHaveLength(1);
   await confirmMonth(admin, {
     requestId: uuid(),
     period: "2098-02",

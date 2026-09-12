@@ -178,8 +178,9 @@
       "items": [
         "Consultas paginadas por módulo y comandos con TanStack Query",
         "Member define el rol; las asignaciones limitan la evidencia técnica",
-        "Permisos y anticipos salariales: solo Admin, con historial y cálculos conservados",
-        "Pantalla QR con cookie de dispositivo; no concede acceso al resto de la app"
+        "Equipo y Dinero: Admin y Oficina; anulaciones y accesos, solo Admin",
+        "Pantalla QR con cookie de dispositivo; no concede acceso al resto de la app",
+        "RecordChange conserva valores anteriores; la actividad de Oficina avisa a los admins"
       ]
     },
     {

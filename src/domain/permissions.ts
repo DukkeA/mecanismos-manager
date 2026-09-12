@@ -1,9 +1,36 @@
 export type Role = "ADMIN" | "OFFICE" | "MECHANIC";
-export type Permission = "customers:write" | "inventory:write" | "orders:write" | "tasks:contribute" | "finance:write" | "payroll:read" | "profitability:read" | "members:write";
+export type Permission =
+  | "customers:write"
+  | "inventory:write"
+  | "orders:write"
+  | "tasks:contribute"
+  | "finance:write"
+  | "payroll:read"
+  | "profitability:read"
+  | "members:write"
+  | "team:write";
 
 const grants: Record<Role, readonly Permission[]> = {
-  ADMIN: ["customers:write", "inventory:write", "orders:write", "tasks:contribute", "finance:write", "payroll:read", "profitability:read", "members:write"],
-  OFFICE: ["customers:write", "inventory:write", "orders:write", "tasks:contribute", "finance:write"],
+  ADMIN: [
+    "customers:write",
+    "inventory:write",
+    "orders:write",
+    "tasks:contribute",
+    "finance:write",
+    "payroll:read",
+    "profitability:read",
+    "members:write",
+    "team:write",
+  ],
+  OFFICE: [
+    "customers:write",
+    "inventory:write",
+    "orders:write",
+    "tasks:contribute",
+    "finance:write",
+    "payroll:read",
+    "team:write",
+  ],
   MECHANIC: ["tasks:contribute"],
 };
 
@@ -12,13 +39,19 @@ export function can(role: Role, permission: Permission): boolean {
 }
 
 export class AccessDenied extends Error {
-  constructor() { super("No tienes permiso para esta operación."); }
+  constructor() {
+    super("No tienes permiso para esta operación.");
+  }
 }
 
 export function requirePermission(role: Role, permission: Permission): void {
   if (!can(role, permission)) throw new AccessDenied();
 }
 
-export function canContributeToTask(role: Role, memberId: string, assigneeIds: readonly string[]): boolean {
+export function canContributeToTask(
+  role: Role,
+  memberId: string,
+  assigneeIds: readonly string[],
+): boolean {
   return role !== "MECHANIC" || assigneeIds.includes(memberId);
 }

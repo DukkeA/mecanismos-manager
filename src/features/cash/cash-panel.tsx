@@ -1,4 +1,5 @@
 "use client";
+import { RecordStamp } from "@/features/activity/activity-ui";
 import { RowActions } from "@/components/row-actions";
 import { useCommercialCommand } from "@/features/commerce/hooks";
 import { useWorkshopQuery, useWorkshopScope } from "@/features/workshop/query";
@@ -120,9 +121,11 @@ export function CashPanel({
           : "Transferencia recibida"
       : e.kind === "REVERSAL"
         ? "Reversión"
-        : e.kind === "SALARY_ADVANCE"
-          ? "Anticipo de salario"
-          : cashKinds[e.kind as keyof typeof cashKinds]?.label;
+        : e.kind === "SALARY_PAYMENT"
+          ? "Pago de salario"
+          : e.kind === "SALARY_ADVANCE"
+            ? "Anticipo de salario"
+            : cashKinds[e.kind as keyof typeof cashKinds]?.label;
   const cashForm: Dialog = {
     kind: "cash",
     title: "Registrar entrada o salida",
@@ -256,7 +259,7 @@ export function CashPanel({
         label: "Categoría",
         type: "select",
         options: Object.entries(obligationCategories)
-          .filter(([id]) => role === "ADMIN" || id !== "PAYROLL")
+
           .map(([id, label]) => ({ id, label })),
       },
       { key: "period", label: "Período", hint: "AAAA-MM" },
@@ -371,6 +374,9 @@ export function CashPanel({
           </strong>
         </header>
         <strong>{e.counterparty}</strong>
+        <div>
+          <RecordStamp id={e.id} />
+        </div>
         <small>
           {dateLabel(e.occurredOn)} ·{" "}
           {cash.accounts.find((a) => a.id === e.accountId)?.name}
@@ -385,14 +391,16 @@ export function CashPanel({
                 : []),
               ...(role === "ADMIN" && !e.reversed && e.kind !== "REVERSAL"
                 ? [
-                    e.kind === "SALARY_ADVANCE"
+                    ["SALARY_ADVANCE", "SALARY_PAYMENT"].includes(e.kind)
                       ? {
                           label: "Ver anticipos",
                           run: () =>
                             window.history.pushState(
                               null,
                               "",
-                              "?view=Equipo&teamTab=advances",
+                              e.kind === "SALARY_PAYMENT"
+                                ? `?view=Equipo&teamTab=payroll&period=${e.reference}`
+                                : "?view=Equipo&teamTab=advances",
                             ),
                         }
                       : {
@@ -418,6 +426,9 @@ export function CashPanel({
         </TableCell>
         <TableCell>
           {e.counterparty}
+          <div>
+            <RecordStamp id={e.id} />
+          </div>
           <small className="cell-detail">
             {e.reference} · {e.note}
           </small>
@@ -443,14 +454,16 @@ export function CashPanel({
                 : []),
               ...(role === "ADMIN" && !e.reversed && e.kind !== "REVERSAL"
                 ? [
-                    e.kind === "SALARY_ADVANCE"
+                    ["SALARY_ADVANCE", "SALARY_PAYMENT"].includes(e.kind)
                       ? {
                           label: "Ver anticipos",
                           run: () =>
                             window.history.pushState(
                               null,
                               "",
-                              "?view=Equipo&teamTab=advances",
+                              e.kind === "SALARY_PAYMENT"
+                                ? `?view=Equipo&teamTab=payroll&period=${e.reference}`
+                                : "?view=Equipo&teamTab=advances",
                             ),
                         }
                       : {
@@ -559,7 +572,7 @@ export function CashPanel({
               Transferir
             </Button>
             {(tab !== "accounts" ||
-              (role === "ADMIN" &&
+              (role !== "MECHANIC" &&
                 accountNames.some(
                   (name) => !cash.accounts.some((a) => a.name === name),
                 ))) && (
@@ -668,6 +681,28 @@ export function CashPanel({
           />
         </FilterBar>
         <TabsContent value="obligations">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+            <div>
+              <strong>Pago del personal · {period}</strong>
+              <p className="text-sm text-muted-foreground">
+                {cash.obligations.find((o) => o.salaryPeriod === period)
+                  ? `${cop(cash.obligations.find((o) => o.salaryPeriod === period)!.paid)} pagados · ${cop(Decimal.max(0, new Decimal(cash.obligations.find((o) => o.salaryPeriod === period)!.amount).minus(cash.obligations.find((o) => o.salaryPeriod === period)!.paid)).toString())} pendientes`
+                  : "Consulta salarios, bonos, descuentos y pagos por empleado."}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() =>
+                window.history.pushState(
+                  null,
+                  "",
+                  `?view=Equipo&teamTab=payroll&period=${period}`,
+                )
+              }
+            >
+              Ver pago del mes
+            </Button>
+          </div>
           <DataTable
             tableKey="obligations"
             headers={[
@@ -688,13 +723,16 @@ export function CashPanel({
                       {o.title}
                       {o.estimated ? " · Estimado" : ""}
                     </strong>
+                    <div>
+                      <RecordStamp id={o.id} />
+                    </div>
                     <small className="cell-detail">
                       {dateLabel(o.dueOn)} ·{" "}
-                      {
-                        obligationCategories[
-                          o.category as keyof typeof obligationCategories
-                        ]
-                      }
+                      {o.salaryPeriod
+                        ? "Salarios"
+                        : obligationCategories[
+                            o.category as keyof typeof obligationCategories
+                          ]}
                     </small>
                   </TableCell>
                   <TableCell>
@@ -716,8 +754,25 @@ export function CashPanel({
                     <RowActions
                       name={o.title}
                       actions={[
-                        { label: "Revisar importe", run: () => correct(o) },
-                        ...(new Decimal(o.amount).gt(o.paid)
+                        ...(o.salaryPeriod
+                          ? [
+                              {
+                                label: "Ver pago del mes",
+                                run: () =>
+                                  window.history.pushState(
+                                    null,
+                                    "",
+                                    `?view=Equipo&teamTab=payroll&period=${o.salaryPeriod}`,
+                                  ),
+                              },
+                            ]
+                          : [
+                              {
+                                label: "Revisar importe",
+                                run: () => correct(o),
+                              },
+                            ]),
+                        ...(!o.salaryPeriod && new Decimal(o.amount).gt(o.paid)
                           ? [
                               {
                                 label: "Pagar",
@@ -750,6 +805,7 @@ export function CashPanel({
                       {stateLabels[paymentState(o)]}
                     </Badge>
                   </header>
+                  <RecordStamp id={o.id} />
                   <small>Vence {dateLabel(o.dueOn)}</small>
                   <dl>
                     <div>
@@ -771,9 +827,26 @@ export function CashPanel({
                     <RowActions
                       name={o.title}
                       actions={[
-                        { label: "Revisar importe", run: () => correct(o) },
+                        ...(o.salaryPeriod
+                          ? [
+                              {
+                                label: "Ver pago del mes",
+                                run: () =>
+                                  window.history.pushState(
+                                    null,
+                                    "",
+                                    `?view=Equipo&teamTab=payroll&period=${o.salaryPeriod}`,
+                                  ),
+                              },
+                            ]
+                          : [
+                              {
+                                label: "Revisar importe",
+                                run: () => correct(o),
+                              },
+                            ]),
                         { label: "Ver pagos", run: () => setHistory(o.id) },
-                        ...(new Decimal(o.amount).gt(o.paid)
+                        ...(!o.salaryPeriod && new Decimal(o.amount).gt(o.paid)
                           ? [
                               {
                                 label: "Pagar",
@@ -787,6 +860,7 @@ export function CashPanel({
                     />
                   </footer>
                   {!cash.accounts.length &&
+                    !o.salaryPeriod &&
                     new Decimal(o.amount).gt(o.paid) && (
                       <p>
                         Registra una cuenta en la pestaña Cuentas para pagar.
@@ -825,7 +899,12 @@ export function CashPanel({
               const a = row as OperationsView["accounts"][number];
               return (
                 <TableRow key={a.id}>
-                  <TableCell>{a.name}</TableCell>
+                  <TableCell>
+                    {a.name}
+                    <div>
+                      <RecordStamp id={a.id} />
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <strong>{cop(a.balance)}</strong>
                   </TableCell>

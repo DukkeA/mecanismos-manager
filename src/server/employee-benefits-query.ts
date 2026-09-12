@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import "server-only";
 import { z } from "zod";
 import Decimal from "decimal.js";
@@ -259,6 +260,8 @@ export async function payrollPreview(
           "leaveDeduction",
           "installments",
           "payable",
+          "paid",
+          "remaining",
         ])
         .default("name"),
       direction: z.enum(["asc", "desc"]).default("asc"),
@@ -281,15 +284,15 @@ export async function payrollPreview(
   });
   return result;
 }
-async function monthlyPayroll(tx: Tx, period: string): Promise<PayrollPreview> {
+export async function monthlyPayroll(
+  tx: Tx,
+  period: string,
+): Promise<PayrollPreview> {
   const from = day(`${period}-01`),
     until = new Date(from);
   until.setUTCMonth(until.getUTCMonth() + 1);
-  const today = bogotaDay(new Date()),
-    asOf =
-      period === today.slice(0, 7)
-        ? day(today)
-        : new Date(until.getTime() - 86400000);
+  // A known future salary within this month must not silently reprice an earlier payment as time passes.
+  const asOf = new Date(until.getTime() - 86400000);
   const [members, rates, extra, leaves, installments] = await Promise.all([
     tx.member.findMany({
       orderBy: { name: "asc" },
@@ -311,12 +314,60 @@ async function monthlyPayroll(tx: Tx, period: string): Promise<PayrollPreview> {
       include: { advance: true },
     }),
   ]);
+  const payments = await tx.$queryRaw<
+    {
+      id: string;
+      memberId: string;
+      entryId: string;
+      amount: string;
+      occurredOn: Date;
+      account: string;
+      author: string;
+      createdAt: Date;
+      note: string;
+      reversed: boolean;
+    }[]
+  >`
+    SELECT p.id,p."memberId",p."entryId",p.amount::text,e."occurredOn",a.name account,m.name author,p."createdAt",e.note,
+    EXISTS(SELECT 1 FROM workshop."CashEntry" r WHERE r."reversalOfId"=e.id) reversed
+    FROM workshop."PayrollPayment" p JOIN workshop."CashEntry" e ON e.id=p."entryId"
+    JOIN workshop."MoneyAccount" a ON a.id=e."accountId" JOIN workshop."Member" m ON m.id=p."actorId"
+    WHERE p.period=${period} ORDER BY p."createdAt" DESC`;
+  const unassigned = await tx.$queryRaw<
+    {
+      id: string;
+      amount: string;
+      accountId: string;
+      account: string;
+      occurredOn: Date;
+      reference: string;
+    }[]
+  >`
+    SELECT e.id,(e.amount-COALESCE(p.amount,0))::text amount,e."accountId",a.name account,e."occurredOn",e.reference
+    FROM workshop."CashEntry" e JOIN workshop."Obligation" o ON o.id=e."obligationId"
+    JOIN workshop."MoneyAccount" a ON a.id=e."accountId"
+    LEFT JOIN LATERAL(SELECT sum(amount) amount FROM workshop."PayrollPayment" WHERE "entryId"=e.id)p ON true
+    WHERE o."salaryPeriod"=${period} AND e.direction='OUT' AND e."reversalOfId" IS NULL
+    AND NOT EXISTS(SELECT 1 FROM workshop."CashEntry" r WHERE r."reversalOfId"=e.id) AND e.amount>COALESCE(p.amount,0)`;
+  const legacy = await tx.obligation.findMany({
+    where: { period, category: "PAYROLL", salaryPeriod: null },
+    select: { id: true, title: true, amount: true },
+  });
   return {
     period,
+    unassigned: unassigned.map((e) => ({
+      ...e,
+      occurredOn: e.occurredOn.toISOString().slice(0, 10),
+    })),
+    legacyObligations: legacy.map((o) => ({
+      ...o,
+      amount: o.amount.toString(),
+    })),
     rows: members
       .filter(
         (m) =>
           m.active ||
+          payments.some((p) => p.memberId === m.id) ||
           extra.some((e) => e.memberId === m.id) ||
           leaves.some((l) => l.leave.memberId === m.id) ||
           installments.some((i) => i.advance.memberId === m.id),
@@ -339,7 +390,45 @@ async function monthlyPayroll(tx: Tx, period: string): Promise<PayrollPreview> {
             (s, i) => s.plus(i.amount.toString()),
             new Decimal(0),
           );
+        const history = payments.filter((p) => p.memberId === m.id);
+        const paid = history
+          .filter((p) => !p.reversed)
+          .reduce((s, p) => s.plus(p.amount), new Decimal(0));
+        const payable =
+          salary === null
+            ? null
+            : new Decimal(salary)
+                .plus(bonuses)
+                .minus(leaveDeduction)
+                .minus(deduction)
+                .toFixed(2);
+        const fingerprint = createHash("sha256")
+          .update(
+            JSON.stringify({
+              period,
+              memberId: m.id,
+              salary,
+              bonuses: bonuses.toFixed(2),
+              leaveDeduction: leaveDeduction.toFixed(2),
+              quotas: quotas
+                .map((i) => ({ id: i.id, amount: i.amount.toString() }))
+                .sort((a, b) => a.id.localeCompare(b.id)),
+              paid: paid.toFixed(2),
+            }),
+          )
+          .digest("hex");
         return {
+          paid: paid.toFixed(2),
+          remaining:
+            payable === null
+              ? null
+              : Decimal.max(0, new Decimal(payable).minus(paid)).toFixed(2),
+          fingerprint,
+          payments: history.map((p) => ({
+            ...p,
+            createdAt: p.createdAt.toISOString(),
+            occurredOn: p.occurredOn.toISOString().slice(0, 10),
+          })),
           memberId: m.id,
           name: m.name,
           salary,

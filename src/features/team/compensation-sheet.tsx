@@ -16,10 +16,12 @@ import { todayInBogota, cop } from "@/features/cash/summary";
 import { dateLabel } from "@/components/workshop-controls";
 
 export function CompensationSheet({
+  role,
   member,
   history,
   onClose,
 }: {
+  role: import("@/domain/permissions").Role;
   member: OperationsView["members"][number] | null;
   history: ReturnType<typeof useCompensationHistory>;
   onClose: () => void;
@@ -71,16 +73,37 @@ export function CompensationSheet({
                   },
                   fields: [
                     { key: "name", label: "Nombre" },
-                    { key: "email", label: "Correo", type: "email" },
+                    ...(role === "ADMIN"
+                      ? [
+                          {
+                            key: "email",
+                            label: "Correo",
+                            type: "email" as const,
+                          },
+                        ]
+                      : []),
                     {
                       key: "role",
                       label: "Rol",
                       type: "select",
-                      options: [
-                        { id: "ADMIN", label: "Administrador" },
-                        { id: "OFFICE", label: "Oficina" },
-                        { id: "MECHANIC", label: "Mecánico" },
-                      ],
+                      options:
+                        role === "OFFICE"
+                          ? [
+                              {
+                                id: member.role!,
+                                label:
+                                  member.role === "ADMIN"
+                                    ? "Administrador"
+                                    : member.role === "OFFICE"
+                                      ? "Oficina"
+                                      : "Mecánico",
+                              },
+                            ]
+                          : [
+                              { id: "ADMIN", label: "Administrador" },
+                              { id: "OFFICE", label: "Oficina" },
+                              { id: "MECHANIC", label: "Mecánico" },
+                            ],
                     },
                     {
                       key: "monthlySalary",

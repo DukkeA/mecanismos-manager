@@ -62,9 +62,16 @@ export function useTeamCommand() {
     },
     onSuccess: async () => {
       await Promise.all([
-        ...["team", "records", "control", "cash", "attendance", "reports"].map(
-          (feature) =>
-            client.invalidateQueries({ queryKey: [feature, actorId] }),
+        ...[
+          "team",
+          "records",
+          "control",
+          "cash",
+          "attendance",
+          "reports",
+          "activity",
+        ].map((feature) =>
+          client.invalidateQueries({ queryKey: [feature, actorId] }),
         ),
         client.invalidateQueries({ queryKey: snapshotKey(actorId) }),
       ]);

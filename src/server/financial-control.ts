@@ -154,6 +154,7 @@ export async function saveRecurring(actor: Actor, raw: unknown) {
       if (before.category === "PAYROLL")
         requirePermission(actor.role, "payroll:read");
     }
+    if (!input.active) requirePermission(actor.role, "members:write");
     const data = {
       title: input.title,
       category: input.category,
@@ -190,7 +191,6 @@ export async function generateMonth(actor: Actor, raw: unknown) {
       where: {
         active: true,
         ...(input.recurringIds ? { id: { in: input.recurringIds } } : {}),
-        ...(actor.role === "ADMIN" ? {} : { category: { not: "PAYROLL" } }),
       },
     });
     const [year, month] = input.period.split("-").map(Number),
@@ -293,6 +293,10 @@ export async function correctObligation(actor: Actor, raw: unknown) {
         where: { id: input.obligationId },
         include: { entries: true },
       });
+      if (o.salaryPeriod)
+        throw new DomainError(
+          "El importe de los salarios se calcula desde Equipo → Pago del mes.",
+        );
       if (o.category === "PAYROLL")
         requirePermission(actor.role, "payroll:read");
       const paid = o.entries.reduce(

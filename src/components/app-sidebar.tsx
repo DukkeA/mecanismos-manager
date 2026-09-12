@@ -84,10 +84,7 @@ export function sectionAvailable(label: string, role: Role, demo: boolean) {
     !["Resumen", "Órdenes", "Tareas", "Mi jornada"].includes(label)
   )
     return false;
-  if (
-    role !== "ADMIN" &&
-    ["Equipo", "Rentabilidad", "Configuración"].includes(label)
-  )
+  if (role !== "ADMIN" && ["Rentabilidad", "Configuración"].includes(label))
     return false;
   return (
     !demo ||

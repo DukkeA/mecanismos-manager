@@ -1,4 +1,5 @@
 "use client";
+import { RecordStamp } from "@/features/activity/activity-ui";
 import { ContactActions } from "@/features/contacts/contact-actions";
 import { RowActions } from "@/components/row-actions";
 import { ItemDetail } from "@/features/inventory/item-detail";
@@ -352,7 +353,9 @@ export function OperationsPanel({
         options: [
           { id: "MECHANIC", label: "Mecánico" },
           { id: "OFFICE", label: "Oficina" },
-          { id: "ADMIN", label: "Administrador" },
+          ...(role === "ADMIN"
+            ? [{ id: "ADMIN", label: "Administrador" }]
+            : []),
         ],
       },
     ],
@@ -776,7 +779,12 @@ export function OperationsPanel({
             const rate = compensationRates?.find((r) => r.memberId === m.id);
             return (
               <TableRow key={m.id}>
-                <TableCell>{m.name}</TableCell>
+                <TableCell>
+                  {m.name}
+                  <div>
+                    <RecordStamp id={m.id} />
+                  </div>
+                </TableCell>
                 <TableCell>{m.email}</TableCell>
                 <TableCell>
                   {m.role === "ADMIN"
@@ -810,18 +818,22 @@ export function OperationsPanel({
                                 extra: m,
                               }),
                       },
-                      {
-                        label: m.active
-                          ? "Desactivar acceso"
-                          : "Activar acceso",
-                        run: () =>
-                          setDialog({
-                            kind: "member",
-                            title: `${m.active ? "Desactivar" : "Activar"} acceso de ${m.name}`,
-                            extra: { ...m, active: !m.active },
-                            fields: [],
-                          }),
-                      },
+                      ...(role === "ADMIN"
+                        ? [
+                            {
+                              label: m.active
+                                ? "Desactivar acceso"
+                                : "Activar acceso",
+                              run: () =>
+                                setDialog({
+                                  kind: "member",
+                                  title: `${m.active ? "Desactivar" : "Activar"} acceso de ${m.name}`,
+                                  extra: { ...m, active: !m.active },
+                                  fields: [],
+                                }),
+                            },
+                          ]
+                        : []),
                     ]}
                   />
                 </TableCell>
@@ -1312,7 +1324,28 @@ export function OperationsPanel({
                           "ADJUSTMENT_IN",
                           "ADJUSTMENT_OUT",
                         ].includes(m.kind) ? (
-                        <RowActions name={itemName(m.itemId)} actions={[{label:"Revertir movimiento",danger:true,run:()=>setDialog({kind:"stock-reversal",title:"Revertir movimiento",extra:{movementId:m.id},fields:[{key:"reason",label:"Motivo de la reversión",type:"textarea"}]})}]} />
+                        <RowActions
+                          name={itemName(m.itemId)}
+                          actions={[
+                            {
+                              label: "Revertir movimiento",
+                              danger: true,
+                              run: () =>
+                                setDialog({
+                                  kind: "stock-reversal",
+                                  title: "Revertir movimiento",
+                                  extra: { movementId: m.id },
+                                  fields: [
+                                    {
+                                      key: "reason",
+                                      label: "Motivo de la reversión",
+                                      type: "textarea",
+                                    },
+                                  ],
+                                }),
+                            },
+                          ]}
+                        />
                       ) : (
                         "—"
                       )}

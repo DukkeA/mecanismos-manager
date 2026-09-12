@@ -1,3 +1,4 @@
+import { cleanupActivity } from "./activity-cleanup";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { randomUUID as uuid, createHmac } from "node:crypto";
 import { db } from "@/server/db";
@@ -62,6 +63,11 @@ afterAll(async () => {
   await db().auditEvent.deleteMany({ where: { actorId: { in: ids } } });
   await db().commandReceipt.deleteMany({ where: { actorId: { in: ids } } });
   await db().location.delete({ where: { id: locationId } });
+  await cleanupActivity(
+    (await db().member.findMany({ where: { id: { in: ids } } })).map(
+      (m) => m.id,
+    ),
+  );
   await db().member.deleteMany({ where: { id: { in: ids } } });
 });
 it("limits global settings and QR publishing to administrators", async () => {
@@ -146,7 +152,7 @@ it("resolves competing arrivals into one open shift and keeps employee records p
     attendancePage(mechanic, new URLSearchParams({ scope: "team" })),
   ).rejects.toThrow("permiso");
   await expect(
-    attendancePage(office, new URLSearchParams({ memberId: mechanic.id })),
+    attendancePage(mechanic, new URLSearchParams({ memberId: office.id })),
   ).rejects.toThrow("permiso");
 });
 it("audits manual corrections, preserves the scheduled snapshot and prevents overlaps", async () => {
@@ -197,7 +203,7 @@ it("audits manual corrections, preserves the scheduled snapshot and prevents ove
     }),
   ).rejects.toThrow("cruza");
   await expect(
-    correctAttendance(office, { requestId: uuid() }),
+    correctAttendance(mechanic, { requestId: uuid() }),
   ).rejects.toThrow("permiso");
 });
 it("applies the global schedule to every employee and rejects invalid durations", async () => {

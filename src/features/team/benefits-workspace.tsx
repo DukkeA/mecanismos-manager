@@ -1,4 +1,7 @@
 "use client";
+import { PayrollWorkspace } from "./payroll-workspace";
+import { RecordStamp } from "@/features/activity/activity-ui";
+import type { Role } from "@/domain/permissions";
 import { useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Decimal from "decimal.js";
@@ -123,11 +126,13 @@ function Feedback({
 }
 
 export function BenefitsWorkspace({
+  role,
   tab,
   data,
 }: {
   tab: "leaves" | "advances" | "payroll";
   data: OperationsView;
+  role: Role;
 }) {
   const params = useSearchParams();
   const [dialog, setDialog] = useState<BenefitDialog | null>(null),
@@ -192,7 +197,9 @@ export function BenefitsWorkspace({
   return (
     <div className="space-y-5">
       {tab === "payroll" ? (
-        <PayrollTable
+        <PayrollWorkspace
+          data={data}
+          role={role}
           onAdvances={(id) =>
             window.history.pushState(
               null,
@@ -352,6 +359,9 @@ export function BenefitsWorkspace({
                         >
                           {row.name}
                         </Button>
+                        <div>
+                          <RecordStamp id={row.id} />
+                        </div>
                         <p className="mt-1 max-w-64 truncate text-xs text-muted-foreground">
                           {row.note}
                         </p>
@@ -419,7 +429,21 @@ export function BenefitsWorkspace({
                           name={row.name}
                           actions={[
                             { label: "Ver detalle", run: () => setDetail(row) },
-                            ...(!row.voidedAt
+                            ...(!row.voidedAt &&
+                            !("treatment" in row) &&
+                            role === "OFFICE"
+                              ? [
+                                  {
+                                    label: "Cambiar cuotas",
+                                    run: () =>
+                                      action({
+                                        kind: "advance-plan",
+                                        advance: row,
+                                      }),
+                                  },
+                                ]
+                              : []),
+                            ...(!row.voidedAt && role === "ADMIN"
                               ? "treatment" in row
                                 ? [
                                     {
@@ -527,23 +551,26 @@ export function BenefitsWorkspace({
                     </div>
                   </dl>
                   <p className="whitespace-pre-wrap">{selected.note}</p>
+                  <RecordStamp id={selected.id} />
                   {selected.voidedAt ? (
                     <p className="text-destructive">
                       Anulado: {selected.voidReason}
                     </p>
                   ) : (
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        action({ kind: "leave-void", leave: selected })
-                      }
-                    >
-                      Anular permiso
-                    </Button>
+                    role === "ADMIN" && (
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          action({ kind: "leave-void", leave: selected })
+                        }
+                      >
+                        Anular permiso
+                      </Button>
+                    )
                   )}
                 </>
               ) : (
-                <AdvanceDetail row={selected} onAction={action} />
+                <AdvanceDetail row={selected} onAction={action} role={role} />
               )}
             </div>
           )}
@@ -605,10 +632,12 @@ export function BenefitsWorkspace({
 }
 
 function AdvanceDetail({
+  role,
   row,
   onAction,
 }: {
   row: AdvanceRow;
+  role: Role;
   onAction: (d: BenefitDialog) => void;
 }) {
   const history = useTeamRequest<
@@ -625,6 +654,7 @@ function AdvanceDetail({
     SALARY_ADVANCE_PLAN: "Cuotas modificadas",
     SALARY_ADVANCE_DEDUCTION: "Descuento registrado",
     SALARY_ADVANCE_VOID: "Anticipo anulado",
+    SALARY_ADVANCE_PAYROLL: "Cuota aplicada con el pago del salario",
   };
   return (
     <>
@@ -665,7 +695,7 @@ function AdvanceDetail({
                     : "Pendiente de descontar"}
                 </p>
               </div>
-              {!row.voidedAt && (
+              {!row.voidedAt && (!i.appliedOn || role === "ADMIN") && (
                 <Button
                   variant="outline"
                   disabled={
@@ -698,13 +728,17 @@ function AdvanceDetail({
           >
             Cambiar cuotas
           </Button>
-          <Button
-            variant="ghost"
-            disabled={row.installments.some((i) => !!i.appliedOn)}
-            onClick={() => onAction({ kind: "advance-void", advance: row })}
-          >
-            Anular y devolver dinero
-          </Button>
+          {role === "ADMIN" && (
+            <Button
+              variant="ghost"
+              disabled={
+                role !== "ADMIN" || row.installments.some((i) => !!i.appliedOn)
+              }
+              onClick={() => onAction({ kind: "advance-void", advance: row })}
+            >
+              Anular y devolver dinero
+            </Button>
+          )}
         </div>
       )}
       <section className="space-y-3">
@@ -824,6 +858,9 @@ function VacationBalances({ onAdjust }: { onAdjust: (id: string) => void }) {
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {Number(r.balance)}
+                        <div>
+                          <RecordStamp id={r.memberId} />
+                        </div>
                       </TableCell>
                       <TableCell>
                         <RowActions
@@ -850,212 +887,5 @@ function VacationBalances({ onAdjust }: { onAdjust: (id: string) => void }) {
         </>
       )}
     </div>
-  );
-}
-function PayrollTable({ onAdvances }: { onAdvances: (id: string) => void }) {
-  const params = useSearchParams(),
-    requested = params.get("period") ?? "";
-  const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(requested)
-    ? requested
-    : todayInBogota().slice(0, 7);
-  const orderBy = params.get("orderBy") ?? "name",
-    direction = params.get("direction") ?? "asc";
-  const query = useTeamRequest<PayrollPreview>(
-    new URLSearchParams({ resource: "payroll", period, orderBy, direction }),
-  );
-  const [page, setPage] = useState(1),
-    [search, setSearch] = useState("");
-  const header = (key: string, label: string) => (
-    <TableHead
-      aria-sort={
-        orderBy === key
-          ? direction === "asc"
-            ? "ascending"
-            : "descending"
-          : "none"
-      }
-    >
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => {
-          const next = new URLSearchParams(params);
-          next.set("orderBy", key);
-          next.set(
-            "direction",
-            key === orderBy && direction === "asc" ? "desc" : "asc",
-          );
-          setPage(1);
-          window.history.replaceState(null, "", `?${next}`);
-        }}
-      >
-        {label}
-        <ArrowUpDown className="size-3.5" />
-      </Button>
-    </TableHead>
-  );
-  const rows =
-    query.data?.rows.filter((r) =>
-      r.name
-        .toLocaleLowerCase("es-CO")
-        .includes(search.toLocaleLowerCase("es-CO")),
-    ) ?? [];
-  const sum = (
-    key: "salary" | "bonuses" | "leaveDeduction" | "installments" | "payable",
-  ) =>
-    query.data?.rows
-      .reduce((s, r) => s.plus(r[key] ?? 0), new Decimal(0))
-      .toFixed(2) ?? "0";
-  return (
-    <>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold">Pago del mes</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Salario y bonos menos permisos descontados y cuotas de anticipos.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="payroll-period">Mes</Label>
-          <MonthField
-            id="payroll-period"
-            value={period}
-            onChange={(value) => {
-              const q = new URLSearchParams(params);
-              q.set("period", value);
-              setPage(1);
-              window.history.replaceState(null, "", `?${q}`);
-            }}
-          />
-        </div>
-      </div>
-      <Feedback pending={query.isPending} error={query.error} />
-      {query.data && (
-        <>
-          <dl className="team-cost-summary">
-            <div>
-              <dt>Salarios y bonos</dt>
-              <dd>
-                {cop(
-                  new Decimal(sum("salary")).plus(sum("bonuses")).toFixed(2),
-                )}
-              </dd>
-              <p>Valores registrados para el mes</p>
-            </div>
-            <div>
-              <dt>Descuentos</dt>
-              <dd>
-                {cop(
-                  new Decimal(sum("leaveDeduction"))
-                    .plus(sum("installments"))
-                    .toFixed(2),
-                )}
-              </dd>
-              <p>Permisos y cuotas de anticipos</p>
-            </div>
-            <div>
-              <dt>Pago calculado</dt>
-              <dd>{cop(sum("payable"))}</dd>
-              <p>Antes de otros descuentos de nómina</p>
-            </div>
-          </dl>
-          <p className="text-sm text-muted-foreground">
-            Este cálculo no confirma que los salarios estén pagados. Registra el
-            pago restante en Dinero. Las cuotas ya aplicadas siguen restándose
-            en su mes; el anticipo no se paga dos veces.
-          </p>
-          {query.data.rows.some((r) => r.payable === null) && (
-            <Alert>
-              <AlertTitle>
-                Hay empleados sin salario configurado. Sus pagos no están
-                incluidos en el total.
-              </AlertTitle>
-            </Alert>
-          )}
-          {query.data.rows.some(
-            (r) => r.payable !== null && Number(r.payable) < 0,
-          ) && (
-            <Alert variant="destructive">
-              <AlertTitle>
-                Algunos descuentos superan el salario y los bonos del mes.
-                Revisa los permisos o mueve las cuotas a otro mes.
-              </AlertTitle>
-            </Alert>
-          )}
-          <Input
-            aria-label="Buscar empleado en pago del mes"
-            placeholder="Buscar empleado"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="max-w-sm"
-          />
-          <div className="data-panel">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {header("name", "Empleado")}
-                  {header("salary", "Salario")}
-                  {header("bonuses", "Bonos")}
-                  {header("leaveDeduction", "Permisos")}
-                  {header("installments", "Cuotas")}
-                  {header("payable", "Pago calculado")}
-                  <TableHead>
-                    <span className="sr-only">Acciones</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!rows.length && (
-                  <Empty>No hay empleados con esa búsqueda.</Empty>
-                )}
-                {rows.slice((page - 1) * 10, page * 10).map((r) => (
-                  <TableRow key={r.memberId}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell className="money-cell">
-                      {r.salary === null ? "Sin configurar" : cop(r.salary)}
-                    </TableCell>
-                    <TableCell className="money-cell">
-                      {cop(r.bonuses)}
-                    </TableCell>
-                    <TableCell className="money-cell">
-                      {cop(r.leaveDeduction)}
-                      <p className="text-xs text-muted-foreground">
-                        {hours(r.leaveMinutes)}
-                      </p>
-                    </TableCell>
-                    <TableCell className="money-cell">
-                      {cop(r.installments)}
-                      <p className="text-xs text-muted-foreground">
-                        {cop(r.applied)} aplicados
-                      </p>
-                    </TableCell>
-                    <TableCell
-                      className={`money-cell font-semibold ${Number(r.payable) < 0 ? "text-destructive" : ""}`}
-                    >
-                      {r.payable === null ? "Pendiente" : cop(r.payable)}
-                    </TableCell>
-                    <TableCell>
-                      <RowActions
-                        name={r.name}
-                        actions={[
-                          {
-                            label: "Ver anticipos y cuotas",
-                            run: () => onAdvances(r.memberId),
-                          },
-                        ]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <Pages total={rows.length} page={page} change={setPage} />
-          </div>
-        </>
-      )}
-    </>
   );
 }

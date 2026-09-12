@@ -1,4 +1,5 @@
 "use client";
+import { RecordStamp } from "@/features/activity/activity-ui";
 import { ManagementReport } from "./management-report";
 import { Attachments } from "./attachments";
 import { useState } from "react";
@@ -412,12 +413,7 @@ export function ControlPanel({
             "Categoría",
             Object.entries(enumNames)
               .filter(([k]) =>
-                [
-                  "RENT",
-                  "UTILITIES",
-                  "OTHER",
-                  ...(role === "ADMIN" ? ["PAYROLL"] : []),
-                ].includes(k),
+                ["RENT", "UTILITIES", "OTHER", "PAYROLL"].includes(k),
               )
               .map(([id, label]) => ({ id, label })),
           ),
@@ -867,6 +863,11 @@ export function ControlPanel({
                       <Button variant="link" onClick={() => setSelected(row)}>
                         {row.title}
                       </Button>
+                      {["closures", "recurring"].includes(resource) && (
+                        <div>
+                          <RecordStamp id={row.id} />
+                        </div>
+                      )}
                       <p className="max-w-80 truncate text-xs text-muted-foreground">
                         {row.subtitle}
                       </p>

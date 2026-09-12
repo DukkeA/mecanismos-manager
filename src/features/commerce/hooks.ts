@@ -45,6 +45,8 @@ export function useCommercialCommand() {
         client.invalidateQueries({ queryKey: ["control", actorId] }),
         client.invalidateQueries({ queryKey: snapshotKey(actorId) }),
         client.invalidateQueries({ queryKey: ["records", actorId] }),
+        client.invalidateQueries({ queryKey: ["activity", actorId] }),
+        client.invalidateQueries({ queryKey: ["team", actorId] }),
       ]);
     },
   });

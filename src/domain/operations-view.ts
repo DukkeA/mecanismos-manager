@@ -3,6 +3,7 @@ export type OperationsView = {
   archivedTasks?: OperationsView["tasks"];
   accounts: { id: string; name: string; balance: string }[];
   obligations: {
+    salaryPeriod?: string | null;
     estimated?: boolean;
     id: string;
     title: string;

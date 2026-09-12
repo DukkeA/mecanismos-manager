@@ -149,6 +149,15 @@ export type VacationAccount = {
 };
 export type PayrollPreview = {
   period: string;
+  unassigned?: {
+    id: string;
+    amount: string;
+    accountId: string;
+    account: string;
+    occurredOn: string;
+    reference: string;
+  }[];
+  legacyObligations?: { id: string; title: string; amount: string }[];
   rows: {
     memberId: string;
     name: string;
@@ -159,5 +168,19 @@ export type PayrollPreview = {
     installments: string;
     applied: string;
     payable: string | null;
+    paid: string;
+    remaining: string | null;
+    fingerprint: string;
+    payments: {
+      id: string;
+      entryId: string;
+      amount: string;
+      occurredOn: string;
+      account: string;
+      author: string;
+      createdAt: string;
+      note: string;
+      reversed: boolean;
+    }[];
   }[];
 };

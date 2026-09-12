@@ -4,7 +4,7 @@ import { DomainError } from "@/domain/errors";
 import "server-only";
 import { z } from "zod";
 import { db } from "./db";
-import { once, serializable, type Actor } from "./commands";
+import { once, serializable, setActor, type Actor } from "./commands";
 import { requirePermission, AccessDenied } from "@/domain/permissions";
 import { assertOrderTransition } from "@/domain/order-lifecycle";
 const memberInput = z.object({
@@ -16,16 +16,32 @@ const memberInput = z.object({
   compensation: compensationInput.optional(),
 });
 export async function saveMember(actor: Actor, raw: unknown) {
-  requirePermission(actor.role, "members:write");
+  requirePermission(actor.role, "team:write");
   const { compensation, ...input } = memberInput.parse(raw);
   return serializable(async (tx) => {
-    if (input.id === actor.id && (!input.active || input.role !== "ADMIN"))
+    await setActor(tx, actor);
+    if (
+      actor.role === "ADMIN" &&
+      input.id === actor.id &&
+      (!input.active || input.role !== "ADMIN")
+    )
       throw new DomainError(
         "No puedes desactivar tu propio acceso de administrador.",
       );
     const before = input.id
       ? await tx.member.findUniqueOrThrow({ where: { id: input.id } })
       : null;
+    if (
+      actor.role === "OFFICE" &&
+      (before
+        ? before.role !== input.role ||
+          before.active !== input.active ||
+          before.email !== input.email
+        : input.role === "ADMIN" || !input.active)
+    )
+      throw new DomainError(
+        "Solo administración puede cambiar roles, correos de acceso o desactivar empleados.",
+      );
     if (before?.authSubject && before.email !== input.email)
       throw new DomainError(
         "Un correo vinculado no puede cambiarse desde este formulario.",
@@ -53,6 +69,10 @@ export async function saveMember(actor: Actor, raw: unknown) {
         details: { role: input.role, active: input.active },
       },
     });
+    if (compensation) {
+      const { syncSalaryObligations } = await import("./payroll-service");
+      await syncSalaryObligations(tx);
+    }
     return { id: member.id };
   });
 }

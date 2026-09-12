@@ -3,9 +3,9 @@ import { can, canContributeToTask, requirePermission } from "./permissions";
 import { amount, monthlyCoverage } from "./money";
 
 describe("access boundaries", () => {
-  it("keeps payroll and profitability away from office", () => {
+  it("allows office payroll without administrative privileges", () => {
     expect(can("OFFICE", "finance:write")).toBe(true);
-    expect(can("OFFICE", "payroll:read")).toBe(false);
+    expect(can("OFFICE", "payroll:read")).toBe(true);
     expect(can("OFFICE", "profitability:read")).toBe(false);
   });
   it("rejects mechanic stock and finance mutations", () => {
@@ -20,10 +20,23 @@ describe("access boundaries", () => {
 
 describe("economic coverage", () => {
   it("subtracts actual payroll once and preserves decimal precision", () => {
-    expect(monthlyCoverage({netRevenue:"10000000.10", consumedMaterials:"3000000.05", otherDirectCosts:"1000000.05", payroll:"4000000", fixedExpenses:"3000000"}))
-      .toEqual({contribution:"6000000.00", obligations:"7000000.00", operatingResult:"-1000000.00", remaining:"1000000.00"});
+    expect(
+      monthlyCoverage({
+        netRevenue: "10000000.10",
+        consumedMaterials: "3000000.05",
+        otherDirectCosts: "1000000.05",
+        payroll: "4000000",
+        fixedExpenses: "3000000",
+      }),
+    ).toEqual({
+      contribution: "6000000.00",
+      obligations: "7000000.00",
+      operatingResult: "-1000000.00",
+      remaining: "1000000.00",
+    });
   });
   it("rejects implicit rounding, exponent input and NaN", () => {
-    for (const value of ["1.001", "NaN", "1e3", "Infinity"]) expect(() => amount(value)).toThrow();
+    for (const value of ["1.001", "NaN", "1e3", "Infinity"])
+      expect(() => amount(value)).toThrow();
   });
 });

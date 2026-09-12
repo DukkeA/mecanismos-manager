@@ -29,7 +29,7 @@ export async function attendancePage(
     .parse(Object.fromEntries(params));
   if (
     (p.scope === "team" || (p.memberId && p.memberId !== actor.id)) &&
-    actor.role !== "ADMIN"
+    actor.role === "MECHANIC"
   )
     throw new AccessDenied();
   if (p.from && p.to && p.from > p.to) throw Error("Rango no válido.");
