@@ -1,3 +1,10 @@
+import {
+  benefitsPage,
+  vacationAccounts,
+  payrollPreview,
+  advanceHistory,
+} from "@/server/employee-benefits-query";
+import { DomainError } from "@/domain/errors";
 import { requireMember } from "@/server/auth";
 import {
   teamOverview,
@@ -16,18 +23,31 @@ export async function GET(request: Request) {
     );
   const params = new URL(request.url).searchParams;
   try {
+    const resource = params.get("resource");
     const result =
-      params.get("resource") === "overtime"
-        ? await overtimePage(actor, params)
-        : params.get("resource") === "history"
-          ? await compensationHistory(actor, Object.fromEntries(params))
-          : await teamOverview(actor, Object.fromEntries(params));
+      resource === "leaves" || resource === "advances"
+        ? await benefitsPage(actor, params, resource)
+        : resource === "vacations"
+          ? await vacationAccounts(actor)
+          : resource === "payroll"
+            ? await payrollPreview(
+                actor,
+                params.get("period") ?? "",
+                Object.fromEntries(params),
+              )
+            : resource === "advance-history"
+              ? await advanceHistory(actor, params.get("id") ?? "")
+              : params.get("resource") === "overtime"
+                ? await overtimePage(actor, params)
+                : params.get("resource") === "history"
+                  ? await compensationHistory(actor, Object.fromEntries(params))
+                  : await teamOverview(actor, Object.fromEntries(params));
     return Response.json(result, { headers });
   } catch (e) {
     return Response.json(
       {
         error:
-          e instanceof AccessDenied
+          e instanceof AccessDenied || e instanceof DomainError
             ? e.message
             : e instanceof ZodError
               ? "Revisa los filtros."
@@ -35,7 +55,11 @@ export async function GET(request: Request) {
       },
       {
         status:
-          e instanceof AccessDenied ? 403 : e instanceof ZodError ? 400 : 500,
+          e instanceof AccessDenied
+            ? 403
+            : e instanceof ZodError || e instanceof DomainError
+              ? 400
+              : 500,
         headers,
       },
     );

@@ -65,6 +65,7 @@ export async function reverseCash(actor:Actor,raw:unknown) {
     const original=await tx.cashEntry.findUniqueOrThrow({where:{id:input.entryId}});
     if(original.reversalOfId||await tx.cashEntry.findUnique({where:{reversalOfId:original.id}}))throw new DomainError("Ese movimiento no admite otra reversión.");
     await assertOpenCash(tx,original.accountId,input.occurredOn);
+    if(original.kind==="SALARY_ADVANCE")throw new DomainError("Anula el anticipo desde Equipo para actualizar también sus cuotas.");
     if(original.transferId) return reverseTransfer(tx,actor,original.transferId,input);
     const payment = await tx.customerPayment.findUnique({where:{entryId:original.id},include:{refunds:{include:{entry:{include:{reversal:true}}}}}});
     if(payment?.refunds.some(r=>!r.entry.reversal))throw new DomainError("Revierte las devoluciones de este anticipo antes de revertir su cobro.");

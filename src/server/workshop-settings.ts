@@ -16,6 +16,8 @@ export async function workshopSettings(): Promise<WorkshopSettings> {
       version: true,
       startMinute: true,
       endMinute: true,
+      saturdayStartMinute: true,
+      saturdayEndMinute: true,
       graceMinutes: true,
     },
   });
@@ -35,9 +37,21 @@ export async function saveWorkshopSettings(actor: Actor, raw: unknown) {
       throw new DomainError(
         "La configuración cambió. Actualiza la página antes de guardar.",
       );
+    const saturdayStartMinute = p.saturdayStart
+      ? minuteOfDay(p.saturdayStart)
+      : before.saturdayStartMinute;
+    const saturdayEndMinute = p.saturdayEnd
+      ? minuteOfDay(p.saturdayEnd)
+      : before.saturdayEndMinute;
+    if (startMinute >= endMinute || saturdayStartMinute >= saturdayEndMinute)
+      throw new DomainError(
+        "La salida debe ser posterior a la entrada del mismo día.",
+      );
     const after = await tx.workshopSettings.update({
       where: { id: "global" },
       data: {
+        saturdayStartMinute,
+        saturdayEndMinute,
         startMinute,
         endMinute,
         graceMinutes: p.graceMinutes,

@@ -216,6 +216,8 @@ export async function getOperations(
         ...(actor.role === "ADMIN"
           ? {}
           : {
+              kind: { not: "SALARY_ADVANCE" },
+              NOT: { original: { kind: "SALARY_ADVANCE" } },
               OR: [
                 { obligationId: null },
                 { obligation: { category: { not: "PAYROLL" } } },
