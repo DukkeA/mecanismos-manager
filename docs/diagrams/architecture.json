@@ -46,7 +46,7 @@
     {
       "id": "app",
       "type": "frontend",
-      "label": "Web y PWA",
+      "label": "Web · PWA · QR",
       "sublabel": "shadcn · TanStack Query",
       "pos": [
         380,
@@ -75,7 +75,7 @@
       "id": "postgres",
       "type": "database",
       "label": "PostgreSQL privado",
-      "sublabel": "workshop · 47 modelos",
+      "sublabel": "workshop · 53 modelos",
       "pos": [
         1100,
         340
@@ -178,7 +178,8 @@
       "items": [
         "Consultas paginadas por módulo y comandos con TanStack Query",
         "Member define el rol; las asignaciones limitan la evidencia técnica",
-        "Ventas, compras, stock y caja conservan compensaciones y auditoría"
+        "Ventas, compras, stock y caja conservan compensaciones y auditoría",
+        "Pantalla QR con cookie de dispositivo; no concede acceso al resto de la app"
       ]
     },
     {

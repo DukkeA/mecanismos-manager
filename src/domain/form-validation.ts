@@ -4,6 +4,7 @@ export type FormField = {
   type?:
     | "text"
     | "email"
+    | "time"
     | "date"
     | "textarea"
     | "select"
@@ -28,7 +29,7 @@ export function validateForm(
     const raw = values[field.key];
     if (field.type === "members") {
       if (!field.optional && (!Array.isArray(raw) || raw.length === 0))
-        errors[field.key] = "Selecciona al menos un responsable.";
+        errors[field.key] = "Selecciona al menos una opción.";
       continue;
     }
     const value = String(raw ?? "").trim();
@@ -55,6 +56,8 @@ export function validateForm(
       else if (!field.allowZero && Number(value) === 0)
         errors[field.key] = "El valor debe ser mayor que cero.";
     }
+    if (field.type === "time" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(value))
+      errors[field.key] = "Escribe una hora válida.";
     if (field.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
       errors[field.key] = "Escribe un correo completo. Ej. nombre@empresa.com.";
     if (field.key === "period" && !/^\d{4}-(0[1-9]|1[0-2])$/.test(value))

@@ -57,7 +57,7 @@ export async function writeCompensation(
       actorId: actor.id,
       entityId: memberId,
       action: "COMPENSATION_SET",
-      details: { rateId: rate.id, ...input },
+      details: { rateId: rate?.id ?? null, ...input },
     },
   });
   return { id: rate.id };
@@ -79,18 +79,28 @@ export async function recordOvertime(actor: Actor, raw: unknown) {
       memberId: z.uuid(),
       taskId: z.uuid().optional(),
       workedOn: z.iso.date(),
-      minutes: z.coerce.number().int().min(1).max(1440),
-      kind: z.enum(["DAY", "NIGHT"]),
+      minutes: z.coerce.number().int().min(0).max(1440),
+      kind: z.enum(["DAY", "NIGHT", "FIXED"]),
+      pay: money.optional(),
       surchargePercent: z.coerce.number().min(0).max(300),
       employerCost: money,
       note: z.string().trim().min(5).max(1000),
     })
     .parse(raw);
+  if (
+    input.kind === "FIXED"
+      ? input.minutes !== 0 ||
+        input.surchargePercent !== 0 ||
+        !input.pay ||
+        !new Decimal(input.pay).gt(0)
+      : input.minutes < 1 || input.pay !== undefined
+  )
+    throw new DomainError("Revisa el valor del bono o el tiempo adicional.");
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Bogota",
   }).format(new Date());
   if (input.workedOn > today)
-    throw new DomainError("Registra las horas extra después de trabajarlas.");
+    throw new DomainError("La fecha no puede ser futura.");
   return once(
     actor,
     input.requestId,
@@ -118,11 +128,20 @@ export async function recordOvertime(actor: Actor, raw: unknown) {
           throw new DomainError("El empleado debe estar asignado a la tarea.");
       }
       const workedOn = day(input.workedOn);
-      const rate = await tx.laborRate.findFirst({
-        where: { memberId: input.memberId, effectiveOn: { lte: workedOn } },
-        orderBy: { effectiveOn: "desc" },
-      });
-      if (!rate?.monthlySalary?.gt(0) || !rate.monthlyHours)
+      const rate =
+        input.kind === "FIXED"
+          ? null
+          : await tx.laborRate.findFirst({
+              where: {
+                memberId: input.memberId,
+                effectiveOn: { lte: workedOn },
+              },
+              orderBy: { effectiveOn: "desc" },
+            });
+      if (
+        input.kind !== "FIXED" &&
+        (!rate?.monthlySalary?.gt(0) || !rate.monthlyHours)
+      )
         throw new DomainError(
           "Configura el salario mensual vigente en la fecha trabajada.",
         );
@@ -145,22 +164,27 @@ export async function recordOvertime(actor: Actor, raw: unknown) {
         throw new DomainError(
           "El tiempo total del empleado supera las 24 horas de ese día.",
         );
-      const baseHourlyPay = new Decimal(rate.monthlySalary.toString())
-        .div(rate.monthlyHours.toString())
-        .toFixed(6);
+      const baseHourlyPay = rate
+        ? new Decimal(rate.monthlySalary!.toString())
+            .div(rate.monthlyHours!.toString())
+            .toFixed(6)
+        : "0";
       const { requestId: _requestId, ...values } = input;
       const entry = await tx.overtimeEntry.create({
         data: {
           ...values,
           workedOn,
-          rateId: rate.id,
+          rateId: rate?.id ?? null,
           actorId: actor.id,
           baseHourlyPay,
-          pay: overtimePay(
-            baseHourlyPay,
-            input.minutes,
-            input.surchargePercent,
-          ),
+          pay:
+            input.kind === "FIXED"
+              ? input.pay!
+              : overtimePay(
+                  baseHourlyPay,
+                  input.minutes,
+                  input.surchargePercent,
+                ),
         },
       });
       await tx.auditEvent.create({
@@ -188,7 +212,7 @@ export async function voidOvertime(actor: Actor, raw: unknown) {
     const entry = await tx.overtimeEntry.findUniqueOrThrow({
       where: { id: input.id },
     });
-    if (entry.voidedAt) throw new DomainError("Estas horas ya están anuladas.");
+    if (entry.voidedAt) throw new DomainError("Este registro ya está anulado.");
     if (entry.taskId) {
       const task = await tx.task.findUniqueOrThrow({
         where: { id: entry.taskId },
@@ -196,7 +220,7 @@ export async function voidOvertime(actor: Actor, raw: unknown) {
       });
       if (task.order && ["CLOSED", "CANCELLED"].includes(task.order.status))
         throw new DomainError(
-          "La orden está cerrada. Revisa sus costos antes de corregir el tiempo.",
+          "La orden está cerrada. Revisa sus costos antes de corregir el registro.",
         );
     }
     await tx.overtimeEntry.update({

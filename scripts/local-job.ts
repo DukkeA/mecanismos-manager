@@ -12,6 +12,9 @@ switch (process.argv[2]) {
   case "commerce":
     await import("./seed-commerce");
     break;
+  case "attendance":
+    await import("./seed-attendance");
+    break;
   case "team":
     await import("./seed-team");
     break;

@@ -174,21 +174,21 @@ model OrderAsset {
 }
 
 model Task {
-  id          String           @id @default(uuid()) @db.Uuid
-  title       String           @db.VarChar(250)
-  status      TaskStatus       @default(TODO)
-  orderId     String?          @db.Uuid
-  order       WorkOrder?       @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  dueAt       DateTime?        @db.Timestamptz(3)
-  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
-  description String           @default("") @db.Text
-  deletedAt   DateTime?        @db.Timestamptz(3)
-  version     Int              @default(0)
+  id             String           @id @default(uuid()) @db.Uuid
+  title          String           @db.VarChar(250)
+  status         TaskStatus       @default(TODO)
+  orderId        String?          @db.Uuid
+  order          WorkOrder?       @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  dueAt          DateTime?        @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  description    String           @default("") @db.Text
+  deletedAt      DateTime?        @db.Timestamptz(3)
+  version        Int              @default(0)
   plannedMinutes Int?
-  notes       TaskNote[]
-  photos      TaskPhoto[]
-  assignments TaskAssignment[]
-  timeEntries TimeEntry[]
+  notes          TaskNote[]
+  photos         TaskPhoto[]
+  assignments    TaskAssignment[]
+  timeEntries    TimeEntry[]
 
   @@index([orderId, status])
   @@schema("workshop")
@@ -701,38 +701,38 @@ model StockTransfer {
 }
 
 model LaborRate {
-  id          String   @id @default(uuid()) @db.Uuid
-  memberId    String   @db.Uuid
-  effectiveOn DateTime @db.Date
-  hourlyCost  Decimal  @db.Decimal(18, 2)
-  monthlySalary Decimal? @db.Decimal(18, 2)
+  id                  String   @id @default(uuid()) @db.Uuid
+  memberId            String   @db.Uuid
+  effectiveOn         DateTime @db.Date
+  hourlyCost          Decimal  @db.Decimal(18, 2)
+  monthlySalary       Decimal? @db.Decimal(18, 2)
   monthlyEmployerCost Decimal? @db.Decimal(18, 2)
-  monthlyHours Decimal? @db.Decimal(8, 2)
-  note        String   @db.Text
-  actorId     String   @db.Uuid
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  monthlyHours        Decimal? @db.Decimal(8, 2)
+  note                String   @db.Text
+  actorId             String   @db.Uuid
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
 
   @@unique([memberId, effectiveOn])
   @@schema("workshop")
 }
 
 model OvertimeEntry {
-  id String @id @default(uuid()) @db.Uuid
-  memberId String @db.Uuid
-  taskId String? @db.Uuid
-  rateId String @db.Uuid
-  workedOn DateTime @db.Date
-  minutes Int
-  kind String @db.VarChar(20)
-  surchargePercent Decimal @db.Decimal(7, 2)
-  baseHourlyPay Decimal @db.Decimal(18, 6)
-  pay Decimal @db.Decimal(18, 2)
-  employerCost Decimal @db.Decimal(18, 2)
-  note String @db.VarChar(1000)
-  actorId String @db.Uuid
-  voidedAt DateTime? @db.Timestamptz(3)
-  voidReason String? @db.VarChar(1000)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  id               String    @id @default(uuid()) @db.Uuid
+  memberId         String    @db.Uuid
+  taskId           String?   @db.Uuid
+  rateId           String?   @db.Uuid
+  workedOn         DateTime  @db.Date
+  minutes          Int
+  kind             String    @db.VarChar(20)
+  surchargePercent Decimal   @db.Decimal(7, 2)
+  baseHourlyPay    Decimal   @db.Decimal(18, 6)
+  pay              Decimal   @db.Decimal(18, 2)
+  employerCost     Decimal   @db.Decimal(18, 2)
+  note             String    @db.VarChar(1000)
+  actorId          String    @db.Uuid
+  voidedAt         DateTime? @db.Timestamptz(3)
+  voidReason       String?   @db.VarChar(1000)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([memberId, workedOn])
   @@index([taskId])
@@ -882,5 +882,81 @@ model Attachment {
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([entityType, entityId, createdAt])
+  @@schema("workshop")
+}
+
+model AttendanceStation {
+  id               String    @id @default(uuid()) @db.Uuid
+  locationId       String    @unique @db.Uuid
+  secret           String    @db.VarChar(64)
+  active           Boolean   @default(true)
+  actorId          String    @db.Uuid
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  pairingHash      String?   @unique @db.VarChar(64)
+  pairingExpiresAt DateTime? @db.Timestamptz(3)
+  deviceHash       String?   @unique @db.VarChar(64)
+
+  @@schema("workshop")
+}
+
+model WorkshopSettings {
+  id           String   @id @db.VarChar(20)
+  version      Int      @default(1)
+  startMinute  Int      @default(510)
+  endMinute    Int      @default(1020)
+  graceMinutes Int      @default(0)
+  actorId      String?  @db.Uuid
+  updatedAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@schema("workshop")
+}
+
+model AttendanceSchedule {
+  id           String   @id @default(uuid()) @db.Uuid
+  memberId     String   @db.Uuid
+  weekday      Int
+  effectiveOn  DateTime @db.Date
+  startMinute  Int
+  endMinute    Int
+  breakMinutes Int
+  graceMinutes Int
+  note         String   @db.VarChar(1000)
+  actorId      String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([memberId, weekday, effectiveOn])
+  @@schema("workshop")
+}
+
+model AttendanceShift {
+  id            String    @id @default(uuid()) @db.Uuid
+  memberId      String    @db.Uuid
+  locationId    String    @db.Uuid
+  workedOn      DateTime  @db.Date
+  startedAt     DateTime  @db.Timestamptz(3)
+  endedAt       DateTime? @db.Timestamptz(3)
+  expectedStart DateTime? @db.Timestamptz(3)
+  expectedEnd   DateTime? @db.Timestamptz(3)
+  breakMinutes  Int       @default(0)
+  graceMinutes  Int       @default(0)
+  source        String    @db.VarChar(20)
+  note          String    @default("") @db.VarChar(1000)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([memberId, workedOn])
+  @@index([workedOn, id])
+  @@schema("workshop")
+}
+
+model AttendanceScan {
+  id        String   @id @default(uuid()) @db.Uuid
+  memberId  String   @db.Uuid
+  tokenHash String   @db.VarChar(64)
+  shiftId   String   @db.Uuid
+  action    String   @db.VarChar(10)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([memberId, tokenHash])
+  @@index([shiftId], map: "attendance_scan_shift")
   @@schema("workshop")
 }

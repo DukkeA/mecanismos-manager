@@ -5,7 +5,7 @@ Actualizados con Archify el 11 de septiembre de 2026. Describen la implementaci�
 | Diagrama | Contenido | Especificación |
 | --- | --- | --- |
 | [Arquitectura](architecture.html) | PWA, TanStack Query, Next.js, permisos, Prisma y Storage privado | [JSON](architecture.json) |
-| [Modelo de datos](data-model.html) | 48 modelos agrupados y relaciones seleccionadas | [JSON](data-model.json) |
+| [Modelo de datos](data-model.html) | 53 modelos agrupados y relaciones seleccionadas | [JSON](data-model.json) |
 | [Reparación](repair.html) | Recepción, acuerdo comercial, ejecución, pruebas, entrega y garantía | [JSON](repair.json) |
 | [Caja](finance.html) | Cobros aplicados a ventas, pagos, cuentas, transferencias y cierres | [JSON](finance.json) |
 | [Reconstrucción propia](reconditioning.html) | Identificación, costos, unidad vendible, venta y devolución | [JSON](reconditioning.json) |
@@ -17,6 +17,7 @@ El mapa agrupado no sustituye las claves y restricciones de [schema.prisma](../.
 | Grupo | Modelos |
 | --- | --- |
 | Identidad y equipo | `Member`, `TaskAssignment` |
+| Asistencia | `WorkshopSettings`, `AttendanceStation`, `AttendanceShift`, `AttendanceScan` (y horarios previos archivados en `AttendanceSchedule`) |
 | Clientes y activos | `Customer`, `Asset`, `OrderAsset`, `AssetOwnership` |
 | Trabajo | `WorkOrder`, `Observation`, `Task`, `TaskNote`, `TaskPhoto`, `TimeEntry` |
 | Catálogo y sedes | `CatalogItem`, `Location` |
@@ -49,3 +50,5 @@ node C:/Users/andre/.agents/skills/archify/bin/archify.mjs visual-check docs/dia
 Guardar el nuevo recibo de entrega y revisar las capturas antes de actualizar la revisión perceptual. Para reparación, caja y reconstrucción, usar el tipo `workflow`. Los PNG se regeneran con `visual-check` y están excluidos de Git; no editar el HTML generado.
 
 El modelo incluye las condiciones salariales mensuales en `LaborRate` y `OvertimeEntry`. Consulta [Inventario y Equipo](../inventory-and-team.md) para las fórmulas y la relación con Dinero.
+
+La arquitectura y el modelo de datos incorporan bonos, horario global y pantallas QR (53 modelos). Ambas entregas pasan 9/9 controles deterministas. El navegador bloqueó la apertura del archivo local; no se repitió la revisión perceptual de este HTML ni se reutilizó como evidencia la captura de la versión anterior.

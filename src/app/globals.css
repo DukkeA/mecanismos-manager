@@ -480,3 +480,5 @@ textarea.form-control{min-height:96px;padding:10px 12px}
   .team-cost-summary > div:last-child { grid-column: 1 / -1; }
   .team-cost-summary dd { font-size: 1.2rem; }
 }
+
+.attendance-filters > label:first-child { flex: 0 1 22rem; }

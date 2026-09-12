@@ -28,6 +28,8 @@ import {
 import type { Role } from "@/domain/permissions";
 import { useSignOut } from "@/features/workshop/session";
 import {
+  Clock3,
+  Settings,
   Boxes,
   Wrench as ServiceIcon,
   ChartNoAxesCombined,
@@ -66,6 +68,8 @@ export const workshopSections = [
   { label: "Rentabilidad", icon: ChartNoAxesCombined },
   { label: "Control de caja", icon: Wallet },
   { label: "Equipo", icon: Users },
+  { label: "Mi jornada", icon: Clock3 },
+  { label: "Configuración", icon: Settings },
 ];
 export function sectionTitle(section: string) {
   if (["Caja", "Cartera", "Control de caja"].includes(section)) return "Dinero";
@@ -75,13 +79,21 @@ export function sectionTitle(section: string) {
   return section;
 }
 export function sectionAvailable(label: string, role: Role, demo: boolean) {
-  if (role === "MECHANIC" && !["Resumen", "Órdenes", "Tareas"].includes(label))
+  if (
+    role === "MECHANIC" &&
+    !["Resumen", "Órdenes", "Tareas", "Mi jornada"].includes(label)
+  )
     return false;
-  if (role !== "ADMIN" && ["Equipo", "Rentabilidad"].includes(label))
+  if (
+    role !== "ADMIN" &&
+    ["Equipo", "Rentabilidad", "Configuración"].includes(label)
+  )
     return false;
   return (
     !demo ||
     ![
+      "Mi jornada",
+      "Configuración",
       "Cotizaciones",
       "Ventas",
       "Cartera",
@@ -141,9 +153,13 @@ export function AppSidebar({
         {["Taller", "Comercial", "Administración"].map((group) => {
           const items = visible.filter(
             (s) =>
-              (["Caja", "Equipo", "Rentabilidad", "Control de caja"].includes(
-                s.label,
-              )
+              ([
+                "Caja",
+                "Equipo",
+                "Rentabilidad",
+                "Control de caja",
+                "Configuración",
+              ].includes(s.label)
                 ? "Administración"
                 : [
                       "Clientes",

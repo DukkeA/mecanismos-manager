@@ -3,6 +3,8 @@ import { useState, type ComponentProps } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
+import { RowActions } from "@/components/row-actions";
+import { AttendanceWorkspace } from "@/features/attendance/attendance-workspace";
 import { OperationsPanel } from "@/components/operations-panel";
 import { FormSheet } from "@/components/form-sheet";
 import { OperationForm, type Dialog } from "@/components/operation-form";
@@ -43,6 +45,32 @@ import { OvertimeForm } from "./overtime-form";
 import type { OperationsView } from "@/domain/operations-view";
 
 export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
+  const params = useSearchParams();
+  if (params.get("teamTab") === "attendance")
+    return (
+      <div className="workspace-tabs flex flex-col gap-5">
+        <Tabs
+          value="attendance"
+          onValueChange={(value) =>
+            window.history.pushState(null, "", `?view=Equipo&teamTab=${value}`)
+          }
+        >
+          <TabsList aria-label="Equipo">
+            <TabsTrigger value="people">Personal y salarios</TabsTrigger>
+            <TabsTrigger value="overtime">Bonos y horas extra</TabsTrigger>
+            <TabsTrigger value="attendance">Asistencia</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <AttendanceWorkspace
+          team
+          members={props.data.members}
+          locations={props.locations}
+        />
+      </div>
+    );
+  return <TeamCosts {...props} />;
+}
+function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
   const params = useSearchParams(),
     today = todayInBogota();
   const tab = params.get("teamTab") === "overtime" ? "overtime" : "people";
@@ -99,7 +127,8 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
       >
         <TabsList aria-label="Equipo">
           <TabsTrigger value="people">Personal y salarios</TabsTrigger>
-          <TabsTrigger value="overtime">Horas extra</TabsTrigger>
+          <TabsTrigger value="overtime">Bonos y horas extra</TabsTrigger>
+          <TabsTrigger value="attendance">Asistencia</TabsTrigger>
         </TabsList>
       </Tabs>
       {overview.isPending ? (
@@ -117,7 +146,7 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
               <p>{overview.data.configured} personas con salario registrado</p>
             </div>
             <div>
-              <dt>Horas extra · {periodLabel}</dt>
+              <dt>Bonos y horas extra · {periodLabel}</dt>
               <dd>{cop(overview.data.overtimePay)}</dd>
               <p>
                 {(overview.data.overtimeMinutes / 60).toLocaleString("es-CO", {
@@ -141,7 +170,8 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
           </dl>
           <p className="text-sm text-muted-foreground">
             Base mensual según los salarios vigentes al{" "}
-            {dateLabel(overview.data.asOf)}, más las horas extra del mes.{" "}
+            {dateLabel(overview.data.asOf)}, más los bonos y horas extra del
+            mes.{" "}
             {overview.data.missing > 0
               ? `${overview.data.missing} personas sin salario configurado. `
               : ""}
@@ -158,16 +188,16 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
       ) : (
         <>
           <div className="operations-heading">
-            <p>Tiempo adicional al registrado en las tareas.</p>
+            <p>Bonos de importe fijo y tiempo adicional al de las tareas.</p>
             <Button onClick={() => setExtraOpen(true)}>
               <Plus data-icon="inline-start" />
-              Registrar horas extra
+              Registrar bono
             </Button>
           </div>
           <div
             className="commercial-filters"
             role="search"
-            aria-label="Filtros de horas extra"
+            aria-label="Filtros de bonos y horas extra"
           >
             <label>
               Mes
@@ -220,8 +250,8 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
                 label="Estado"
                 value={params.get("status") ?? "active"}
                 options={[
-                  { id: "active", label: "Registradas" },
-                  { id: "voided", label: "Anuladas" },
+                  { id: "active", label: "Registrados" },
+                  { id: "voided", label: "Anulados" },
                   { id: "all", label: "Todas" },
                 ]}
                 onChange={(status) => update({ status })}
@@ -313,10 +343,13 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
                           )}
                         </TableCell>
                         <TableCell>{dateLabel(row.workedOn)}</TableCell>
-                        <TableCell>{row.minutes} min</TableCell>
                         <TableCell>
-                          {row.kind === "DAY" ? "Diurnas" : "Nocturnas"} ·{" "}
-                          {row.surchargePercent}%
+                          {row.kind === "FIXED" ? "—" : `${row.minutes} min`}
+                        </TableCell>
+                        <TableCell>
+                          {row.kind === "FIXED"
+                            ? "Bono fijo"
+                            : `${row.kind === "DAY" ? "Diurnas" : "Nocturnas"} · ${row.surchargePercent}%`}
                         </TableCell>
                         <TableCell className="tabular-nums">
                           {cop(row.pay)}
@@ -330,32 +363,35 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
                           <Badge
                             variant={row.voidedAt ? "outline" : "secondary"}
                           >
-                            {row.voidedAt ? "Anuladas" : "Registradas"}
+                            {row.voidedAt ? "Anulado" : "Registrado"}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           {!row.voidedAt && (
-                            <Button
-                              variant="ghost"
-                              onClick={() =>
-                                setDialog({
-                                  kind: "overtime-void",
-                                  title: `Anular horas de ${row.name}`,
-                                  extra: { id: row.id },
-                                  description: `${row.minutes} minutos del ${dateLabel(row.workedOn)}. El registro se conserva en el historial.`,
-                                  fields: [
-                                    {
-                                      key: "reason",
-                                      label: "Motivo",
-                                      type: "textarea",
-                                    },
-                                  ],
-                                  submitLabel: "Anular horas",
-                                })
-                              }
-                            >
-                              Anular
-                            </Button>
+                            <RowActions
+                              name={row.name}
+                              actions={[
+                                {
+                                  label: "Anular",
+                                  danger: true,
+                                  run: () =>
+                                    setDialog({
+                                      kind: "overtime-void",
+                                      title: `Anular bono de ${row.name}`,
+                                      extra: { id: row.id },
+                                      description: `${cop(row.pay)} del ${dateLabel(row.workedOn)}. El registro queda en el historial.`,
+                                      fields: [
+                                        {
+                                          key: "reason",
+                                          label: "Motivo",
+                                          type: "textarea",
+                                        },
+                                      ],
+                                      submitLabel: "Anular bono",
+                                    }),
+                                },
+                              ]}
+                            />
                           )}
                         </TableCell>
                       </TableRow>
@@ -366,7 +402,7 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
                         colSpan={7}
                         className="py-10 text-center text-muted-foreground"
                       >
-                        No hay horas extra para esta consulta.
+                        No hay bonos ni horas extra para esta consulta.
                       </TableCell>
                     </TableRow>
                   )}
@@ -414,10 +450,10 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
       <FormSheet open={extraOpen} onOpenChange={setExtraOpen}>
         <SheetContent className="dossier-sheet">
           <SheetHeader>
-            <SheetTitle>Registrar horas extra</SheetTitle>
+            <SheetTitle>Registrar bono</SheetTitle>
             <SheetDescription>
-              Elige la persona y la fecha. El valor se calcula con el salario
-              vigente ese día.
+              Elige un importe fijo o calcula el valor con las horas y el
+              salario vigente.
             </SheetDescription>
           </SheetHeader>
           {extraOpen && (
@@ -426,7 +462,7 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
               orders={props.orders}
               onSaved={() => {
                 setExtraOpen(false);
-                toast.success("Horas extra registradas.");
+                toast.success("Bono registrado.");
               }}
             />
           )}
@@ -449,7 +485,7 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
               submit={async (input) => {
                 await command.mutateAsync({ kind: "overtime-void", input });
                 setDialog(null);
-                toast.success("Horas extra anuladas.");
+                toast.success("Registro anulado.");
               }}
             />
           )}

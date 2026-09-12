@@ -4,7 +4,7 @@ Aplicación interna de Mecanismos Técnicos SAS. Bogotá, COP, dos sedes.
 
 ## Estado
 
-Disponible para pruebas locales: cotizaciones, ventas, cartera, compras, inventario, órdenes, tareas, garantías, unidades propias, costos y control de caja. Incluye 48 modelos privados, 15 migraciones locales y cinco diagramas Archify. Los datos ficticios persisten en Docker. Con los accesos locales habilitados, `/login` permite elegir administración, oficina o mecánico; `/` valida la sesión y `/demo` redirige a este flujo.
+Disponible para pruebas locales: cotizaciones, ventas, cartera, compras, inventario, órdenes, tareas, garantías, unidades propias, costos y control de caja. Incluye 53 modelos privados, 17 migraciones locales y cinco diagramas Archify. Los datos ficticios persisten en Docker. Con los accesos locales habilitados, `/login` permite elegir administración, oficina o mecánico; `/` valida la sesión y `/demo` redirige a este flujo.
 
 **El acceso remoto sigue pendiente**: Google, credenciales y Storage de producción, despliegue HTTPS e instalación PWA deben comprobarse antes de usarla como registro principal. El [estado de implementación](docs/implementation-status.md) detalla resultados y límites; el [manual del piloto](docs/pilot-runbook.md) contiene recorridos de prueba, preparación de datos y recuperación. Los [diagramas](docs/diagrams/README.md) describen la arquitectura y los registros internos; los [recorridos simplificados](docs/workflows-simplified.md) describen la navegación y las acciones actuales.
 
@@ -39,3 +39,5 @@ Consultar `PRODUCT.md`, [estado de implementación](docs/implementation-status.m
 El proyecto remoto Supabase es `msocvkzvrwpsdlwzsrin`, en Dukke. Su creación se confirmó en USD 0/mes. El 11 de septiembre se verificaron 13 migraciones, 47 tablas privadas, dos administradores y ninguna orden en cloud. La configuración pendiente está en [docs/cloud-setup.md](docs/cloud-setup.md). No hay despliegue Vercel ni APK completados.
 
 La organización de Inventario, vehículos y componentes, salarios y horas extra está documentada en [Inventario y Equipo](docs/inventory-and-team.md). Esta ampliación y su migración se aplicaron solo en local.
+
+Bonos fijos, asistencia por QR y resultados por producto: [uso, cálculos y configuración pendiente](docs/bonuses-attendance-and-results.md). Carga local adicional: `pnpm db:seed:attendance`.

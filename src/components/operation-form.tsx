@@ -129,7 +129,7 @@ export function OperationForm({
               <FieldError>{fieldErrors[field.key]}</FieldError>
               {!fieldErrors[field.key] && (
                 <FieldDescription>
-                  Selecciona al menos un responsable.
+                  {field.hint ?? "Selecciona al menos una opción."}
                 </FieldDescription>
               )}
             </FieldSet>
