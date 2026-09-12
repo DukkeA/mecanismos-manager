@@ -1,4 +1,9 @@
-import {storageAdmin,attachmentBucket,readPrivate} from "@/server/private-storage";
+import { cleanupActivity } from "./activity-cleanup";
+import {
+  storageAdmin,
+  attachmentBucket,
+  readPrivate,
+} from "@/server/private-storage";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -34,8 +39,12 @@ beforeAll(async () => {
   ).id;
 });
 afterAll(async () => {
-  const stored=await db().taskPhoto.findMany({where:{taskId},select:{storagePath:true}});
-  const paths=stored.flatMap(p=>p.storagePath?[p.storagePath]:[]);if(paths.length)await storageAdmin().from(attachmentBucket).remove(paths);
+  const stored = await db().taskPhoto.findMany({
+    where: { taskId },
+    select: { storagePath: true },
+  });
+  const paths = stored.flatMap((p) => (p.storagePath ? [p.storagePath] : []));
+  if (paths.length) await storageAdmin().from(attachmentBucket).remove(paths);
   await db().taskPhoto.deleteMany({ where: { taskId } });
   await db().taskNote.deleteMany({ where: { taskId } });
   await db().auditEvent.deleteMany({ where: { actorId: { in: ids } } });
@@ -43,6 +52,11 @@ afterAll(async () => {
   await db().taskAssignment.deleteMany({ where: { taskId } });
   await db().task.deleteMany({ where: { id: taskId } });
   await db().catalogItem.deleteMany({ where: { id: { in: itemIds } } });
+  await cleanupActivity(
+    (await db().member.findMany({ where: { id: { in: ids } } })).map(
+      (m) => m.id,
+    ),
+  );
   await db().member.deleteMany({ where: { id: { in: ids } } });
   await db().$disconnect();
 });
@@ -100,7 +114,11 @@ it("validates photos and saves private metadata without exposing bytes in snapsh
     saveTaskPhoto(mechanic, input, Buffer.from("not an image")),
   ).rejects.toThrow("válida");
   const first = await saveTaskPhoto(mechanic, input, bytes);
-  const stored=await db().taskPhoto.findUniqueOrThrow({where:{id:first.id}});expect(stored.content).toBeNull();expect((await readPrivate(stored.storagePath!)).length).toBeGreaterThan(0);
+  const stored = await db().taskPhoto.findUniqueOrThrow({
+    where: { id: first.id },
+  });
+  expect(stored.content).toBeNull();
+  expect((await readPrivate(stored.storagePath!)).length).toBeGreaterThan(0);
   expect(await saveTaskPhoto(mechanic, input, bytes)).toEqual(first);
   const task = (await getOperations(mechanic)).tasks.find(
     (t) => t.id === taskId,

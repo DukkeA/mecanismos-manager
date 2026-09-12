@@ -17,7 +17,15 @@ import {
   applyAdvanceInstallment,
   voidSalaryAdvance,
 } from "@/server/employee-benefits-service";
+import {
+  recordPayroll,
+  reversePayroll,
+  adoptSalaryObligation,
+} from "@/server/payroll-service";
 const actions = {
+  "payroll-pay": recordPayroll,
+  "payroll-reverse": reversePayroll,
+  "payroll-adopt": adoptSalaryObligation,
   leave: recordLeave,
   "leave-void": voidLeave,
   vacation: adjustVacation,

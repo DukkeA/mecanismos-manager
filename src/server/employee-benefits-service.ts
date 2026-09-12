@@ -1,3 +1,4 @@
+import { assertPayrollMutable } from "./payroll-service";
 import "server-only";
 import { z } from "zod";
 import Decimal from "decimal.js";
@@ -60,6 +61,8 @@ export async function recordLeave(actor: Actor, raw: unknown) {
   const p = leaveInput.parse(raw);
   return once(actor, p.requestId, "EMPLOYEE_LEAVE", p, async (tx) => {
     await activeMember(tx, p.memberId);
+    if (p.treatment === "HOURS")
+      await assertPayrollMutable(tx, p.memberId, p.from, p.to);
     const settings = await tx.workshopSettings.findUniqueOrThrow({
       where: { id: "global" },
     });
@@ -141,7 +144,7 @@ export async function recordLeave(actor: Actor, raw: unknown) {
   });
 }
 export async function voidLeave(actor: Actor, raw: unknown) {
-  guard(actor);
+  requirePermission(actor.role, "members:write");
   const p = z
     .object({ requestId: z.uuid(), id: z.uuid(), reason: note })
     .parse(raw);
@@ -150,6 +153,13 @@ export async function voidLeave(actor: Actor, raw: unknown) {
       where: { id: p.id },
     });
     if (row.voidedAt) throw new DomainError("El permiso ya está anulado.");
+    if (row.treatment === "HOURS")
+      await assertPayrollMutable(
+        tx,
+        row.memberId,
+        row.startsAt.toISOString(),
+        row.endsAt.toISOString(),
+      );
     await tx.employeeLeave.update({
       where: { id: p.id },
       data: { voidedAt: new Date(), voidReason: p.reason },
@@ -218,6 +228,8 @@ export async function recordSalaryAdvance(actor: Actor, raw: unknown) {
   planCheck(p.installments, p.amount, p.disbursedOn.slice(0, 7));
   return once(actor, p.requestId, "SALARY_ADVANCE", p, async (tx) => {
     const member = await activeMember(tx, p.memberId);
+    for (const q of p.installments)
+      await assertPayrollMutable(tx, p.memberId, q.period);
     await assertOpenCash(tx, p.accountId, p.disbursedOn);
     const account = await tx.moneyAccount.findUniqueOrThrow({
       where: { id: p.accountId },
@@ -284,6 +296,11 @@ export async function rescheduleAdvance(actor: Actor, raw: unknown) {
   const p = versioned.extend({ installments: installmentInput }).parse(raw);
   return once(actor, p.requestId, "SALARY_ADVANCE_PLAN", p, async (tx) => {
     const advance = await currentAdvance(tx, p.id, p.version);
+    for (const q of [
+      ...advance.installments.filter((i) => !i.cancelledAt && !i.appliedOn),
+      ...p.installments,
+    ])
+      await assertPayrollMutable(tx, advance.memberId, q.period);
     const applied = advance.installments
       .filter((i) => i.appliedOn)
       .reduce((s, i) => s.plus(i.amount.toString()), new Decimal(0));
@@ -330,9 +347,12 @@ export async function applyAdvanceInstallment(actor: Actor, raw: unknown) {
       appliedOn: z.iso.date(),
     })
     .parse(raw);
+  if (p.reverse) requirePermission(actor.role, "members:write");
   return once(actor, p.requestId, "SALARY_ADVANCE_DEDUCTION", p, async (tx) => {
     const advance = await currentAdvance(tx, p.id, p.version),
       installment = advance.installments.find((i) => i.id === p.installmentId);
+    if (installment)
+      await assertPayrollMutable(tx, advance.memberId, installment.period);
     if (!installment || installment.cancelledAt)
       throw new DomainError("La cuota ya no pertenece al plan vigente.");
     if (p.reverse ? !installment.appliedOn : !!installment.appliedOn)
@@ -366,10 +386,12 @@ export async function applyAdvanceInstallment(actor: Actor, raw: unknown) {
   });
 }
 export async function voidSalaryAdvance(actor: Actor, raw: unknown) {
-  guard(actor);
+  requirePermission(actor.role, "members:write");
   const p = versioned.extend({ occurredOn: z.iso.date() }).parse(raw);
   return once(actor, p.requestId, "SALARY_ADVANCE_VOID", p, async (tx) => {
     const advance = await currentAdvance(tx, p.id, p.version);
+    for (const q of advance.installments.filter((i) => !i.cancelledAt))
+      await assertPayrollMutable(tx, advance.memberId, q.period);
     if (advance.installments.some((i) => i.appliedOn))
       throw new DomainError(
         "Revierte los descuentos aplicados antes de anular el anticipo.",

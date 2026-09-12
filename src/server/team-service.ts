@@ -1,3 +1,4 @@
+import { assertPayrollMutable } from "./payroll-service";
 import "server-only";
 import { z } from "zod";
 import Decimal from "decimal.js";
@@ -14,6 +15,7 @@ export async function writeCompensation(
   memberId: string,
   input: z.infer<typeof compensationInput>,
 ) {
+  await assertPayrollMutable(tx, memberId, input.effectiveOn, "9999-12");
   const date = day(input.effectiveOn);
   const member = await tx.member.findUniqueOrThrow({ where: { id: memberId } });
   if (!member.active)
@@ -107,6 +109,7 @@ export async function recordOvertime(actor: Actor, raw: unknown) {
     "OVERTIME_RECORDED",
     input,
     async (tx) => {
+      await assertPayrollMutable(tx, input.memberId, input.workedOn);
       const member = await tx.member.findUniqueOrThrow({
         where: { id: input.memberId },
       });
@@ -200,7 +203,7 @@ export async function recordOvertime(actor: Actor, raw: unknown) {
   );
 }
 export async function voidOvertime(actor: Actor, raw: unknown) {
-  requirePermission(actor.role, "payroll:read");
+  requirePermission(actor.role, "members:write");
   const input = z
     .object({
       requestId: z.uuid(),
@@ -213,6 +216,11 @@ export async function voidOvertime(actor: Actor, raw: unknown) {
       where: { id: input.id },
     });
     if (entry.voidedAt) throw new DomainError("Este registro ya está anulado.");
+    await assertPayrollMutable(
+      tx,
+      entry.memberId,
+      entry.workedOn.toISOString(),
+    );
     if (entry.taskId) {
       const task = await tx.task.findUniqueOrThrow({
         where: { id: entry.taskId },

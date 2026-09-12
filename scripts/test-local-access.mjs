@@ -24,7 +24,7 @@ for (const [role, name] of [
   assert.equal(home.status, 200);
   const html = await home.text();
   assert.ok(html.includes(name));
-  assert.equal(html.includes("Salarios primera quincena"), role === "admin");
+  assert.equal(html.includes("Salarios primera quincena"), role !== "mechanic");
   if (role === "mechanic") {
     assert.ok(!html.includes("Cuenta bancaria del taller"));
     assert.ok(!html.includes("Transportes San Jerónimo y Asociados"));
@@ -38,7 +38,7 @@ for (const [role, name] of [
   assert.ok(snapshot.actorId);
   assert.equal(
     snapshot.operations.obligations.some((o) => o.category === "PAYROLL"),
-    role === "admin",
+    role !== "mechanic",
   );
   if (role === "mechanic") {
     assert.equal(snapshot.operations.accounts.length, 0);
@@ -56,24 +56,26 @@ for (const [role, name] of [
     ["/api/control?resource=audit", role === "admin"],
     ["/api/reports", role === "admin"],
     ["/api/reports?resource=products", role === "admin"],
+    ["/api/activity?resource=latest", role !== "mechanic"],
+    ["/api/activity?resource=notifications", role === "admin"],
     ["/api/attendance", true],
-    ["/api/attendance?scope=team", role === "admin"],
+    ["/api/attendance?scope=team", role !== "mechanic"],
     ["/api/attendance?resource=settings", role === "admin"],
-    ["/api/team?period=2026-09", role === "admin"],
-    ["/api/team?resource=overtime", role === "admin"],
-    ["/api/team?resource=leaves", role === "admin"],
-    ["/api/team?resource=advances", role === "admin"],
-    ["/api/team?resource=vacations", role === "admin"],
-    ["/api/team?resource=payroll&period=2026-09", role === "admin"],
+    ["/api/team?period=2026-09", role !== "mechanic"],
+    ["/api/team?resource=overtime", role !== "mechanic"],
+    ["/api/team?resource=leaves", role !== "mechanic"],
+    ["/api/team?resource=advances", role !== "mechanic"],
+    ["/api/team?resource=vacations", role !== "mechanic"],
+    ["/api/team?resource=payroll&period=2026-09", role !== "mechanic"],
     [
       `/api/team?resource=history&memberId=${snapshot.actorId}`,
-      role === "admin",
+      role !== "mechanic",
     ],
     [
       "/api/records?table=members&orderBy=monthlySalary&direction=desc",
-      role === "admin",
+      role !== "mechanic",
     ],
-    ["/api/records?table=members", role === "admin"],
+    ["/api/records?table=members", role !== "mechanic"],
   ]) {
     const result = await fetch(base + path, { headers: { cookie } });
     assert.equal(result.status, allowed ? 200 : 403, `${role}: ${path}`);
@@ -116,7 +118,7 @@ for (const [role, name] of [
     const obligations = await query({ table: "obligations", size: "50" });
     assert.equal(
       obligations.rows.some((row) => row.category === "PAYROLL"),
-      role === "admin",
+      true,
     );
   }
   console.log(`Acceso ${role}: permisos y consultas correctos.`);
@@ -136,6 +138,7 @@ console.log("Solicitud desde otro origen rechazada.");
 assert.equal((await fetch(base + "/api/workshop")).status, 401);
 
 for (const path of [
+  "/api/activity?resource=latest",
   "/api/attendance",
   "/api/team?period=2026-09",
   "/api/records?table=customers",
@@ -156,5 +159,19 @@ assert.equal(
 console.log("Peticiones sin acceso rechazadas.");
 
 assert.equal((await fetch(base + "/api/attendance-station")).status, 401);
-assert.equal((await fetch(base + "/api/attendance-station", { method: "POST", headers: { origin: "https://otro.example", "content-type": "application/json" }, body: JSON.stringify({ token: "0".repeat(64) }) })).status, 403);
-console.log("Pantalla QR sin vínculo y vinculación desde otro origen rechazadas.");
+assert.equal(
+  (
+    await fetch(base + "/api/attendance-station", {
+      method: "POST",
+      headers: {
+        origin: "https://otro.example",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ token: "0".repeat(64) }),
+    })
+  ).status,
+  403,
+);
+console.log(
+  "Pantalla QR sin vínculo y vinculación desde otro origen rechazadas.",
+);

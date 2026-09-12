@@ -56,7 +56,7 @@ export async function recordsPage(actor: Actor, params: URLSearchParams) {
   const { table } = input;
   if (actor.role === "MECHANIC" && !["orders", "tasks"].includes(table))
     throw new AccessDenied();
-  if (table === "members") requirePermission(actor.role, "members:write");
+  if (table === "members") requirePermission(actor.role, "team:write");
   const filters: Prisma.Sql[] = [];
   const attr = (key: string) => sql`v.attrs->>${key}`;
   if (["customers", "suppliers", "tasks"].includes(table))
@@ -69,8 +69,7 @@ export async function recordsPage(actor: Actor, params: URLSearchParams) {
     filters.push(
       sql`(v.attrs->'memberIds') @> ${JSON.stringify([actor.id])}::jsonb`,
     );
-  if (actor.role !== "ADMIN" && ["cashEntries", "obligations"].includes(table))
-    filters.push(sql`COALESCE(${attr("category")},'')<>'PAYROLL'`);
+
   for (const term of input.q
     .trim()
     .normalize("NFD")

@@ -1,4 +1,5 @@
 "use client";
+import { RecordStamp } from "@/features/activity/activity-ui";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowUpDown, ScanLine, Plus } from "lucide-react";
@@ -297,6 +298,11 @@ export function AttendanceWorkspace({
             <TableRow key={row.id}>
               <TableCell>
                 <strong>{row.name}</strong>
+                {team && (
+                  <div>
+                    <RecordStamp id={row.id} />
+                  </div>
+                )}
                 <small className="cell-detail">
                   {dateLabel(row.workedOn)} · {row.location}
                 </small>

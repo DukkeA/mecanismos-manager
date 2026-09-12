@@ -2,7 +2,7 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Mecanismos · Caja y transferencias",
+    "title": "Mecanismos · Caja y pagos del personal",
     "quality_profile": "showcase",
     "legend": {
       "entries": {
@@ -46,7 +46,7 @@
       "col": 0,
       "type": "frontend",
       "label": "Registrar",
-      "sublabel": "Tipo y cuentas"
+      "sublabel": "Pago o abono"
     },
     {
       "id": "validate",
@@ -62,7 +62,7 @@
       "col": 2,
       "type": "database",
       "label": "Guardar",
-      "sublabel": "Todo o nada"
+      "sublabel": "Pago con historial"
     },
     {
       "id": "balances",
@@ -79,7 +79,7 @@
       "type": "frontend",
       "label": "Consultar caja",
       "sublabel": "Disponible · Pendientes",
-      "width": 140
+      "width": 136
     },
     {
       "id": "reverse",
@@ -130,9 +130,9 @@
       "dot": "amber",
       "title": "Qué miden los indicadores",
       "items": [
-        "Trasladar dinero no aumenta las entradas ni las salidas externas",
-        "Anticipo salarial: salida al entregarlo; las cuotas no generan otra salida",
-        "Los cierres guardan diferencias y bloquean movimientos anteriores"
+        "Salarios: cálculo en Equipo, pagos vinculados a caja y cuotas sin nueva salida",
+        "Transferencias no inflan entradas y salidas; aportes y prestaciones van por separado",
+        "Oficina registra y edita: historial con valores anteriores y avisos a administradores"
       ]
     }
   ]

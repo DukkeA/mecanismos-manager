@@ -1,4 +1,5 @@
 "use client";
+import { RecordStamp } from "@/features/activity/activity-ui";
 import { Attachments } from "@/features/control/attachments";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -580,6 +581,11 @@ export function CommercePanel({
                           ? `${resource === "quotes" ? "COT" : "VTA"}-${row.number}`
                           : row.title}
                       </Button>
+                      {resource === "payments" && (
+                        <div>
+                          <RecordStamp id={row.id} />
+                        </div>
+                      )}
                       <div className="max-w-72 truncate text-sm text-muted-foreground">
                         {row.number ? row.title : ""}
                         {row.revision ? ` · versión ${row.revision}` : ""}

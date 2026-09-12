@@ -15,10 +15,10 @@ export async function getOperations(
   const members = await db().member.findMany({
     where: {
       ...subset("members"),
-      ...(actor.role === "ADMIN" ? {} : { active: true }),
+      ...(actor.role !== "MECHANIC" ? {} : { active: true }),
     },
     select:
-      actor.role === "ADMIN"
+      actor.role !== "MECHANIC"
         ? { id: true, name: true, email: true, role: true, active: true }
         : { id: true, name: true, active: true },
     orderBy: { name: "asc" },
@@ -205,7 +205,6 @@ export async function getOperations(
     db().obligation.findMany({
       where: {
         ...subset("obligations"),
-        ...(actor.role === "ADMIN" ? {} : { category: { not: "PAYROLL" } }),
       },
       include: { entries: { select: { amount: true, direction: true } } },
       orderBy: { dueOn: "desc" },
@@ -213,16 +212,6 @@ export async function getOperations(
     db().cashEntry.findMany({
       where: {
         ...subset("cashEntries"),
-        ...(actor.role === "ADMIN"
-          ? {}
-          : {
-              kind: { not: "SALARY_ADVANCE" },
-              NOT: { original: { kind: "SALARY_ADVANCE" } },
-              OR: [
-                { obligationId: null },
-                { obligation: { category: { not: "PAYROLL" } } },
-              ],
-            }),
       },
       orderBy: { createdAt: "desc" },
       include: {
@@ -233,12 +222,11 @@ export async function getOperations(
   ]);
   return {
     ...technical,
-    coverage:
-      !selection && actor.role === "ADMIN"
-        ? await db().monthCoverage.findMany({
-            select: { period: true, confirmed: true },
-          })
-        : [],
+    coverage: !selection
+      ? await db().monthCoverage.findMany({
+          select: { period: true, confirmed: true },
+        })
+      : [],
     archivedTasks,
     accounts: accounts.map((a) => ({
       id: a.id,
@@ -246,6 +234,7 @@ export async function getOperations(
       balance: a.balance.toFixed(2),
     })),
     obligations: obligations.map((o) => ({
+      salaryPeriod: o.salaryPeriod,
       estimated: o.estimated,
       id: o.id,
       title: o.title,

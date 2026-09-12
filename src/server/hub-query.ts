@@ -98,8 +98,7 @@ export async function hubPage(
     filters.push(
       sql`EXISTS(SELECT 1 FROM workshop."Task" t JOIN workshop."TaskAssignment" ta ON ta."taskId"=t.id WHERE t."orderId"::text=v.data->>'orderId' AND t."deletedAt" IS NULL AND ta."memberId"=${actor.id}::uuid)`,
     );
-  if (actor.role !== "ADMIN" && input.resource === "recurring")
-    filters.push(sql`v.subtitle<>'PAYROLL'`);
+
   const base = sql`FROM (${definition[input.resource]}) v WHERE ${Prisma.join(filters, " AND ")}`,
     sort = Prisma.raw(
       `v."${input.orderBy}" ${input.direction.toUpperCase()} NULLS LAST, v.id ASC`,

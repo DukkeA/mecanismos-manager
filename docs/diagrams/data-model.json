@@ -264,7 +264,7 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "58 modelos en el esquema privado",
+      "title": "61 modelos en el esquema privado",
       "items": [
         "Flechas de dominio seleccionadas; consultar Prisma y SQL para todas las claves",
         "Las líneas comerciales conservan precio, descripción y condiciones acordadas",
@@ -275,9 +275,9 @@
       "dot": "cyan",
       "title": "Registros que se conservan",
       "items": [
-        "EmployeeLeaveDay conserva horas, vacaciones y descuento por fecha",
-        "VacationAdjustment conserva saldos iniciales y correcciones manuales",
-        "SalaryAdvance registra el desembolso; AdvanceInstallment distribuye los descuentos"
+        "PayrollPayment asocia empleado y mes con CashEntry; abonos y reversiones conservados",
+        "SalaryAdvance entrega dinero una vez; AdvanceInstallment descuenta al completar el pago",
+        "RecordChange conserva autor y valores; AdminNotification agrupa los cambios de Oficina"
       ]
     }
   ]

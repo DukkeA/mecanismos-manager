@@ -45,6 +45,7 @@ export async function once<T extends Prisma.InputJsonObject>(
     .update(JSON.stringify(payload))
     .digest("hex");
   return serializable(async (tx) => {
+    await setActor(tx, actor);
     const previous = await tx.commandReceipt.findUnique({ where: { id } });
     if (previous) {
       if (
@@ -56,9 +57,21 @@ export async function once<T extends Prisma.InputJsonObject>(
       return previous.result as T;
     }
     const result = await run(tx);
+    if (
+      /^(COMPENSATION_|OVERTIME_|EMPLOYEE_LEAVE|SALARY_ADVANCE|PAYROLL_)/.test(
+        kind,
+      )
+    ) {
+      const { syncSalaryObligations } = await import("./payroll-service");
+      await syncSalaryObligations(tx);
+    }
     await tx.commandReceipt.create({
       data: { id, actorId: actor.id, kind, payloadHash, result },
     });
     return result;
   });
+}
+
+export async function setActor(tx: Tx, actor: Actor) {
+  await tx.$queryRaw`SELECT set_config('workshop.actor_id', ${actor.id}, true)`;
 }

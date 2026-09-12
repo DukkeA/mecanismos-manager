@@ -1,5 +1,6 @@
 "use client";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,13 +88,31 @@ export function FinancialOverview({
           }))}
         />
       </div>
+      {data.payrollLoading && (
+        <p className="text-sm text-muted-foreground">
+          Consultando pagos del personal…
+        </p>
+      )}
+      {data.payrollError && (
+        <Alert variant="destructive">
+          <AlertTitle>
+            No se pudo incluir el pago del personal: {data.payrollError}
+          </AlertTitle>
+        </Alert>
+      )}
       <div className="finance-primary-grid">
         <Card className="finance-coverage">
           <CardHeader>
             <CardTitle>Gastos del mes</CardTitle>
-            <Badge variant="secondary">{role!=="ADMIN"?"Vista sin nómina":data.coverage.some(m=>m.period===period&&m.confirmed)?"Gastos completos confirmados":"Gastos pendientes de revisión"}</Badge>
+            <Badge variant="secondary">
+              {role !== "ADMIN"
+                ? "Vista sin nómina"
+                : data.coverage.some((m) => m.period === period && m.confirmed)
+                  ? "Gastos completos confirmados"
+                  : "Gastos pendientes de revisión"}
+            </Badge>
             <CardDescription>
-              {role === "ADMIN"
+              {role !== "MECHANIC"
                 ? "Arriendos, servicios, nómina y otros gastos registrados."
                 : "Arriendos, servicios y otros gastos. No incluye nómina."}
             </CardDescription>

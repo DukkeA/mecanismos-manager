@@ -309,7 +309,7 @@ export async function scanAttendance(actor: Actor, raw: unknown) {
   });
 }
 export async function correctAttendance(actor: Actor, raw: unknown) {
-  requirePermission(actor.role, "members:write");
+  requirePermission(actor.role, "team:write");
   const p = z
     .object({
       requestId: z.uuid(),

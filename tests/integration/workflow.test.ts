@@ -1,3 +1,4 @@
+import { cleanupActivity } from "./activity-cleanup";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { randomUUID as uuid } from "node:crypto";
 import { db } from "@/server/db";
@@ -108,6 +109,7 @@ afterAll(async () => {
   await db().catalogItem.delete({ where: { id: itemId } });
   await db().location.delete({ where: { id: locationId } });
   await db().moneyAccount.delete({ where: { id: accountId } });
+  await cleanupActivity([actor.id]);
   await db().member.delete({ where: { id: actor.id } });
   await db().$disconnect();
 });

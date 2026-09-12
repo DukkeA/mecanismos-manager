@@ -1,3 +1,4 @@
+import { cleanupActivity } from "./activity-cleanup";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { randomUUID } from "node:crypto";
 import { db } from "@/server/db";
@@ -84,6 +85,11 @@ afterAll(async () => {
   }
   if (itemId) await db().catalogItem.delete({ where: { id: itemId } });
   if (locationId) await db().location.delete({ where: { id: locationId } });
+  await cleanupActivity(
+    (await db().member.findMany({ where: { id: { in: ids } } })).map(
+      (m) => m.id,
+    ),
+  );
   await db().member.deleteMany({ where: { id: { in: ids } } });
   await db().$disconnect();
 });

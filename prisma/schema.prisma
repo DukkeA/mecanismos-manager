@@ -370,6 +370,7 @@ model MoneyAccount {
 }
 
 model Obligation {
+  salaryPeriod String? @unique @db.VarChar(7)
   recurringId String?     @db.Uuid
   estimated   Boolean     @default(false)
   id          String      @id @default(uuid()) @db.Uuid
@@ -383,6 +384,47 @@ model Obligation {
 
   @@unique([recurringId, period])
   @@index([period, category])
+  @@schema("workshop")
+}
+
+model PayrollPayment {
+  id String @id @default(uuid()) @db.Uuid
+  memberId String @db.Uuid
+  period String @db.VarChar(7)
+  entryId String @db.Uuid
+  amount Decimal @db.Decimal(18, 2)
+  calculation Json
+  actorId String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([entryId])
+  @@index([memberId, period])
+  @@schema("workshop")
+}
+
+model RecordChange {
+  actorName String @db.VarChar(160)
+  id String @id @default(uuid()) @db.Uuid
+  entityId String @db.Uuid
+  entityType String @db.VarChar(80)
+  actorId String? @db.Uuid
+  batchId String @db.VarChar(40)
+  operation String @db.VarChar(10)
+  before Json?
+  after Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([entityId, createdAt])
+  @@index([batchId])
+  @@schema("workshop")
+}
+
+model AdminNotification {
+  id String @id @default(uuid()) @db.Uuid
+  recipientId String @db.Uuid
+  batchId String @db.VarChar(40)
+  readAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([recipientId, batchId])
+  @@index([recipientId, readAt, createdAt])
   @@schema("workshop")
 }
 

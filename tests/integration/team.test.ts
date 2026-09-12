@@ -1,3 +1,4 @@
+import { cleanupActivity } from "./activity-cleanup";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { randomUUID as uuid } from "node:crypto";
 import { db } from "@/server/db";
@@ -101,6 +102,11 @@ afterAll(async () => {
   await db().commandReceipt.deleteMany({
     where: { actorId: { in: memberIds } },
   });
+  await cleanupActivity(
+    (await db().member.findMany({ where: { id: { in: memberIds } } })).map(
+      (m) => m.id,
+    ),
+  );
   await db().member.deleteMany({ where: { id: { in: memberIds } } });
 });
 it("derives hourly cost from monthly salary and keeps the command idempotent", async () => {
@@ -205,8 +211,8 @@ it("rejects unassigned tasks, future dates, excessive hours and unavailable sala
     }),
   ).rejects.toThrow("Configura el salario");
 });
-it("protects salaries and overtime values from office and mechanic roles", async () => {
-  for (const actor of [office, mechanic]) {
+it("protects salaries and overtime values from mechanic roles", async () => {
+  for (const actor of [mechanic]) {
     await expect(
       saveCompensation(actor, { ...salary, requestId: uuid() }),
     ).rejects.toThrow("permiso");
@@ -364,7 +370,7 @@ it("records a fixed bonus without salary or fictional hours and includes it in m
     recordOvertime(admin, { ...input, requestId: uuid(), pay: "0" }),
   ).rejects.toThrow();
   await expect(
-    recordOvertime(office, { ...input, requestId: uuid() }),
+    recordOvertime(mechanic, { ...input, requestId: uuid() }),
   ).rejects.toThrow("permiso");
   await voidOvertime(admin, {
     requestId: uuid(),
