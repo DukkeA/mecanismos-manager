@@ -80,6 +80,16 @@ export type CommercialRow = {
   lines?: CommercialLine[];
   entryId?: string;
   available?: string;
+  paymentHistory?: {
+    id: string;
+    date: string;
+    receivedOn: string;
+    amount: string;
+    account: string;
+    reference: string;
+    note: string;
+    reversal: boolean;
+  }[];
   allocations?: {
     id: string;
     saleId: string;

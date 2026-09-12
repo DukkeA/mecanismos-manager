@@ -32,7 +32,8 @@ export function OvertimeForm({
     command = useTeamCommand();
   const [memberId, setMemberId] = useState(""),
     [workedOn, setWorkedOn] = useState(todayInBogota()),
-    [kind, setKind] = useState("DAY");
+    [kind, setKind] = useState("FIXED"),
+    [fixedPay, setFixedPay] = useState("");
   const [taskId, setTaskId] = useState(""),
     [minutes, setMinutes] = useState("60"),
     [surcharge, setSurcharge] = useState("25"),
@@ -51,9 +52,14 @@ export function OvertimeForm({
     Number(minutes) > 0 &&
     Number.isFinite(Number(surcharge)) &&
     Number(surcharge) >= 0;
-  const amount = validAmount
-    ? overtimePay(hourly, Number(minutes), Number(surcharge))
-    : null;
+  const amount =
+    kind === "FIXED"
+      ? Number(fixedPay) > 0
+        ? fixedPay
+        : null
+      : validAmount
+        ? overtimePay(hourly, Number(minutes), Number(surcharge))
+        : null;
   const tasks = data.tasks.filter(
     (t) =>
       t.members.includes(memberId) &&
@@ -79,8 +85,9 @@ export function OvertimeForm({
               workedOn,
               kind,
               ...(taskId && taskId !== "__none" ? { taskId } : {}),
-              minutes: Number(minutes),
-              surchargePercent: Number(surcharge),
+              minutes: kind === "FIXED" ? 0 : Number(minutes),
+              ...(kind === "FIXED" ? { pay: fixedPay } : {}),
+              surchargePercent: kind === "FIXED" ? 0 : Number(surcharge),
               employerCost,
               note,
             },
@@ -89,9 +96,7 @@ export function OvertimeForm({
           onSaved();
         } catch (e) {
           setError(
-            e instanceof Error
-              ? e.message
-              : "No se pudieron registrar las horas.",
+            e instanceof Error ? e.message : "No se pudo guardar el bono.",
           );
         }
       }}
@@ -113,7 +118,7 @@ export function OvertimeForm({
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="extra-date">Fecha trabajada</FieldLabel>
+          <FieldLabel htmlFor="extra-date">Fecha</FieldLabel>
           <DateField
             id="extra-date"
             value={workedOn}
@@ -138,58 +143,93 @@ export function OvertimeForm({
             ]}
           />
           <FieldDescription>
-            Si eliges una tarea, estas horas se suman al costo de su orden. No
-            vuelvas a registrarlas como tiempo ordinario.
+            Si eliges una tarea, el valor se suma al costo de su orden.
           </FieldDescription>
         </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field>
-            <FieldLabel htmlFor="extra-minutes">Minutos extra</FieldLabel>
-            <Input
-              id="extra-minutes"
-              type="number"
-              min={1}
-              max={1440}
-              step={1}
-              required
-              value={minutes}
-              onChange={(e) => setMinutes(e.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="extra-kind">Tipo</FieldLabel>
-            <Choice
-              id="extra-kind"
-              value={kind}
-              onChange={(value) => {
-                setKind(value);
-                setSurcharge(value === "NIGHT" ? "75" : "25");
-                draft.change();
-              }}
-              options={[
-                { id: "DAY", label: "Diurnas" },
-                { id: "NIGHT", label: "Nocturnas" },
-              ]}
-            />
-          </Field>
-        </div>
         <Field>
-          <FieldLabel htmlFor="extra-surcharge">Recargo (%)</FieldLabel>
-          <Input
-            id="extra-surcharge"
-            type="number"
-            min={0}
-            max={300}
-            step="0.01"
-            value={surcharge}
-            onChange={(e) => setSurcharge(e.target.value)}
-            required
+          <FieldLabel htmlFor="extra-mode">Cálculo del bono</FieldLabel>
+          <Choice
+            id="extra-mode"
+            value={kind === "FIXED" ? "FIXED" : "HOURLY"}
+            onChange={(v) => {
+              setKind(v === "FIXED" ? "FIXED" : "DAY");
+              setSurcharge("25");
+              draft.change();
+            }}
+            options={[
+              { id: "FIXED", label: "Importe fijo" },
+              { id: "HOURLY", label: "Horas según salario" },
+            ]}
           />
-          <FieldDescription>
-            Se suma al valor de la hora ordinaria. Ajusta el porcentaje cuando
-            corresponda otro recargo.
-          </FieldDescription>
         </Field>
+        {kind === "FIXED" ? (
+          <Field>
+            <FieldLabel htmlFor="extra-fixed">Valor del bono (COP)</FieldLabel>
+            <Input
+              id="extra-fixed"
+              type="number"
+              min="0.01"
+              step="0.01"
+              required
+              value={fixedPay}
+              onChange={(e) => setFixedPay(e.target.value)}
+            />
+            <FieldDescription>
+              No depende del salario ni suma horas trabajadas.
+            </FieldDescription>
+          </Field>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel htmlFor="extra-minutes">Minutos extra</FieldLabel>
+                <Input
+                  id="extra-minutes"
+                  type="number"
+                  min={1}
+                  max={1440}
+                  step={1}
+                  required
+                  value={minutes}
+                  onChange={(e) => setMinutes(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="extra-kind">Tipo</FieldLabel>
+                <Choice
+                  id="extra-kind"
+                  value={kind}
+                  onChange={(value) => {
+                    setKind(value);
+                    setSurcharge(value === "NIGHT" ? "75" : "25");
+                    draft.change();
+                  }}
+                  options={[
+                    { id: "DAY", label: "Diurnas" },
+                    { id: "NIGHT", label: "Nocturnas" },
+                  ]}
+                />
+              </Field>
+            </div>
+            <Field>
+              <FieldLabel htmlFor="extra-surcharge">Recargo (%)</FieldLabel>
+              <Input
+                id="extra-surcharge"
+                type="number"
+                min={0}
+                max={300}
+                step="0.01"
+                value={surcharge}
+                onChange={(e) => setSurcharge(e.target.value)}
+                required
+              />
+              <FieldDescription>
+                Se suma al valor de la hora ordinaria. Ajusta el porcentaje
+                cuando corresponda otro recargo.
+              </FieldDescription>
+            </Field>
+          </>
+        )}
         <Field>
           <FieldLabel htmlFor="extra-employer">
             Costo adicional de la empresa (COP)
@@ -205,7 +245,9 @@ export function OvertimeForm({
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="extra-note">Actividad realizada</FieldLabel>
+          <FieldLabel htmlFor="extra-note">
+            Motivo del bono o trabajo adicional
+          </FieldLabel>
           <Textarea
             id="extra-note"
             minLength={5}
@@ -218,17 +260,18 @@ export function OvertimeForm({
       </FieldGroup>
       {memberId && (
         <div className="rounded-lg bg-muted p-4" aria-live="polite">
-          {history.isPending ? (
+          {kind !== "FIXED" && history.isPending ? (
             "Consultando salario…"
-          ) : history.isError ? (
+          ) : kind !== "FIXED" && history.isError ? (
             history.error.message
           ) : amount !== null ? (
             <>
-              <p className="text-sm">Valor de las horas extra</p>
+              <p className="text-sm">Valor a reconocer</p>
               <strong className="text-2xl tabular-nums">{cop(amount)}</strong>
               <p className="text-sm text-muted-foreground">
-                {cop(hourly!)} por hora + {surcharge}% de recargo. Costo
-                adicional: {cop(employerCost || 0)}.
+                {kind !== "FIXED" &&
+                  `${cop(hourly!)} por hora + ${surcharge}% de recargo. `}
+                Costo adicional: {cop(employerCost || 0)}.
               </p>
             </>
           ) : (
@@ -249,7 +292,7 @@ export function OvertimeForm({
           type="submit"
           disabled={command.isPending || !amount || !memberId}
         >
-          {command.isPending ? "Guardando…" : "Registrar horas extra"}
+          {command.isPending ? "Guardando…" : "Registrar bono"}
         </Button>
       </div>
     </form>

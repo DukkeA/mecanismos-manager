@@ -1,4 +1,5 @@
 "use client";
+import { RowActions } from "@/components/row-actions";
 import { useCommercialCommand } from "@/features/commerce/hooks";
 import { useWorkshopQuery, useWorkshopScope } from "@/features/workshop/query";
 import { useControlCommand } from "@/features/control/hooks";
@@ -374,18 +375,17 @@ export function CashPanel({
         </small>
         <p>{[e.reference, e.note].filter(Boolean).join(" · ")}</p>
         <footer>
-          {canLink(e) && (
-            <Button variant="outline" onClick={() => linkPayment(e)}>
-              Completar datos
-            </Button>
-          )}
-          {e.reversed ? (
-            <Badge variant="outline">Revertido</Badge>
-          ) : role === "ADMIN" && e.kind !== "REVERSAL" ? (
-            <Button variant="outline" onClick={() => reverse(e)}>
-              Revertir
-            </Button>
-          ) : null}
+          <RowActions
+            name={e.reference || e.counterparty}
+            actions={[
+              ...(canLink(e)
+                ? [{ label: "Completar datos", run: () => linkPayment(e) }]
+                : []),
+              ...(role === "ADMIN" && !e.reversed && e.kind !== "REVERSAL"
+                ? [{ label: "Revertir", danger: true, run: () => reverse(e) }]
+                : []),
+            ]}
+          />
         </footer>
       </li>
     ));
@@ -417,21 +417,17 @@ export function CashPanel({
           {cop(e.amount)}
         </TableCell>
         <TableCell>
-          {canLink(e) && (
-            <Button variant="outline" onClick={() => linkPayment(e)}>
-              Completar datos
-            </Button>
-          )}
-          {e.reversed ? (
-            <Badge variant="outline">Revertido</Badge>
-          ) : role === "ADMIN" && e.kind !== "REVERSAL" ? (
-            <Button size="sm" variant="outline" onClick={() => reverse(e)}>
-              <Undo2 data-icon="inline-start" />
-              Revertir
-            </Button>
-          ) : (
-            "—"
-          )}
+          <RowActions
+            name={e.reference || e.counterparty}
+            actions={[
+              ...(canLink(e)
+                ? [{ label: "Completar datos", run: () => linkPayment(e) }]
+                : []),
+              ...(role === "ADMIN" && !e.reversed && e.kind !== "REVERSAL"
+                ? [{ label: "Revertir", danger: true, run: () => reverse(e) }]
+                : []),
+            ]}
+          />
         </TableCell>
       </TableRow>
     ));
@@ -683,33 +679,23 @@ export function CashPanel({
                     </strong>
                   </TableCell>
                   <TableCell>
-                    <div className="row-actions">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => correct(o)}
-                      >
-                        Revisar importe
-                      </Button>
-                      {new Decimal(o.amount).gt(o.paid) && (
-                        <Button
-                          size="sm"
-                          disabled={!cash.accounts.length || mutation.isPending}
-                          onClick={() => pay(o)}
-                        >
-                          <Wallet data-icon="inline-start" />
-                          Pagar
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setHistory(o.id)}
-                      >
-                        <ReceiptText data-icon="inline-start" />
-                        Pagos
-                      </Button>
-                    </div>
+                    <RowActions
+                      name={o.title}
+                      actions={[
+                        { label: "Revisar importe", run: () => correct(o) },
+                        ...(new Decimal(o.amount).gt(o.paid)
+                          ? [
+                              {
+                                label: "Pagar",
+                                disabled:
+                                  !cash.accounts.length || mutation.isPending,
+                                run: () => pay(o),
+                              },
+                            ]
+                          : []),
+                        { label: "Ver pagos", run: () => setHistory(o.id) },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               );
@@ -748,20 +734,23 @@ export function CashPanel({
                     </div>
                   </dl>
                   <footer>
-                    <Button variant="outline" onClick={() => correct(o)}>
-                      Revisar importe
-                    </Button>
-                    <Button variant="outline" onClick={() => setHistory(o.id)}>
-                      Ver pagos
-                    </Button>
-                    {new Decimal(o.amount).gt(o.paid) && (
-                      <Button
-                        disabled={!cash.accounts.length || mutation.isPending}
-                        onClick={() => pay(o)}
-                      >
-                        Pagar
-                      </Button>
-                    )}
+                    <RowActions
+                      name={o.title}
+                      actions={[
+                        { label: "Revisar importe", run: () => correct(o) },
+                        { label: "Ver pagos", run: () => setHistory(o.id) },
+                        ...(new Decimal(o.amount).gt(o.paid)
+                          ? [
+                              {
+                                label: "Pagar",
+                                disabled:
+                                  !cash.accounts.length || mutation.isPending,
+                                run: () => pay(o),
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
                   </footer>
                   {!cash.accounts.length &&
                     new Decimal(o.amount).gt(o.paid) && (

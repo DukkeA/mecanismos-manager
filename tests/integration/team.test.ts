@@ -184,7 +184,7 @@ it("rejects unassigned tasks, future dates, excessive hours and unavailable sala
       requestId: uuid(),
       workedOn: "2099-01-01",
     }),
-  ).rejects.toThrow("después");
+  ).rejects.toThrow("futura");
   await expect(
     recordOvertime(admin, { ...extra, requestId: uuid(), minutes: 1400 }),
   ).rejects.toThrow("24 horas");
@@ -330,4 +330,48 @@ it("creates a member and their salary atomically", async () => {
   expect(
     await db().member.findUnique({ where: { email: invalidEmail } }),
   ).toBeNull();
+});
+
+it("records a fixed bonus without salary or fictional hours and includes it in monthly costs", async () => {
+  const input = {
+    requestId: uuid(),
+    memberId: admin.id,
+    workedOn: "2026-08-05",
+    minutes: 0,
+    kind: "FIXED",
+    surchargePercent: 0,
+    pay: "180000",
+    employerCost: "0",
+    note: "Bono fijo sin salario",
+  };
+  const before = await teamOverview(admin, { period: "2026-08" });
+  const a = await recordOvertime(admin, input),
+    b = await recordOvertime(admin, input);
+  expect(a.id).toBe(b.id);
+  const row = await db().overtimeEntry.findUniqueOrThrow({
+    where: { id: a.id },
+  });
+  expect(row.rateId).toBeNull();
+  expect(row.minutes).toBe(0);
+  expect(row.pay.toString()).toBe("180000");
+  const after = await teamOverview(admin, { period: "2026-08" });
+  expect(Number(after.monthlyCost) - Number(before.monthlyCost)).toBe(180000);
+  expect(after.overtimeMinutes).toBe(before.overtimeMinutes);
+  await expect(
+    recordOvertime(admin, { ...input, requestId: uuid(), minutes: 60 }),
+  ).rejects.toThrow();
+  await expect(
+    recordOvertime(admin, { ...input, requestId: uuid(), pay: "0" }),
+  ).rejects.toThrow();
+  await expect(
+    recordOvertime(office, { ...input, requestId: uuid() }),
+  ).rejects.toThrow("permiso");
+  await voidOvertime(admin, {
+    requestId: uuid(),
+    id: a.id,
+    reason: "Bono de prueba anulado",
+  });
+  expect((await teamOverview(admin, { period: "2026-08" })).monthlyCost).toBe(
+    before.monthlyCost,
+  );
 });

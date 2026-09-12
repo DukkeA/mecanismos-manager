@@ -1,4 +1,6 @@
 "use client";
+import { SettingsWorkspace } from "@/features/attendance/settings-workspace";
+import { AttendanceWorkspace } from "@/features/attendance/attendance-workspace";
 import { TeamWorkspace } from "@/features/team/team-workspace";
 import { InventoryWorkspace } from "@/features/inventory/inventory-workspace";
 import { CustomersWorkspace } from "@/features/contacts/customers-workspace";
@@ -422,6 +424,10 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 setCreating(true);
               }}
             />
+          ) : section === "Configuración" && !demo && actor.role === "ADMIN" ? (
+            <SettingsWorkspace locations={locations} />
+          ) : section === "Mi jornada" && !demo ? (
+            <AttendanceWorkspace locations={locations} />
           ) : section === "Equipo" && !demo ? (
             <TeamWorkspace
               section={section}

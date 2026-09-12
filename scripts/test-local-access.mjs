@@ -55,10 +55,20 @@ for (const [role, name] of [
     ["/api/control?resource=margins", role === "admin"],
     ["/api/control?resource=audit", role === "admin"],
     ["/api/reports", role === "admin"],
+    ["/api/reports?resource=products", role === "admin"],
+    ["/api/attendance", true],
+    ["/api/attendance?scope=team", role === "admin"],
+    ["/api/attendance?resource=settings", role === "admin"],
     ["/api/team?period=2026-09", role === "admin"],
     ["/api/team?resource=overtime", role === "admin"],
-    [`/api/team?resource=history&memberId=${snapshot.actorId}`, role === "admin"],
-    ["/api/records?table=members&orderBy=monthlySalary&direction=desc", role === "admin"],
+    [
+      `/api/team?resource=history&memberId=${snapshot.actorId}`,
+      role === "admin",
+    ],
+    [
+      "/api/records?table=members&orderBy=monthlySalary&direction=desc",
+      role === "admin",
+    ],
     ["/api/records?table=members", role === "admin"],
   ]) {
     const result = await fetch(base + path, { headers: { cookie } });
@@ -66,20 +76,44 @@ for (const [role, name] of [
   }
   if (role !== "mechanic") {
     const query = async (params) => {
-      const result = await fetch(base + "/api/records?" + new URLSearchParams(params), { headers: { cookie } });
+      const result = await fetch(
+        base + "/api/records?" + new URLSearchParams(params),
+        { headers: { cookie } },
+      );
       assert.equal(result.status, 200);
       return result.json();
     };
-    const first = await query({ table: "customers", size: "10", page: "1", orderBy: "name" });
-    const second = await query({ table: "customers", size: "10", page: "2", orderBy: "name" });
+    const first = await query({
+      table: "customers",
+      size: "10",
+      page: "1",
+      orderBy: "name",
+    });
+    const second = await query({
+      table: "customers",
+      size: "10",
+      page: "2",
+      orderBy: "name",
+    });
     assert.ok(first.total > 10);
     assert.equal(first.total, second.total);
-    assert.ok(second.rows.every(row => !first.rows.some(previous => previous.id === row.id)));
-    const transfers = await query({ table: "cashEntries", status: "TRANSFERS", size: "50" });
+    assert.ok(
+      second.rows.every(
+        (row) => !first.rows.some((previous) => previous.id === row.id),
+      ),
+    );
+    const transfers = await query({
+      table: "cashEntries",
+      status: "TRANSFERS",
+      size: "50",
+    });
     assert.ok(transfers.total > 0);
-    assert.ok(transfers.rows.every(row => Boolean(row.transferId)));
+    assert.ok(transfers.rows.every((row) => Boolean(row.transferId)));
     const obligations = await query({ table: "obligations", size: "50" });
-    assert.equal(obligations.rows.some(row => row.category === "PAYROLL"), role === "admin");
+    assert.equal(
+      obligations.rows.some((row) => row.category === "PAYROLL"),
+      role === "admin",
+    );
   }
   console.log(`Acceso ${role}: permisos y consultas correctos.`);
 }
@@ -97,8 +131,26 @@ console.log("Solicitud desde otro origen rechazada.");
 
 assert.equal((await fetch(base + "/api/workshop")).status, 401);
 
-for (const path of ["/api/team?period=2026-09", "/api/records?table=customers", "/api/control?resource=purchases", "/api/commerce?resource=sales"]) {
+for (const path of [
+  "/api/attendance",
+  "/api/team?period=2026-09",
+  "/api/records?table=customers",
+  "/api/control?resource=purchases",
+  "/api/commerce?resource=sales",
+]) {
   assert.equal((await fetch(base + path)).status, 401, path);
 }
-assert.equal((await fetch(base + "/api/attachments?entityType=ORDER&entityId=00000000-0000-4000-a000-000000000000")).status, 404);
+assert.equal(
+  (
+    await fetch(
+      base +
+        "/api/attachments?entityType=ORDER&entityId=00000000-0000-4000-a000-000000000000",
+    )
+  ).status,
+  404,
+);
 console.log("Peticiones sin acceso rechazadas.");
+
+assert.equal((await fetch(base + "/api/attendance-station")).status, 401);
+assert.equal((await fetch(base + "/api/attendance-station", { method: "POST", headers: { origin: "https://otro.example", "content-type": "application/json" }, body: JSON.stringify({ token: "0".repeat(64) }) })).status, 403);
+console.log("Pantalla QR sin vínculo y vinculación desde otro origen rechazadas.");

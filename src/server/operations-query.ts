@@ -64,7 +64,11 @@ export async function getOperations(
     orderBy: { createdAt: "desc" },
   });
   const overtime = await db().overtimeEntry.findMany({
-    where: { taskId: { in: tasks.map((t) => t.id) }, voidedAt: null },
+    where: {
+      taskId: { in: tasks.map((t) => t.id) },
+      voidedAt: null,
+      kind: { not: "FIXED" },
+    },
     select: {
       id: true,
       memberId: true,

@@ -631,16 +631,6 @@ export function CommercePanel({
                       </TableCell>
                     )}
                     <TableCell>
-                      {resource === "sales" &&
-                        row.status === "ISSUED" &&
-                        Number(row.balance) > 0 && (
-                          <Button
-                            variant="outline"
-                            onClick={() => payment(row)}
-                          >
-                            Cobrar
-                          </Button>
-                        )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -811,6 +801,50 @@ export function CommercePanel({
               )}
               {selected.terms && (
                 <p className="whitespace-pre-wrap">{selected.terms}</p>
+              )}
+              {resource === "sales" && (
+                <section aria-label="Historial de abonos">
+                  <h3 className="mb-3 font-semibold">Pagos y abonos</h3>
+                  {selected.paymentHistory?.length ? (
+                    <ul className="detail-list">
+                      {selected.paymentHistory.map((p) => (
+                        <li key={p.id}>
+                          <div className="flex justify-between gap-3">
+                            <strong>
+                              {p.reversal
+                                ? "Aplicación revertida"
+                                : "Abono aplicado"}
+                            </strong>
+                            <span className="tabular-nums">
+                              {cop(p.amount)}
+                            </span>
+                          </div>
+                          <p>
+                            {p.account} · Recibido el {dateLabel(p.receivedOn)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(p.date).toLocaleString("es-CO", {
+                              timeZone: "America/Bogota",
+                            })}{" "}
+                            · {p.reference || p.note}
+                          </p>
+                          {p.reference && p.note && (
+                            <p className="text-sm text-muted-foreground">
+                              {p.note}
+                            </p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Esta venta aún no tiene abonos.
+                    </p>
+                  )}
+                  <p className="mt-3 text-sm">
+                    Abonos vigentes: <strong>{cop(selected.paid)}</strong>
+                  </p>
+                </section>
               )}
               {selected.allocations?.map((a) => (
                 <div

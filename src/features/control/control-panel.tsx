@@ -904,18 +904,6 @@ export function ControlPanel({
                       </TableCell>
                     )}
                     <TableCell>
-                      {payables && Number(row.amount) > 0 && (
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            actions(row)
-                              .find((action) => action.label === "Pagar compra")
-                              ?.run()
-                          }
-                        >
-                          Pagar
-                        </Button>
-                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

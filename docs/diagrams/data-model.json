@@ -4,7 +4,10 @@
   "meta": {
     "title": "Mecanismos · Modelo de datos actual",
     "quality_profile": "showcase",
-    "viewBox": [1360, 740],
+    "viewBox": [
+      1360,
+      740
+    ],
     "legend": {
       "entries": {
         "frontend": {
@@ -28,99 +31,171 @@
   "components": [
     {
       "id": "identity",
-      "label": "Equipo y salarios",
-      "sublabel": "Member · LaborRate · OvertimeEntry",
+      "label": "Equipo y jornadas",
+      "sublabel": "Salarios · Bonos · Asistencia",
       "type": "security",
-      "pos": [18, 36],
-      "size": [270, 80]
+      "pos": [
+        18,
+        36
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "jobs",
       "label": "Órdenes y evidencia",
       "sublabel": "Trabajo · Vehículos · Pruebas",
       "type": "backend",
-      "pos": [360, 36],
-      "size": [270, 80]
+      "pos": [
+        360,
+        36
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "sales",
       "label": "Documentos comerciales",
       "sublabel": "Cotizaciones · Ventas · Devoluciones",
       "type": "backend",
-      "pos": [702, 36],
-      "size": [270, 80]
+      "pos": [
+        702,
+        36
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "payments",
       "label": "Cobros y aplicaciones",
       "sublabel": "CustomerPayment · PaymentAllocation",
       "type": "database",
-      "pos": [1044, 36],
-      "size": [270, 80]
+      "pos": [
+        1044,
+        36
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "suppliers",
       "label": "Proveedores y compras",
       "sublabel": "Pedidos · Recepciones · Pagos",
       "type": "external",
-      "pos": [18, 306],
-      "size": [270, 80]
+      "pos": [
+        18,
+        306
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "stock",
       "label": "Inventario por sede",
       "sublabel": "Existencias · Reservas · Traslados",
       "type": "database",
-      "pos": [360, 306],
-      "size": [270, 80]
+      "pos": [
+        360,
+        306
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "units",
       "label": "Unidades y garantías",
       "sublabel": "Series · Reconstrucción · Casos",
       "type": "backend",
-      "pos": [702, 306],
-      "size": [270, 80]
+      "pos": [
+        702,
+        306
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "cash",
       "label": "Caja y control mensual",
       "sublabel": "Cuentas · Cierres · Obligaciones",
       "type": "database",
-      "pos": [1044, 306],
-      "size": [270, 80]
+      "pos": [
+        1044,
+        306
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "customers",
       "label": "Clientes y propiedad",
       "sublabel": "Customer · Asset · AssetOwnership",
       "type": "frontend",
-      "pos": [18, 576],
-      "size": [270, 80]
+      "pos": [
+        18,
+        576
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "catalog",
       "label": "Repuestos y servicios",
       "sublabel": "CatalogItem · SupplierOffer",
       "type": "database",
-      "pos": [360, 576],
-      "size": [270, 80]
+      "pos": [
+        360,
+        576
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "audit",
       "label": "Auditoría e idempotencia",
       "sublabel": "AuditEvent · CommandReceipt",
       "type": "security",
-      "pos": [702, 576],
-      "size": [270, 80]
+      "pos": [
+        702,
+        576
+      ],
+      "size": [
+        270,
+        80
+      ]
     },
     {
       "id": "files",
       "label": "Documentos privados",
       "sublabel": "Attachment · TaskPhoto · Storage",
       "type": "database",
-      "pos": [1044, 576],
-      "size": [270, 80]
+      "pos": [
+        1044,
+        576
+      ],
+      "size": [
+        270,
+        80
+      ]
     }
   ],
   "connections": [
@@ -162,11 +237,23 @@
       "fromSide": "left",
       "toSide": "top",
       "via": [
-        [0, 616],
-        [0, 9],
-        [495, 9]
+        [
+          0,
+          616
+        ],
+        [
+          0,
+          9
+        ],
+        [
+          495,
+          9
+        ]
       ],
-      "labelAt": [28, 220]
+      "labelAt": [
+        28,
+        220
+      ]
     },
     {
       "from": "catalog",
@@ -177,18 +264,20 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "48 modelos en el esquema privado",
+      "title": "53 modelos en el esquema privado",
       "items": [
         "Flechas de dominio seleccionadas; consultar Prisma y SQL para todas las claves",
-        "Las líneas comerciales conservan precio, descripción y condiciones acordadas"
+        "Las líneas comerciales conservan precio, descripción y condiciones acordadas",
+        "WorkshopSettings define el horario; cada AttendanceShift conserva su copia"
       ]
     },
     {
       "dot": "cyan",
       "title": "Registros que se conservan",
       "items": [
-        "Salarios por vigencia y horas extra valoradas conservan el costo del trabajo",
-        "Storage conserva binarios; PostgreSQL guarda acceso, referencias y metadatos"
+        "Salarios por vigencia y bonos conservan el costo del trabajo",
+        "Storage conserva binarios; PostgreSQL guarda acceso, referencias y metadatos",
+        "AttendanceStation vincula pantallas QR; AttendanceScan registra su uso"
       ]
     }
   ]

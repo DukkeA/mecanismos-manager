@@ -8,7 +8,6 @@ import { FinancialOverview } from "./financial-overview";
 import { CommercePanel } from "@/features/commerce/commerce-panel";
 import { ControlPanel } from "@/features/control/control-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { todayInBogota } from "./summary";
 import { useQueryState } from "@/components/workshop-controls";
 
@@ -70,17 +69,6 @@ export function MoneyWorkspace({
             period={period}
             setPeriod={setPeriod}
           />
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => change("receivables")}>
-              Ver deudas de clientes
-            </Button>
-            <Button variant="outline" onClick={() => change("obligations")}>
-              Pagar gastos
-            </Button>
-            <Button variant="outline" onClick={() => change("accounts")}>
-              Ver cuentas y transferir
-            </Button>
-          </div>
         </>
       )}
       {tab === "receivables" && (
