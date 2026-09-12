@@ -24,6 +24,10 @@ export async function activityQuery(actor: Actor, params: URLSearchParams) {
        UNION ALL SELECT (after->>'memberId')::uuid,id,"actorName","createdAt" FROM workshop."RecordChange" WHERE after->>'memberId' IS NOT NULL
        UNION ALL SELECT (after->>'reversalOfId')::uuid,id,"actorName","createdAt" FROM workshop."RecordChange" WHERE after->>'reversalOfId' IS NOT NULL
        UNION ALL SELECT (after->>'advanceId')::uuid,id,"actorName","createdAt" FROM workshop."RecordChange" WHERE after->>'advanceId' IS NOT NULL
+       UNION ALL SELECT (after->>'obligationId')::uuid,id,"actorName","createdAt" FROM workshop."RecordChange" WHERE after->>'obligationId' IS NOT NULL
+       UNION ALL SELECT p."memberId",c.id,c."actorName",c."createdAt" FROM workshop."RecordChange" c
+        JOIN workshop."PayrollPayment" p ON c."entityId"=p."entryId" OR c.after->>'reversalOfId'=p."entryId"::text
+        WHERE c."entityType"='CashEntry'
       )v ORDER BY v."entityId",v."createdAt" DESC,v.id DESC`;
     return Object.fromEntries(
       rows.map((r) => [
@@ -91,6 +95,24 @@ export async function activityQuery(actor: Actor, params: URLSearchParams) {
       },
     });
   } else z.uuid().parse(p.id);
+  const employeePayments =
+    p.resource === "history"
+      ? await db().payrollPayment.findMany({
+          where: { memberId: p.id },
+          select: { entryId: true },
+        })
+      : [];
+  const employeeCash = employeePayments.length
+    ? await db().cashEntry.findMany({
+        where: {
+          OR: [
+            { id: { in: employeePayments.map((x) => x.entryId) } },
+            { reversalOfId: { in: employeePayments.map((x) => x.entryId) } },
+          ],
+        },
+        select: { id: true },
+      })
+    : [];
   const rows = await db().recordChange.findMany({
     where:
       p.resource === "batch"
@@ -98,8 +120,10 @@ export async function activityQuery(actor: Actor, params: URLSearchParams) {
         : {
             OR: [
               { entityId: p.id },
+              { entityId: { in: employeeCash.map((x) => x.id) } },
               { after: { path: ["memberId"], equals: p.id } },
               { after: { path: ["advanceId"], equals: p.id } },
+              { after: { path: ["obligationId"], equals: p.id } },
               { after: { path: ["reversalOfId"], equals: p.id } },
             ],
           },
