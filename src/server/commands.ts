@@ -19,12 +19,19 @@ export async function serializable<T>(run: (tx: Tx) => Promise<T>): Promise<T> {
     } catch (error) {
       const prismaConflict =
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        ["P2034", "P2002"].includes(error.code);
-      // The pg adapter can surface a serialization failure directly at COMMIT.
+        (["P2034", "P2002"].includes(error.code) ||
+          // Raw SQL wraps PostgreSQL serialization/deadlock errors in P2010.
+          (error.code === "P2010" &&
+            ["40001", "40P01"].includes(String(error.meta?.code))));
+      // Adapter conflicts appear at COMMIT or nested inside raw SQL metadata.
+      const adapterError =
+        error instanceof Prisma.PrismaClientKnownRequestError
+          ? (error.meta?.driverAdapterError ?? error)
+          : error;
       const adapterConflict =
-        error instanceof Error &&
-        error.name === "DriverAdapterError" &&
-        error.message === "TransactionWriteConflict";
+        adapterError instanceof Error &&
+        adapterError.name === "DriverAdapterError" &&
+        adapterError.message === "TransactionWriteConflict";
       if ((!prismaConflict && !adapterConflict) || attempt >= 7) throw error;
       // Jitter prevents simultaneous writers from colliding on every retry.
       const delay =
