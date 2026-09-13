@@ -176,7 +176,7 @@
       "dot": "emerald",
       "title": "Código actual · entorno local",
       "items": [
-        "Consultas paginadas por módulo y comandos con TanStack Query",
+        "Consultas por módulo con TanStack Query; rentabilidad por categoría y producto",
         "Member define el rol; las asignaciones limitan la evidencia técnica",
         "Equipo y Dinero: Admin y Oficina; anulaciones y accesos, solo Admin",
         "Pantalla QR con cookie de dispositivo; no concede acceso al resto de la app",

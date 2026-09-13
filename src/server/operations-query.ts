@@ -162,10 +162,12 @@ export async function getOperations(
         include: { _count: { select: { orders: true } } },
       }),
       db().catalogItem.findMany({
+        include: { businessCategory: true },
         where: subset("items"),
         orderBy: { name: "asc" },
       }),
       db().supplier.findMany({
+        include: { categories: { include: { category: true } } },
         where: subset("suppliers"),
         orderBy: { name: "asc" },
       }),
@@ -281,6 +283,8 @@ export async function getOperations(
     items: items.map((i) => ({
       id: i.id,
       code: i.code,
+      businessCategoryId: i.businessCategoryId,
+      businessCategory: i.businessCategory?.name ?? "Sin categoría",
       name: i.name,
       brand: i.brand ?? "",
       kind: i.kind,
@@ -289,6 +293,8 @@ export async function getOperations(
       notes: i.notes,
     })),
     suppliers: suppliers.map((s) => ({
+      categoryIds: s.categories.map((c) => c.categoryId),
+      categories: s.categories.map((c) => c.category.name),
       email: s.email ?? "",
       address: s.address ?? "",
       deletedAt: s.deletedAt?.toISOString(),

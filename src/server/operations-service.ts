@@ -1,3 +1,4 @@
+import { assertCategory } from "./category-service";
 import { compensationInput } from "@/domain/team";
 import { writeCompensation } from "./team-service";
 import { DomainError } from "@/domain/errors";
@@ -110,6 +111,7 @@ export async function saveCustomer(actor: Actor, raw: unknown) {
 }
 const orderInput = z
   .object({
+    businessCategoryId: z.uuid().nullable().optional(),
     assetId: z.uuid().optional(),
     quoteId: z.uuid().optional(),
     dueAt: z.iso.date().optional(),
@@ -250,9 +252,11 @@ export async function receiveOrder(actor: Actor, raw: unknown) {
             : { serial: input.reference }),
         },
       }));
+    await assertCategory(tx, input.businessCategoryId);
     const order = await tx.workOrder.create({
       data: {
         title: input.title,
+        businessCategoryId: input.businessCategoryId,
         reportedProblem: input.problem,
         authorization: input.authorization,
         purpose: input.purpose,

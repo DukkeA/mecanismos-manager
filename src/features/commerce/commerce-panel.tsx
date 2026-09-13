@@ -1,4 +1,5 @@
 "use client";
+import { useCategories } from "@/features/categories/hooks";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { Attachments } from "@/features/control/attachments";
 import { useState } from "react";
@@ -93,6 +94,7 @@ export function CommercePanel({
   onReceiveQuote?: (quote: CommercialRow) => void;
   onOpenOrder?: (id: string) => void;
 }) {
+  const categories = useCategories();
   const resource =
     section === "Cotizaciones"
       ? "quotes"
@@ -104,6 +106,7 @@ export function CommercePanel({
   for (const key of [
     "q",
     "status",
+    "businessCategoryId",
     "page",
     "pageSize",
     "orderBy",
@@ -473,6 +476,23 @@ export function CommercePanel({
             />
           </label>
         )}
+        {resource !== "payments" && (
+          <label>
+            Categoría
+            <Choice
+              value={params.get("businessCategoryId") ?? ""}
+              onChange={(businessCategoryId) => filter({ businessCategoryId })}
+              options={[
+                { id: "", label: "Todas las categorías" },
+                { id: "NONE", label: "Sin categoría" },
+                ...(categories.data ?? []).map((c) => ({
+                  id: c.id,
+                  label: c.name,
+                })),
+              ]}
+            />
+          </label>
+        )}
         <label className="commercial-date-filter">
           Fechas
           <DateRangePicker
@@ -481,7 +501,8 @@ export function CommercePanel({
             onChange={(from, to) => filter({ from, to })}
           />
         </label>
-        {(params.get("q") ||
+        {(params.get("businessCategoryId") ||
+          params.get("q") ||
           params.get("recordId") ||
           params.get("status") ||
           params.get("from") ||
@@ -489,7 +510,14 @@ export function CommercePanel({
           <Button
             variant="ghost"
             onClick={() =>
-              filter({ q: "", status: "", from: "", to: "", recordId: "" })
+              filter({
+                q: "",
+                status: "",
+                from: "",
+                to: "",
+                recordId: "",
+                businessCategoryId: "",
+              })
             }
           >
             Limpiar
@@ -795,7 +823,8 @@ export function CommercePanel({
                         <TableCell>
                           {l.description}
                           <div className="text-xs text-muted-foreground">
-                            {l.kind === "SERVICE" ? "Servicio" : l.reference}
+                            {l.kind === "SERVICE" ? "Servicio" : l.reference} ·{" "}
+                            {l.businessCategory?.name ?? "Sin categoría"}
                           </div>
                         </TableCell>
                         <TableCell>{l.quantity}</TableCell>

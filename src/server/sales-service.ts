@@ -89,6 +89,7 @@ export async function issueSale(actor: Actor, raw: unknown) {
     const lines = quote
       ? quote.lines.map((l) => ({
           itemId: l.itemId,
+          businessCategoryId: l.businessCategoryId,
           description: l.description,
           reference: l.reference,
           kind: l.kind,
@@ -118,6 +119,10 @@ export async function issueSale(actor: Actor, raw: unknown) {
         actorId: actor.id,
       },
     });
+    const orderCategory = input.orderId
+      ? (await tx.workOrder.findUniqueOrThrow({ where: { id: input.orderId } }))
+          .businessCategoryId
+      : undefined;
     for (const line of lines) {
       // Repair parts are consumed against the work order; invoicing must not consume twice.
       const movement =
@@ -135,6 +140,9 @@ export async function issueSale(actor: Actor, raw: unknown) {
         data: {
           saleId: sale.id,
           itemId: line.itemId,
+          businessCategoryId: input.orderId
+            ? orderCategory
+            : line.businessCategoryId,
           description: line.description,
           reference: line.reference,
           kind: line.kind,

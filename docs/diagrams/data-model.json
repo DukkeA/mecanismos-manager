@@ -46,7 +46,7 @@
     {
       "id": "jobs",
       "label": "Órdenes y evidencia",
-      "sublabel": "Trabajo · Vehículos · Pruebas",
+      "sublabel": "Categoría · Vehículos · Pruebas",
       "type": "backend",
       "pos": [
         360,
@@ -60,7 +60,7 @@
     {
       "id": "sales",
       "label": "Documentos comerciales",
-      "sublabel": "Cotizaciones · Ventas · Devoluciones",
+      "sublabel": "Categoría guardada · Precio · Alcance",
       "type": "backend",
       "pos": [
         702,
@@ -88,7 +88,7 @@
     {
       "id": "suppliers",
       "label": "Proveedores y compras",
-      "sublabel": "Pedidos · Recepciones · Pagos",
+      "sublabel": "Categorías · Compras · Pagos",
       "type": "external",
       "pos": [
         18,
@@ -157,8 +157,8 @@
     },
     {
       "id": "catalog",
-      "label": "Repuestos y servicios",
-      "sublabel": "CatalogItem · SupplierOffer",
+      "label": "Catálogo y categorías",
+      "sublabel": "Repuestos · Servicios · Categorías",
       "type": "database",
       "pos": [
         360,
@@ -264,11 +264,11 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "61 modelos en el esquema privado",
+      "title": "63 modelos en el esquema privado",
       "items": [
         "Flechas de dominio seleccionadas; consultar Prisma y SQL para todas las claves",
-        "Las líneas comerciales conservan precio, descripción y condiciones acordadas",
-        "WorkshopSettings separa sábado; cada jornada y permiso conserva su cálculo"
+        "BusinessCategory agrupa catálogo y órdenes; SupplierCategory admite varias por proveedor",
+        "QuoteLine y SaleLine conservan la categoría; los informes agrupan ventas y costos directos"
       ]
     },
     {

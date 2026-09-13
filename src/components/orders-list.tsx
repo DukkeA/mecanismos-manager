@@ -1,5 +1,6 @@
 "use client";
-import {useRecordPage} from "@/features/records/hooks";
+import { CategoryFilter } from "@/features/categories/category-fields";
+import { useRecordPage } from "@/features/records/hooks";
 import { SortableHead } from "./sortable-head";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,10 @@ export function OrdersList({
   orders: OrderView[];
   openOrder: (id: string) => void;
 }) {
+  const [businessCategoryId, setBusinessCategoryId] = useQueryState(
+    "businessCategoryId",
+    "ALL",
+  );
   const [q, setQ] = useQueryState("q");
   const [status, setStatus] = useQueryState("status", "ALL");
   const [kind, setKind] = useQueryState("kind", "ALL");
@@ -55,9 +60,14 @@ export function OrdersList({
       (location === "ALL" || o.location === location) &&
       inDates(o.receivedAt, from, to),
   );
-  const server=useRecordPage<OrderView>("orders");
-  const pagination = usePagination(server.data?.total??filtered.length, "orders");
-  const visible=server.serverEnabled?server.data?.rows??[]:filtered.slice(pagination.start,pagination.start+pagination.size);
+  const server = useRecordPage<OrderView>("orders");
+  const pagination = usePagination(
+    server.data?.total ?? filtered.length,
+    "orders",
+  );
+  const visible = server.serverEnabled
+    ? (server.data?.rows ?? [])
+    : filtered.slice(pagination.start, pagination.start + pagination.size);
   return (
     <section className="orders-list">
       <div className="operations-heading">
@@ -65,6 +75,7 @@ export function OrdersList({
         {createAction}
       </div>
       <FilterBar>
+        <CategoryFilter />
         <label className="search-filter">
           Buscar
           <Input
@@ -134,6 +145,7 @@ export function OrdersList({
               to ||
               status !== "ALL" ||
               kind !== "ALL" ||
+              businessCategoryId !== "ALL" ||
               location !== "ALL"
             )
           }
@@ -141,6 +153,7 @@ export function OrdersList({
             setQ("");
             setStatus("ALL");
             setKind("ALL");
+            setBusinessCategoryId("ALL");
             setLocation("ALL");
             setFrom("");
             setTo("");
@@ -156,6 +169,7 @@ export function OrdersList({
             <TableRow>
               {[
                 "Orden / unidad",
+                "Categoría",
                 "Cliente",
                 "Estado",
                 "Responsable",
@@ -170,36 +184,39 @@ export function OrdersList({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visible
-              .map((o) => (
-                <TableRow key={o.id}>
-                  <TableCell>
-                    <Button variant="link" onClick={() => openOrder(o.id)}>
-                      OT-{String(o.number).padStart(4, "0")}
-                    </Button>
-                    <strong className="cell-detail">{o.title}</strong>
-                    <span className="cell-detail">{o.reference}</span>
-                  </TableCell>
-                  <TableCell>{o.customer}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" data-status={o.status}>
-                      {statusLabels[o.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{o.responsible}</TableCell>
-                  <TableCell>{dateLabel(o.receivedAt)}</TableCell>
-                  <TableCell>{dateLabel(o.dueAt)}</TableCell>
-                  <TableCell>
-                    {o.closedAt ? dateLabel(o.closedAt) : "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
+            {visible.map((o) => (
+              <TableRow key={o.id}>
+                <TableCell>
+                  <Button variant="link" onClick={() => openOrder(o.id)}>
+                    OT-{String(o.number).padStart(4, "0")}
+                  </Button>
+                  <strong className="cell-detail">{o.title}</strong>
+                  <span className="cell-detail">{o.reference}</span>
+                </TableCell>
+                <TableCell>{o.businessCategory ?? "Sin categoría"}</TableCell>
+                <TableCell>{o.customer}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary" data-status={o.status}>
+                    {statusLabels[o.status]}
+                  </Badge>
+                </TableCell>
+                <TableCell>{o.responsible}</TableCell>
+                <TableCell>{dateLabel(o.receivedAt)}</TableCell>
+                <TableCell>{dateLabel(o.dueAt)}</TableCell>
+                <TableCell>
+                  {o.closedAt ? dateLabel(o.closedAt) : "—"}
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
         {!visible.length && !server.isPending && (
           <p className="empty-results">No hay órdenes con estos filtros.</p>
         )}
-        <Pager total={server.data?.total??filtered.length} state={pagination} />
+        <Pager
+          total={server.data?.total ?? filtered.length}
+          state={pagination}
+        />
       </div>
     </section>
   );

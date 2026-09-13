@@ -190,6 +190,8 @@ export async function transferStock(actor: Actor, raw: unknown) {
   );
 }
 export const countRow = z.object({
+  categoryName: z.string().trim().max(100).optional(),
+  businessCategoryId: z.uuid().optional(),
   code: z.string().trim().min(1).max(80),
   reference: z.string().trim().max(200).default(""),
   name: z.string().trim().min(3).max(200),
@@ -220,8 +222,34 @@ export async function previewCount(actor: Actor, raw: unknown) {
       if (ref && refs.has(ref) && refs.get(ref) !== r.code.toUpperCase())
         errors.push(`Fila ${i + 1}: referencia asociada a dos códigos.`);
       if (ref) refs.set(ref, r.code.toUpperCase());
-      const item = await tx.catalogItem.findFirst({ where: { code: {equals:r.code,mode:"insensitive"} } });
-      if(item) r.code=item.code;
+      const item = await tx.catalogItem.findFirst({
+        where: { code: { equals: r.code, mode: "insensitive" } },
+      });
+      if (item) r.code = item.code;
+      if (r.categoryName) {
+        const category = await tx.businessCategory.findFirst({
+          where: {
+            name: { equals: r.categoryName, mode: "insensitive" },
+            active: true,
+          },
+        });
+        if (!category)
+          errors.push(
+            `Fila ${i + 1}: crea o activa la categoría "${r.categoryName}" en Configuración.`,
+          );
+        else r.businessCategoryId = category.id;
+      }
+      if (r.businessCategoryId) {
+        const category = await tx.businessCategory.findUnique({
+          where: { id: r.businessCategoryId },
+        });
+        if (!category?.active)
+          errors.push(`Fila ${i + 1}: la categoría no está activa.`);
+        if (item && item.businessCategoryId !== r.businessCategoryId)
+          errors.push(
+            `Fila ${i + 1}: la categoría no coincide con el catálogo. Edita el repuesto antes de contar.`,
+          );
+      }
       if (item && (item.kind !== "PART" || item.serialized))
         errors.push(
           `Fila ${i + 1}: el código pertenece a un servicio o unidad serializada.`,
@@ -268,17 +296,34 @@ export async function applyCount(actor: Actor, raw: unknown) {
       throw new DomainError("El conteo ya fue aplicado.");
     const rows = z.array(countRow).parse(count.rows);
     for (const row of rows) {
+      if (
+        row.businessCategoryId &&
+        !(await tx.businessCategory.findFirst({
+          where: { id: row.businessCategoryId, active: true },
+        }))
+      )
+        throw new DomainError(
+          "Una categoría cambió. Prepara una vista previa nueva.",
+        );
       const item = await tx.catalogItem.upsert({
         where: { code: row.code },
         create: {
           code: row.code,
           name: row.name,
           reference: row.reference,
+          businessCategoryId: row.businessCategoryId,
           kind: "PART",
           unit: "unidad",
         },
         update: {},
       });
+      if (
+        row.businessCategoryId &&
+        item.businessCategoryId !== row.businessCategoryId
+      )
+        throw new DomainError(
+          "La categoría del repuesto cambió. Prepara una vista previa nueva.",
+        );
       if (item.kind !== "PART" || item.serialized)
         throw new DomainError(
           "El catálogo cambió. Prepara una vista previa nueva.",

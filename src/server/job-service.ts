@@ -142,6 +142,18 @@ export async function openWarranty(actor: Actor, raw: unknown) {
     const order = await tx.workOrder.create({
       data: {
         purpose: "WARRANTY",
+        businessCategoryId: sale.orderId
+          ? (
+              await tx.workOrder.findUniqueOrThrow({
+                where: { id: sale.orderId },
+              })
+            ).businessCategoryId
+          : (
+              await tx.saleLine.findFirst({
+                where: { saleId: sale.id },
+                orderBy: { total: "desc" },
+              })
+            )?.businessCategoryId,
         customerId: sale.customerId,
         locationId: input.locationId,
         title: `Garantía · ${sale.title}`,
@@ -392,6 +404,14 @@ export async function registerUnit(actor: Actor, raw: unknown) {
       throw new DomainError(
         "Selecciona una reconstrucción propia y un repuesto del catálogo.",
       );
+    if (!order.businessCategoryId && item.businessCategoryId)
+      await tx.workOrder.update({
+        where: { id: order.id },
+        data: {
+          businessCategoryId: item.businessCategoryId,
+          version: { increment: 1 },
+        },
+      });
     const unit = await tx.serializedUnit.create({
       data: {
         itemId: input.itemId,
@@ -501,6 +521,7 @@ export async function sellUnit(actor: Actor, raw: unknown) {
         lines: {
           create: {
             itemId: unit.itemId,
+            businessCategoryId: item.businessCategoryId,
             description: `${item.name} · ${unit.code} · ${unit.serial}`,
             reference: unit.code,
             kind: "PART",

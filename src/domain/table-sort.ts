@@ -8,6 +8,7 @@ export const tableColumns = {
   movementsDetail: ["date", "location", "quantity", "reason"],
   orders: [
     "number",
+    "businessCategory",
     "customer",
     "status",
     "responsible",
@@ -18,9 +19,9 @@ export const tableColumns = {
   tasks: ["title", "order", "members", "status", "dueAt", null],
   customers: ["name", "document", "contact", "orders", null],
   members: ["name", "email", "role", "active", "monthlySalary", null],
-  suppliers: ["name", "phone", "email", "address", null],
-  items: ["code", "name", "brand", "unit", null],
-  services: ["code", "name", "notes", null],
+  suppliers: ["name", "phone", "email", "address", "businessCategory", null],
+  items: ["code", "name", "brand", "unit", "businessCategory", null],
+  services: ["code", "name", "notes", "businessCategory", null],
   balances: [
     "item",
     "location",
