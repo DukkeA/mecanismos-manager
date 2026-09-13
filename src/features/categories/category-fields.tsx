@@ -4,6 +4,7 @@ import { Choice, useQueryState } from "@/components/workshop-controls";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { useCategories, useCategoryCommand } from "./hooks";
+import { CategoryPicker, CategoryFormControl } from "./category-picker";
 import type { OrderView } from "@/domain/workshop-view";
 
 export function CategoryFilter() {
@@ -25,23 +26,15 @@ export function CategoryFilter() {
   );
 }
 export function CategoryField({ defaultValue }: { defaultValue?: string }) {
-  const query = useCategories();
   return (
     <Field>
       <FieldLabel htmlFor="business-category">Categoría del trabajo</FieldLabel>
-      <Choice
+      <CategoryFormControl
         id="business-category"
         name="businessCategoryId"
-        required
-        defaultValue={defaultValue ?? ""}
-        options={[
-          { id: "", label: "Seleccionar categoría" },
-          ...(query.data ?? [])
-            .filter((c) => c.active || c.id === defaultValue)
-            .map((c) => ({ id: c.id, label: c.name })),
-        ]}
+        label="Categoría del trabajo"
+        defaultValue={defaultValue}
       />
-      {query.error && <p role="alert">{query.error.message}</p>}
     </Field>
   );
 }
@@ -52,8 +45,7 @@ export function OrderCategory({
   order: OrderView;
   canEdit: boolean;
 }) {
-  const query = useCategories(),
-    command = useCategoryCommand(),
+  const command = useCategoryCommand(),
     [value, setValue] = useState(order.businessCategoryId ?? "");
   return (
     <div className="flex flex-col gap-2">
@@ -65,16 +57,11 @@ export function OrderCategory({
       !["CLOSED", "CANCELLED"].includes(order.status) ? (
         <>
           <div className="flex flex-wrap gap-2">
-            <Choice
+            <CategoryPicker
               label="Categoría del trabajo"
-              value={value}
-              onChange={setValue}
-              options={[
-                { id: "", label: "Seleccionar categoría" },
-                ...(query.data ?? [])
-                  .filter((c) => c.active || c.id === order.businessCategoryId)
-                  .map((c) => ({ id: c.id, label: c.name })),
-              ]}
+              value={value ? [value] : []}
+              onChange={(ids) => setValue(ids[0] ?? "")}
+              disabled={command.isPending}
             />
             <Button
               variant="outline"

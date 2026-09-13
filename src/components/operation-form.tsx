@@ -1,5 +1,7 @@
 "use client";
 import { SalePicker } from "@/features/commerce/sale-picker";
+import { CategoryFormControl } from "@/features/categories/category-picker";
+import { useIsMutating } from "@tanstack/react-query";
 import { CustomerFormField } from "@/features/contacts/customer-picker";
 import { useWorkshopScope } from "@/features/workshop/query";
 import { validateForm, type FormField } from "@/domain/form-validation";
@@ -42,6 +44,8 @@ export function OperationForm({
   const draft = useFormSheet();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
+  const creatingCategory =
+    useIsMutating({ mutationKey: ["category-command"] }) > 0;
   const [error, setError] = useState("");
   const [requestId] = useState(() => crypto.randomUUID());
 
@@ -52,14 +56,14 @@ export function OperationForm({
       aria-busy={pending}
       onSubmit={async (event) => {
         event.preventDefault();
-        if (pending) return;
+        if (pending || creatingCategory) return;
         const form = new FormData(event.currentTarget);
 
         const values: Record<string, unknown> = { ...dialog.extra, requestId };
 
         for (const field of dialog.fields) {
           const value =
-            field.type === "members"
+            field.type === "members" || field.type === "categories"
               ? form.getAll(field.key)
               : String(form.get(field.key) ?? "").replace("__none", "");
           if (
@@ -153,6 +157,17 @@ export function OperationForm({
                   name={field.key}
                   customerId={field.customerId}
                 />
+              ) : field.type === "category" || field.type === "categories" ? (
+                <CategoryFormControl
+                  id={`${formId}-${field.key}`}
+                  name={field.key}
+                  label={field.label}
+                  multiple={field.type === "categories"}
+                  defaultValue={dialog.extra?.[field.key]}
+                  invalid={!!fieldErrors[field.key]}
+                  disabled={pending}
+                  describedBy={`${formId}-${field.key}-help ${formId}-${field.key}-error`}
+                />
               ) : field.type === "select" ? (
                 <Choice
                   id={`${formId}-${field.key}`}
@@ -243,7 +258,7 @@ export function OperationForm({
           >
             Cancelar
           </Button>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || creatingCategory}>
             {pending ? "Guardando…" : (dialog.submitLabel ?? "Guardar cambios")}
           </Button>
         </div>

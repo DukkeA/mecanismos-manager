@@ -8,6 +8,8 @@ export type FormField = {
     | "date"
     | "textarea"
     | "select"
+    | "category"
+    | "categories"
     | "sale"
     | "members"
     | "money"
@@ -27,7 +29,7 @@ export function validateForm(
   const errors: Record<string, string> = {};
   for (const field of fields) {
     const raw = values[field.key];
-    if (field.type === "members") {
+    if (field.type === "members" || field.type === "categories") {
       if (!field.optional && (!Array.isArray(raw) || raw.length === 0))
         errors[field.key] = "Selecciona al menos una opción.";
       continue;
@@ -36,7 +38,7 @@ export function validateForm(
     if (!value) {
       if (!field.optional)
         errors[field.key] =
-          field.type === "select"
+          field.type === "select" || field.type === "category"
             ? "Selecciona una opción."
             : field.type === "date"
               ? "Selecciona una fecha."

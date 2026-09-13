@@ -1,5 +1,4 @@
 "use client";
-import { useCategories } from "@/features/categories/hooks";
 import { CategoryFilter } from "@/features/categories/category-fields";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { ContactActions } from "@/features/contacts/contact-actions";
@@ -94,16 +93,10 @@ export function OperationsPanel({
   demo,
   run,
 }: Props) {
-  const categories = useCategories();
-  const categoryOptions = (categories.data ?? []).map((c) => ({
-    id: c.id,
-    label: c.name + (c.active ? "" : " (inactiva)"),
-  }));
   const categoryField = {
     key: "businessCategoryId",
     label: "Categoría",
-    type: "select" as const,
-    options: [{ id: "", label: "Seleccionar categoría" }, ...categoryOptions],
+    type: "category" as const,
   };
   const [search, setSearch] = useQueryState("q");
 
@@ -249,9 +242,8 @@ export function OperationsPanel({
       {
         key: "categoryIds",
         label: "Categorías que suministra",
-        type: "members",
+        type: "categories",
         optional: true,
-        options: categoryOptions,
         hint: "Puedes seleccionar varias categorías.",
       },
     ],
@@ -1494,34 +1486,7 @@ export function OperationsPanel({
           {dialog && (
             <OperationForm
               key={`${dialog.kind}-${dialog.title}`}
-              dialog={{
-                ...dialog,
-                fields: dialog.fields.map((field) =>
-                  field.key === "businessCategoryId" ||
-                  field.key === "categoryIds"
-                    ? {
-                        ...field,
-                        options: [
-                          ...(field.key === "businessCategoryId"
-                            ? [{ id: "", label: "Seleccionar categoría" }]
-                            : []),
-                          ...(categories.data ?? [])
-                            .filter(
-                              (c) =>
-                                c.active ||
-                                c.id === dialog.extra?.businessCategoryId ||
-                                (Array.isArray(dialog.extra?.categoryIds) &&
-                                  dialog.extra.categoryIds.includes(c.id)),
-                            )
-                            .map((c) => ({
-                              id: c.id,
-                              label: c.name + (c.active ? "" : " (inactiva)"),
-                            })),
-                        ],
-                      }
-                    : field,
-                ),
-              }}
+              dialog={dialog}
               submit={async (values) => {
                 await safeRun(dialog.kind, values);
                 setDialog(null);

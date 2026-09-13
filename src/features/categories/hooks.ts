@@ -23,8 +23,9 @@ export function useCategoryCommand() {
   const { actorId, demo } = useWorkshopScope(),
     client = useQueryClient();
   return useMutation({
+    mutationKey: ["category-command", actorId],
     mutationFn: async (command: {
-      kind: "save" | "order";
+      kind: "save" | "order" | "create";
       input: Record<string, unknown>;
     }) => {
       if (demo) throw Error("Abre el entorno local para guardar categorías.");
@@ -38,7 +39,16 @@ export function useCategoryCommand() {
       if (!r.ok) throw Error(body.error);
       return body;
     },
-    onSuccess: async () => {
+    onSuccess: async (result, command) => {
+      if (command.kind === "create") {
+        client.setQueryData<BusinessCategory[]>(
+          ["categories", actorId],
+          (previous = []) =>
+            [...previous.filter((c) => c.id !== result.id), result].sort(
+              (a, b) => a.name.localeCompare(b.name, "es"),
+            ),
+        );
+      }
       await Promise.all(
         ["categories", "records", "workshop", "control", "commerce"].map(
           (key) => client.invalidateQueries({ queryKey: [key, actorId] }),
