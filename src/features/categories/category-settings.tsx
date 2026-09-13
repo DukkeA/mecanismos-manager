@@ -1,13 +1,11 @@
 "use client";
 import { useState } from "react";
-import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   useCategories,
   useCategoryCommand,
   type BusinessCategory,
 } from "./hooks";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RowActions } from "@/components/row-actions";
 import {
@@ -21,20 +19,17 @@ import { OperationForm } from "@/components/operation-form";
 export function CategorySettings() {
   const query = useCategories(),
     command = useCategoryCommand(),
-    [editing, setEditing] = useState<BusinessCategory | "new" | null>(null);
+    [editing, setEditing] = useState<BusinessCategory | null>(null);
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Categorías del taller</h2>
           <p className="mt-1 text-muted-foreground">
-            Agrupan repuestos, servicios y trabajos en Rentabilidad.
+            Crea categorías desde los formularios de órdenes, repuestos,
+            servicios o proveedores.
           </p>
         </div>
-        <Button onClick={() => setEditing("new")}>
-          <Plus />
-          Nueva categoría
-        </Button>
       </div>
       <p className="text-sm text-muted-foreground">
         Desactivar una categoría impide asignarla a nuevos registros. Su
@@ -96,9 +91,7 @@ export function CategorySettings() {
       >
         <SheetContent className="dossier-sheet">
           <SheetHeader>
-            <SheetTitle>
-              {editing === "new" ? "Nueva categoría" : "Editar categoría"}
-            </SheetTitle>
+            <SheetTitle>Editar categoría</SheetTitle>
             <SheetDescription>
               Nombre usado en el catálogo y los informes.
             </SheetDescription>
@@ -107,10 +100,7 @@ export function CategorySettings() {
             dialog={{
               kind: "category",
               title: "Categoría",
-              extra:
-                editing && editing !== "new"
-                  ? { ...editing }
-                  : { active: true },
+              extra: editing ? { ...editing } : undefined,
               fields: [
                 {
                   key: "name",

@@ -36,6 +36,7 @@ import {
   useWorkshopQuery,
 } from "@/features/workshop/query";
 import { useEffect, useRef, useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
 
 import Link from "next/link";
 
@@ -165,6 +166,8 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
   const [error, setError] = useState("");
 
   const pending = orderCommand.isPending;
+  const creatingCategory =
+    useIsMutating({ mutationKey: ["category-command"] }) > 0;
 
   if (!query.data) return <p role="status">Comprobando sesión…</p>;
 
@@ -245,6 +248,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
   }
 
   async function saveOrder(form: FormData, element?: HTMLFormElement) {
+    if (pending || creatingCategory) return;
     const selectedCustomer = String(form.get("customerId") ?? "").replace(
       "__none",
       "",
@@ -869,7 +873,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               )}
               <Button
                 type="submit"
-                disabled={pending || locations.length === 0}
+                disabled={pending || creatingCategory || locations.length === 0}
               >
                 {pending ? "Creando…" : "Crear orden"}
                 <Plus data-icon="inline-end" />

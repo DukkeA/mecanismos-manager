@@ -1,7 +1,12 @@
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { randomUUID as uuid } from "node:crypto";
 import { db } from "@/server/db";
-import { saveCategory, assignOrderCategory } from "@/server/category-service";
+import {
+  saveCategory,
+  createCategory,
+  assignOrderCategory,
+} from "@/server/category-service";
+import { catalogLabelKey } from "@/domain/catalog-label";
 import { saveItem, saveSupplier } from "@/server/inventory-service";
 import { saveQuote, decideQuote } from "@/server/quote-service";
 import { issueSale } from "@/server/sales-service";
@@ -147,6 +152,149 @@ it("limits category administration, rejects duplicate names and protects concurr
     }),
   ).rejects.toThrow("cambió");
 });
+it("lets office create inline and converges simultaneous equivalent names to one audited category", async () => {
+  const name = `${prefix} Bombas de inyección`;
+  // Start with the intended display spelling, then race equivalent submissions.
+  const original = await createCategory(office, { requestId: uuid(), name });
+  const variants = [
+    name.toUpperCase(),
+    name.normalize("NFD").replace(/\p{M}/gu, ""),
+    name.replace("Bombas", "Bоmbаs"),
+    name.replaceAll(" ", "  "),
+  ];
+  const results = await Promise.all(
+    variants.map((name) => createCategory(office, { requestId: uuid(), name })),
+  );
+  expect(results.every((r) => r.id === original.id && !r.created)).toBe(true);
+  const input = { requestId: uuid(), name: `${prefix} Simultánea` };
+  const concurrent = await Promise.all([
+    createCategory(admin, input),
+    createCategory(office, {
+      requestId: uuid(),
+      name: `${prefix} Simulta\u0301nea`,
+    }),
+    createCategory(office, { requestId: uuid(), name: `${prefix} SIMULTANEA` }),
+  ]);
+  expect(new Set(concurrent.map((r) => r.id)).size).toBe(1);
+  expect(concurrent.filter((r) => r.created).length).toBe(1);
+  expect(await createCategory(admin, input)).toEqual(concurrent[0]);
+  expect(
+    await db().auditEvent.count({
+      where: { entityId: concurrent[0].id, action: "CATEGORY_CREATED" },
+    }),
+  ).toBe(1);
+  await expect(
+    createCategory(mechanic, {
+      requestId: uuid(),
+      name: `${prefix} Prohibida`,
+    }),
+  ).rejects.toThrow("permiso");
+  await expect(
+    saveCategory(office, {
+      requestId: uuid(),
+      id: original.id,
+      version: 0,
+      name,
+      active: false,
+    }),
+  ).rejects.toThrow("permiso");
+  const audit = await db().auditEvent.findFirstOrThrow({
+    where: { entityId: original.id, action: "CATEGORY_CREATED" },
+  });
+  expect(audit.actorId).toBe(office.id);
+});
+it("reserves archived names and prevents renaming into an equivalent category", async () => {
+  const original = await createCategory(office, {
+    requestId: uuid(),
+    name: `${prefix} Inyección`,
+  });
+  await saveCategory(admin, {
+    requestId: uuid(),
+    id: original.id,
+    version: 0,
+    name: original.name,
+    active: false,
+  });
+  await expect(
+    createCategory(office, { requestId: uuid(), name: `${prefix} INYECCION` }),
+  ).rejects.toThrow("desactivada");
+  await expect(
+    saveCategory(admin, {
+      requestId: uuid(),
+      id: catA,
+      version: 0,
+      name: `${prefix} INYECCION`,
+      active: true,
+    }),
+  ).rejects.toThrow("Ya existe");
+  expect(
+    await db().businessCategory.count({
+      where: { nameKey: catalogLabelKey(original.name) },
+    }),
+  ).toBe(1);
+});
+it("keeps browser and database normalization equivalent and enforces uniqueness on direct writes", async () => {
+  for (const name of [
+    "Bоmbаs de inyеcción",
+    "Βοmbαs de INYECCIÓN",
+    "ＢＯＭＢＡＳ　de inyección",
+    "Bombas\u200b de inyeccio\u0301n",
+    "Motores\u00a0— DIÉSEL",
+    "transmisiones automáticas",
+    " Escaneo 4.0 ",
+    "Bom\ufe0fbas de inyección",
+    "Bom\u{e0100}bas de inyección",
+  ]) {
+    const [result] = await db().$queryRaw<
+      { key: string }[]
+    >`SELECT workshop.catalog_label_key(${name}) AS key`;
+    expect(result.key).toBe(catalogLabelKey(name));
+  }
+  const category = await createCategory(admin, {
+    requestId: uuid(),
+    name: `${prefix} Regulación`,
+  });
+  await expect(
+    db().businessCategory.create({ data: { name: `${prefix} REGULACION` } }),
+  ).rejects.toThrow();
+  await expect(
+    db().businessCategory.create({
+      data: { name: `${prefix} regulacion`, nameKey: uuid() },
+    }),
+  ).rejects.toThrow();
+  await expect(
+    db().businessCategory.create({ data: { name: "---" } }),
+  ).rejects.toThrow();
+  expect(
+    (
+      await db().businessCategory.findUniqueOrThrow({
+        where: { id: category.id },
+      })
+    ).nameKey,
+  ).toBe(catalogLabelKey(category.name));
+});
+it("rejects equivalent service names while preserving distinct part identities", async () => {
+  await expect(
+    saveItem(office, {
+      code: uuid(),
+      kind: "SERVICE",
+      name: `${prefix} REPARACION`,
+    }),
+  ).rejects.toThrow("Ya existe el servicio");
+  await expect(
+    db().catalogItem.create({
+      data: { code: uuid(), kind: "SERVICE", name: `${prefix} reparacion` },
+    }),
+  ).rejects.toThrow();
+  const part = await saveItem(office, {
+    code: uuid(),
+    kind: "PART",
+    name: `${prefix} reparación`,
+  });
+  expect(
+    (await db().catalogItem.findUniqueOrThrow({ where: { id: part.id } })).kind,
+  ).toBe("PART");
+});
 it("lets office classify items and multiple supplier specialties, without assigning inactive categories", async () => {
   const item = {
     id: partId,
@@ -163,6 +311,19 @@ it("lets office classify items and multiple supplier specialties, without assign
     categoryIds: [catA, catB, catB],
   });
   expect(await db().supplierCategory.count({ where: { supplierId } })).toBe(2);
+  await saveSupplier(office, {
+    id: supplierId,
+    name: prefix,
+    phone: "6012345678",
+    categoryIds: [],
+  });
+  expect(await db().supplierCategory.count({ where: { supplierId } })).toBe(0);
+  await saveSupplier(office, {
+    id: supplierId,
+    name: prefix,
+    phone: "6012345678",
+    categoryIds: [catA, catB],
+  });
   await saveCategory(admin, {
     requestId: uuid(),
     id: catB,
@@ -493,7 +654,10 @@ it("imports a category by name and rejects unknown names without reclassifying e
         quantity: "2",
         condition: "NEW",
         unitCost: "200",
-        categoryName: `${prefix} 0`,
+        categoryName: `${prefix} 0`
+          .normalize("NFD")
+          .replace(/\p{M}/gu, "")
+          .toUpperCase(),
       },
     ],
   };
@@ -502,7 +666,7 @@ it("imports a category by name and rejects unknown names without reclassifying e
       ...base,
       rows: [{ ...base.rows[0], categoryName: "No existe " + prefix }],
     }),
-  ).rejects.toThrow("crea o activa");
+  ).rejects.toThrow("Puedes crearla al editar un repuesto");
   const count = await previewCount(admin, base);
   await applyCount(admin, { requestId: uuid(), countId: count.id });
   expect(
