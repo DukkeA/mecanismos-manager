@@ -25,6 +25,9 @@ export async function getOrders(
     select: {
       id: true,
       number: true,
+      businessCategoryId: true,
+      sales: { where: { status: "ISSUED" }, select: { id: true }, take: 1 },
+      businessCategory: { select: { name: true } },
       title: true,
       reportedProblem: true,
       status: true,
@@ -74,6 +77,11 @@ export async function getOrders(
     return {
       id: order.id,
       number: order.number,
+      businessCategoryId: order.businessCategoryId,
+      businessCategoryLocked:
+        order.sales.length > 0 ||
+        ["CLOSED", "CANCELLED"].includes(order.status),
+      businessCategory: order.businessCategory?.name ?? "Sin categoría",
       title: order.title,
       reference: asset?.plate ?? asset?.serial ?? "Sin referencia",
       kind: asset?.kind ?? "COMPONENT",

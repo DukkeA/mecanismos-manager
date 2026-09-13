@@ -21,7 +21,7 @@ El mapa agrupado no sustituye las claves y restricciones de [schema.prisma](../.
 | Asistencia | `WorkshopSettings`, `AttendanceStation`, `AttendanceShift`, `AttendanceScan` (y horarios previos archivados en `AttendanceSchedule`) |
 | Clientes y activos | `Customer`, `Asset`, `OrderAsset`, `AssetOwnership` |
 | Trabajo | `WorkOrder`, `Observation`, `Task`, `TaskNote`, `TaskPhoto`, `TimeEntry` |
-| Catálogo y sedes | `CatalogItem`, `Location` |
+| Catálogo, categorías y sedes | `CatalogItem`, `BusinessCategory`, `SupplierCategory`, `Location` |
 | Inventario | `StockBalance`, `StockMovement`, `StockReservation`, `StockTransfer`, `InventoryCount`, `SerializedUnit` |
 | Proveedores y compras | `Supplier`, `SupplierOffer`, `Purchase`, `PurchaseLine`, `PurchaseReceipt`, `SupplierPayment` |
 | Cotizaciones y ventas | `Quote`, `QuoteLine`, `Sale`, `SaleLine`, `SaleReturn`, `SaleReturnLine` |
@@ -51,3 +51,5 @@ Guardar el nuevo recibo de entrega y revisar las capturas antes de actualizar la
 El modelo incluye las condiciones salariales mensuales en `LaborRate` y `OvertimeEntry`. Consulta [Inventario y Equipo](../inventory-and-team.md) para las fórmulas y la relación con Dinero.
 
 La arquitectura y el modelo de datos incorporan bonos, horario global y pantallas QR (58 modelos). Ambas entregas pasan 9/9 controles deterministas. El navegador bloqueó la apertura del archivo local; no se repitió la revisión perceptual de este HTML ni se reutilizó como evidencia la captura de la versión anterior.
+
+La clasificación por categorías y sus referencias históricas en cotizaciones y ventas se describen en [Categorías del taller](../business-categories.md). Arquitectura y modelo de datos reflejan esta ampliación a 63 modelos.

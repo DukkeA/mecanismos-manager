@@ -63,6 +63,10 @@ export function ItemDetail({
             </div>
             <dl className="detail-facts">
               <div>
+                <dt>Categoría</dt>
+                <dd>{item.businessCategory ?? "Sin categoría"}</dd>
+              </div>
+              <div>
                 <dt>Código interno</dt>
                 <dd>{item.code}</dd>
               </div>

@@ -28,6 +28,31 @@ for (const [role, name] of [
     assert.ok(!html.includes("Cuenta bancaria del taller"));
     assert.ok(!html.includes("Transportes San Jerónimo y Asociados"));
   }
+  const categoryResponse = await fetch(base + "/api/categories", {
+    headers: { cookie },
+  });
+  assert.equal(categoryResponse.status, 200);
+  assert.match(categoryResponse.headers.get("cache-control"), /no-store/);
+  assert.ok(
+    (await categoryResponse.json()).some(
+      (c) => c.name === "Bombas de inyección",
+    ),
+  );
+  if (role !== "admin") {
+    const denied = await fetch(base + "/api/categories", {
+      method: "POST",
+      headers: { cookie, origin: base, "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: "save",
+        input: {
+          requestId: crypto.randomUUID(),
+          name: "Categoría no autorizada",
+          active: true,
+        },
+      }),
+    });
+    assert.equal(denied.status, 403);
+  }
   const snapshotResponse = await fetch(base + "/api/workshop", {
     headers: { cookie },
   });
@@ -139,6 +164,7 @@ assert.equal((await fetch(base + "/api/workshop")).status, 401);
 for (const path of [
   "/api/activity?resource=latest",
   "/api/attendance",
+  "/api/categories",
   "/api/team?period=2026-09",
   "/api/records?table=customers",
   "/api/control?resource=purchases",

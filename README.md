@@ -4,7 +4,7 @@ Aplicación interna de Mecanismos Técnicos SAS. Bogotá, COP, dos sedes.
 
 ## Estado
 
-Disponible para pruebas locales: cotizaciones, ventas, cartera, compras, inventario, órdenes, tareas, garantías, unidades propias, costos y control de caja. Incluye 61 modelos privados, 20 migraciones locales y cinco diagramas Archify. Los datos ficticios persisten en Docker. Con los accesos locales habilitados, `/login` permite elegir administración, oficina o mecánico; `/` valida la sesión y `/demo` redirige a este flujo.
+Disponible para pruebas locales: cotizaciones, ventas, cartera, compras, inventario, órdenes, tareas, garantías, unidades propias, costos y control de caja. Incluye 63 modelos privados, 21 migraciones locales y cinco diagramas Archify. Los datos ficticios persisten en Docker. Con los accesos locales habilitados, `/login` permite elegir administración, oficina o mecánico; `/` valida la sesión y `/demo` redirige a este flujo.
 
 **El acceso remoto sigue pendiente**: Google, credenciales y Storage de producción, despliegue HTTPS e instalación PWA deben comprobarse antes de usarla como registro principal. El [estado de implementación](docs/implementation-status.md) detalla resultados y límites; el [manual del piloto](docs/pilot-runbook.md) contiene recorridos de prueba, preparación de datos y recuperación. Los [diagramas](docs/diagrams/README.md) describen la arquitectura y los registros internos; los [recorridos simplificados](docs/workflows-simplified.md) describen la navegación y las acciones actuales.
 
@@ -45,3 +45,5 @@ Bonos fijos, asistencia por QR y resultados por producto: [uso, cálculos y conf
 Permisos con descuento salarial o de vacaciones, anticipos en cuotas y horario de sábado: [uso y cálculos](docs/employee-permissions-and-advances.md). Seed adicional: `pnpm db:seed:benefits`.
 
 Pagos y abonos del personal desde Equipo, acceso de oficina a Dinero y Equipo, avisos a administradores e historial de cambios: [flujo y comprobaciones](docs/payroll-payments-and-office-audit.md).
+
+Categorías compartidas para inventario, servicios, proveedores, órdenes y rentabilidad: [uso y ejemplos](docs/business-categories.md). Después de las demás cargas locales, ejecutar `pnpm db:seed:categories`.

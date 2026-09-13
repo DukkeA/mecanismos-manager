@@ -1,5 +1,9 @@
 "use client";
 import { AdminNotifications } from "@/features/activity/activity-ui";
+import {
+  CategoryField,
+  OrderCategory,
+} from "@/features/categories/category-fields";
 import { SettingsWorkspace } from "@/features/attendance/settings-workspace";
 import { AttendanceWorkspace } from "@/features/attendance/attendance-workspace";
 import { TeamWorkspace } from "@/features/team/team-workspace";
@@ -252,6 +256,9 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
         orderRequest.current ?? (orderRequest.current = crypto.randomUUID()),
       customerId: (demo ? selectedCustomer : orderCustomer) || undefined,
       purpose: orderPurpose,
+      businessCategoryId:
+        String(form.get("businessCategoryId") ?? "").replace("__none", "") ||
+        undefined,
       authorization: String(form.get("authorization") ?? ""),
       title: String(form.get("title")),
       dueAt: String(form.get("dueAt") ?? "") || undefined,
@@ -269,6 +276,10 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
       locationId: String(form.get("locationId")),
     };
 
+    if (!demo && !input.businessCategoryId) {
+      setError("Selecciona la categoría del trabajo.");
+      return;
+    }
     setError("");
 
     try {
@@ -530,6 +541,11 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               {actor.role !== "MECHANIC" && (
                 <OrderControls order={selected} run={runOperation} />
               )}
+              <OrderCategory
+                key={`${selected.id}-${selected.version}`}
+                order={selected}
+                canEdit={!demo && actor.role !== "MECHANIC"}
+              />
               <dl className="dossier-facts">
                 <div>
                   <dt>Cliente</dt>
@@ -776,6 +792,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   </>
                 ))}
 
+              {!demo && <CategoryField />}
               <Field>
                 <FieldLabel htmlFor="kind">Tipo de recepción</FieldLabel>
                 <Choice

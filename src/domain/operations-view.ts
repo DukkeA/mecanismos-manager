@@ -45,6 +45,8 @@ export type OperationsView = {
     active: boolean;
   }[];
   items: {
+    businessCategoryId?: string | null;
+    businessCategory?: string;
     id: string;
     code: string;
     name: string;
@@ -55,6 +57,8 @@ export type OperationsView = {
     notes?: string;
   }[];
   suppliers: {
+    categoryIds?: string[];
+    categories?: string[];
     email?: string;
     address?: string;
     deletedAt?: string | null;

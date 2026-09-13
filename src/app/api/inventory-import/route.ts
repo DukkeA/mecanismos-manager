@@ -1,17 +1,143 @@
-import {boundedForm} from "@/server/multipart";
-import {requireMember} from '@/server/auth';import {requirePermission,AccessDenied} from '@/domain/permissions';import {previewCount} from '@/server/stock-workflows';import {DomainError} from '@/domain/errors';import {ZodError} from 'zod';import ExcelJS from 'exceljs';
-export const runtime='nodejs';
-export async function POST(request:Request){
- try{
-  const actor=await requireMember();requirePermission(actor.role,'members:write');const data=await boundedForm(request,2*1024*1024+65536),file=data.get('file');if(!(file instanceof File)||file.size>2*1024*1024||!file.name.toLowerCase().endsWith('.xlsx'))throw new DomainError('Selecciona un archivo .xlsx de hasta 2 MB.');
-  const bytes=Buffer.from(await file.arrayBuffer());let expanded=0;for(let i=0;i<bytes.length-46;i++)if(bytes.readUInt32LE(i)===0x02014b50){expanded+=bytes.readUInt32LE(i+24);if(expanded>20*1024*1024)throw new DomainError('El archivo contiene demasiados datos. Usa la plantilla sin imágenes ni hojas adicionales.');i+=45+bytes.readUInt16LE(i+28)+bytes.readUInt16LE(i+30)+bytes.readUInt16LE(i+32);}
-  const book=new ExcelJS.Workbook();await book.xlsx.load(bytes as unknown as Parameters<typeof book.xlsx.load>[0]);const sheet=book.worksheets[0];if(!sheet||sheet.rowCount>2001)throw new DomainError('El archivo debe tener una hoja con hasta 2.000 filas.');
-  const headers=['codigo','referencia','nombre','condicion','cantidad','costo_unitario'];const found=headers.map((_,i)=>sheet.getRow(1).getCell(i+1).text.trim().toLowerCase());if(headers.some((h,i)=>h!==found[i]))throw new DomainError('Usa los encabezados de la plantilla: codigo, referencia, nombre, condicion, cantidad, costo_unitario.');
-  const rows=[];const conditions:Record<string,string>={nuevo:'NEW',usado:'USED',reconstruido:'REBUILT',new:'NEW',used:'USED',rebuilt:'REBUILT'};
-  for(let n=2;n<=sheet.rowCount;n++){const row=sheet.getRow(n);if(!row.hasValues)continue;for(let c=1;c<=6;c++)if(row.getCell(c).type===ExcelJS.ValueType.Formula)throw new DomainError(`Fila ${n}: convierte las fórmulas a valores antes de importar.`);const value=(c:number)=>row.getCell(c).text.trim();rows.push({code:value(1),reference:value(2),name:value(3),condition:conditions[value(4).toLowerCase()]??value(4),quantity:value(5),unitCost:value(6)||undefined});}
-  const result=await previewCount(actor,{requestId:data.get('requestId'),locationId:data.get('locationId'),note:data.get('note'),rows});return Response.json(result,{headers:{'Cache-Control':'no-store'}});
- }catch(e){return Response.json({error:e instanceof DomainError||e instanceof AccessDenied?e.message:e instanceof ZodError?e.issues.map(i=>`${i.path.join('.')}: ${i.message}`).slice(0,20).join('\n'):'No se pudo leer el archivo. Revisa la plantilla y vuelve a intentarlo.'},{status:e instanceof AccessDenied?403:400});}
+import { boundedForm } from "@/server/multipart";
+import { requireMember } from "@/server/auth";
+import { requirePermission, AccessDenied } from "@/domain/permissions";
+import { previewCount } from "@/server/stock-workflows";
+import { DomainError } from "@/domain/errors";
+import { ZodError } from "zod";
+import ExcelJS from "exceljs";
+export const runtime = "nodejs";
+export async function POST(request: Request) {
+  try {
+    const actor = await requireMember();
+    requirePermission(actor.role, "members:write");
+    const data = await boundedForm(request, 2 * 1024 * 1024 + 65536),
+      file = data.get("file");
+    if (
+      !(file instanceof File) ||
+      file.size > 2 * 1024 * 1024 ||
+      !file.name.toLowerCase().endsWith(".xlsx")
+    )
+      throw new DomainError("Selecciona un archivo .xlsx de hasta 2 MB.");
+    const bytes = Buffer.from(await file.arrayBuffer());
+    let expanded = 0;
+    for (let i = 0; i < bytes.length - 46; i++)
+      if (bytes.readUInt32LE(i) === 0x02014b50) {
+        expanded += bytes.readUInt32LE(i + 24);
+        if (expanded > 20 * 1024 * 1024)
+          throw new DomainError(
+            "El archivo contiene demasiados datos. Usa la plantilla sin imágenes ni hojas adicionales.",
+          );
+        i +=
+          45 +
+          bytes.readUInt16LE(i + 28) +
+          bytes.readUInt16LE(i + 30) +
+          bytes.readUInt16LE(i + 32);
+      }
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(
+      bytes as unknown as Parameters<typeof book.xlsx.load>[0],
+    );
+    const sheet = book.worksheets[0];
+    if (!sheet || sheet.rowCount > 2001)
+      throw new DomainError(
+        "El archivo debe tener una hoja con hasta 2.000 filas.",
+      );
+    const headers = [
+      "codigo",
+      "referencia",
+      "nombre",
+      "condicion",
+      "cantidad",
+      "costo_unitario",
+    ];
+    const found = headers.map((_, i) =>
+      sheet
+        .getRow(1)
+        .getCell(i + 1)
+        .text.trim()
+        .toLowerCase(),
+    );
+    if (headers.some((h, i) => h !== found[i]))
+      throw new DomainError(
+        "Usa los encabezados de la plantilla: codigo, referencia, nombre, condicion, cantidad, costo_unitario.",
+      );
+    const hasCategory =
+      sheet.getRow(1).getCell(7).text.trim().toLowerCase() === "categoria";
+    const rows = [];
+    const conditions: Record<string, string> = {
+      nuevo: "NEW",
+      usado: "USED",
+      reconstruido: "REBUILT",
+      new: "NEW",
+      used: "USED",
+      rebuilt: "REBUILT",
+    };
+    for (let n = 2; n <= sheet.rowCount; n++) {
+      const row = sheet.getRow(n);
+      if (!row.hasValues) continue;
+      for (let c = 1; c <= (hasCategory ? 7 : 6); c++)
+        if (row.getCell(c).type === ExcelJS.ValueType.Formula)
+          throw new DomainError(
+            `Fila ${n}: convierte las fórmulas a valores antes de importar.`,
+          );
+      const value = (c: number) => row.getCell(c).text.trim();
+      rows.push({
+        categoryName: hasCategory ? value(7) || undefined : undefined,
+        code: value(1),
+        reference: value(2),
+        name: value(3),
+        condition: conditions[value(4).toLowerCase()] ?? value(4),
+        quantity: value(5),
+        unitCost: value(6) || undefined,
+      });
+    }
+    const result = await previewCount(actor, {
+      requestId: data.get("requestId"),
+      locationId: data.get("locationId"),
+      note: data.get("note"),
+      rows,
+    });
+    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
+  } catch (e) {
+    return Response.json(
+      {
+        error:
+          e instanceof DomainError || e instanceof AccessDenied
+            ? e.message
+            : e instanceof ZodError
+              ? e.issues
+                  .map((i) => `${i.path.join(".")}: ${i.message}`)
+                  .slice(0, 20)
+                  .join("\n")
+              : "No se pudo leer el archivo. Revisa la plantilla y vuelve a intentarlo.",
+      },
+      { status: e instanceof AccessDenied ? 403 : 400 },
+    );
+  }
 }
-export async function GET(){
- const actor=await requireMember().catch(()=>null);if(actor?.role!=='ADMIN')return new Response('Sin permiso',{status:403});const book=new ExcelJS.Workbook(),sheet=book.addWorksheet('Conteo');sheet.addRow(['codigo','referencia','nombre','condicion','cantidad','costo_unitario']);sheet.columns.forEach(c=>c.width=25);const bytes=await book.xlsx.writeBuffer();return new Response(bytes as ArrayBuffer,{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':'attachment; filename="plantilla-conteo.xlsx"','Cache-Control':'private, no-store'}});
+export async function GET() {
+  const actor = await requireMember().catch(() => null);
+  if (actor?.role !== "ADMIN")
+    return new Response("Sin permiso", { status: 403 });
+  const book = new ExcelJS.Workbook(),
+    sheet = book.addWorksheet("Conteo");
+  sheet.addRow([
+    "codigo",
+    "referencia",
+    "nombre",
+    "condicion",
+    "cantidad",
+    "costo_unitario",
+    "categoria",
+  ]);
+  sheet.columns.forEach((c) => (c.width = 25));
+  const bytes = await book.xlsx.writeBuffer();
+  return new Response(bytes as ArrayBuffer, {
+    headers: {
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": 'attachment; filename="plantilla-conteo.xlsx"',
+      "Cache-Control": "private, no-store",
+    },
+  });
 }

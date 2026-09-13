@@ -9,6 +9,9 @@ if (api.hostname !== "127.0.0.1" || api.port !== "56321")
 process.env.DATABASE_URL =
   "postgresql://postgres:postgres@127.0.0.1:56322/postgres";
 switch (process.argv[2]) {
+  case "categories":
+    await import("./seed-categories");
+    break;
   case "commerce":
     await import("./seed-commerce");
     break;

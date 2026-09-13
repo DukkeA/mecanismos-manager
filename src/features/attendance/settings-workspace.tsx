@@ -213,6 +213,7 @@ function DeviceSetup({ location }: { location: { id: string; name: string } }) {
     </div>
   );
 }
+import { CategorySettings } from "@/features/categories/category-settings";
 export function SettingsWorkspace({
   locations,
 }: {
@@ -221,6 +222,7 @@ export function SettingsWorkspace({
   const settings = useSettings();
   return (
     <div className="max-w-4xl space-y-8">
+      <CategorySettings />
       <section className="space-y-4">
         <div>
           <h2 className="text-xl font-semibold">Horario del equipo</h2>

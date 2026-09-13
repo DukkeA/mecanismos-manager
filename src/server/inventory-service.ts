@@ -1,3 +1,4 @@
+import { assertCategory } from "./category-service";
 import { DomainError } from "@/domain/errors";
 import "server-only";
 import { z } from "zod";
@@ -16,6 +17,7 @@ export async function saveItem(actor: Actor, raw: unknown) {
   const input = z
     .object({
       id: z.uuid().optional(),
+      businessCategoryId: z.uuid().nullable().optional(),
       code: z.string().trim().min(1).max(80),
       name: z.string().trim().min(3).max(200),
       brand: z.string().trim().max(100).default(""),
@@ -35,6 +37,14 @@ export async function saveItem(actor: Actor, raw: unknown) {
           "No se puede convertir un repuesto en servicio ni un servicio en repuesto.",
         );
     }
+    await assertCategory(
+      tx,
+      input.businessCategoryId,
+      input.id
+        ? (await tx.catalogItem.findUniqueOrThrow({ where: { id: input.id } }))
+            .businessCategoryId
+        : null,
+    );
     const item = input.id
       ? await tx.catalogItem.update({ where: { id: input.id }, data: input })
       : await tx.catalogItem.create({ data: input });
@@ -47,6 +57,7 @@ export async function saveItem(actor: Actor, raw: unknown) {
           code: item.code,
           reference: item.reference,
           kind: item.kind,
+          businessCategoryId: item.businessCategoryId,
         },
       },
     });
@@ -59,6 +70,7 @@ export async function saveSupplier(actor: Actor, raw: unknown) {
   const input = z
     .object({
       id: z.uuid().optional(),
+      categoryIds: z.array(z.uuid()).max(50).optional(),
       email: z.union([z.email(), z.literal("")]).default(""),
       address: z.string().trim().max(300).default(""),
       name: z.string().trim().min(2).max(180),
@@ -66,18 +78,42 @@ export async function saveSupplier(actor: Actor, raw: unknown) {
     })
     .parse(raw);
   return db().$transaction(async (tx) => {
+    const { categoryIds, ...data } = input;
+    const previous = input.id
+      ? await tx.supplierCategory.findMany({ where: { supplierId: input.id } })
+      : [];
+    for (const categoryId of categoryIds ?? [])
+      await assertCategory(
+        tx,
+        categoryId,
+        previous.some((c) => c.categoryId === categoryId) ? categoryId : null,
+      );
     const supplier = input.id
       ? await tx.supplier.update({
           where: { id: input.id, deletedAt: null },
-          data: input,
+          data,
         })
-      : await tx.supplier.create({ data: input });
+      : await tx.supplier.create({ data });
+    if (categoryIds) {
+      await tx.supplierCategory.deleteMany({
+        where: { supplierId: supplier.id },
+      });
+      await tx.supplierCategory.createMany({
+        data: [...new Set(categoryIds)].map((categoryId) => ({
+          supplierId: supplier.id,
+          categoryId,
+        })),
+      });
+    }
     await tx.auditEvent.create({
       data: {
         actorId: actor.id,
         entityId: supplier.id,
         action: input.id ? "SUPPLIER_UPDATED" : "SUPPLIER_CREATED",
-        details: { name: supplier.name },
+        details: {
+          name: supplier.name,
+          categoryIds: categoryIds ?? previous.map((c) => c.categoryId),
+        },
       },
     });
     return { id: supplier.id };

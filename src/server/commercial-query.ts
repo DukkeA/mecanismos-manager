@@ -14,6 +14,7 @@ const paramsSchema = z.object({
   resource: z.enum(["quotes", "sales", "payments"]).default("quotes"),
   q: z.string().trim().max(200).default(""),
   status: z.string().max(20).default(""),
+  businessCategoryId: z.union([z.uuid(), z.literal("NONE")]).optional(),
   customerId: z.uuid().optional(),
   orderId: z.uuid().optional(),
   recordId: z.uuid().optional(),
@@ -57,6 +58,18 @@ export async function commercialPage(
       : undefined;
   const customerFilter = customerId ? { customerId } : {};
   const shared = {
+    ...(input.businessCategoryId
+      ? {
+          lines: {
+            some: {
+              businessCategoryId:
+                input.businessCategoryId === "NONE"
+                  ? null
+                  : input.businessCategoryId,
+            },
+          },
+        }
+      : {}),
     ...(input.recordId ? { id: input.recordId } : {}),
     ...(input.orderId ? { orderId: input.orderId } : {}),
     ...customerFilter,
@@ -93,7 +106,7 @@ export async function commercialPage(
         include: {
           customer: true,
           order: true,
-          lines: true,
+          lines: { include: { businessCategory: { select: { name: true } } } },
           sale: { select: { id: true } },
         },
       }),
@@ -153,7 +166,12 @@ export async function commercialPage(
         include: {
           customer: true,
           order: true,
-          lines: { include: { returnLines: true } },
+          lines: {
+            include: {
+              returnLines: true,
+              businessCategory: { select: { name: true } },
+            },
+          },
           allocations: {
             orderBy: [{ createdAt: "asc" }, { id: "asc" }],
             include: {

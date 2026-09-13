@@ -1,4 +1,6 @@
 "use client";
+import { useCategories } from "@/features/categories/hooks";
+import { CategoryFilter } from "@/features/categories/category-fields";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { ContactActions } from "@/features/contacts/contact-actions";
 import { RowActions } from "@/components/row-actions";
@@ -92,10 +94,25 @@ export function OperationsPanel({
   demo,
   run,
 }: Props) {
+  const categories = useCategories();
+  const categoryOptions = (categories.data ?? []).map((c) => ({
+    id: c.id,
+    label: c.name + (c.active ? "" : " (inactiva)"),
+  }));
+  const categoryField = {
+    key: "businessCategoryId",
+    label: "Categoría",
+    type: "select" as const,
+    options: [{ id: "", label: "Seleccionar categoría" }, ...categoryOptions],
+  };
   const [search, setSearch] = useQueryState("q");
 
   const [status, setStatus] = useQueryState("status", "ALL");
 
+  const [businessCategoryId, setBusinessCategoryId] = useQueryState(
+    "businessCategoryId",
+    "ALL",
+  );
   const [brand, setBrand] = useQueryState("brand", "ALL");
 
   const [location, setLocation] = useQueryState("location", "ALL");
@@ -229,6 +246,14 @@ export function OperationsPanel({
       { key: "phone", label: "Teléfono", optional: true },
       { key: "email", label: "Correo", type: "email", optional: true },
       { key: "address", label: "Dirección", optional: true },
+      {
+        key: "categoryIds",
+        label: "Categorías que suministra",
+        type: "members",
+        optional: true,
+        options: categoryOptions,
+        hint: "Puedes seleccionar varias categorías.",
+      },
     ],
   };
 
@@ -238,6 +263,7 @@ export function OperationsPanel({
     extra: { kind: "PART", unit: "unidad" },
     fields: [
       { key: "code", label: "Código interno" },
+      categoryField,
       { key: "reference", label: "Referencia del fabricante", optional: true },
       { key: "name", label: "Nombre del repuesto" },
       { key: "brand", label: "Marca", optional: true },
@@ -256,6 +282,7 @@ export function OperationsPanel({
     extra: { kind: "SERVICE", unit: "servicio", brand: "" },
     fields: [
       { key: "code", label: "Código del servicio" },
+      categoryField,
       {
         key: "name",
         label: "Nombre del servicio",
@@ -539,6 +566,9 @@ export function OperationsPanel({
       )}
 
       <FilterBar>
+        {["Inventario", "Servicios", "Proveedores"].includes(section) && (
+          <CategoryFilter />
+        )}
         <label className="search-filter">
           Buscar
           <Input
@@ -683,6 +713,7 @@ export function OperationsPanel({
               max ||
               status !== "ALL" ||
               brand !== "ALL" ||
+              businessCategoryId !== "ALL" ||
               location !== "ALL" ||
               responsible !== "ALL"
             )
@@ -691,6 +722,7 @@ export function OperationsPanel({
             setSearch("");
             setStatus("ALL");
             setBrand("ALL");
+            setBusinessCategoryId("ALL");
             setLocation("ALL");
             setResponsible("ALL");
             setFrom("");
@@ -855,6 +887,7 @@ export function OperationsPanel({
               "Teléfono",
               "Correo",
               "Dirección",
+              "Categorías",
               "Acciones",
             ]}
             empty="Aún no hay proveedores."
@@ -868,6 +901,9 @@ export function OperationsPanel({
                   <TableCell>{s.phone || "Sin teléfono"}</TableCell>
                   <TableCell>{s.email || "Sin correo"}</TableCell>
                   <TableCell>{s.address || "Sin dirección"}</TableCell>
+                  <TableCell>
+                    {s.categories?.join(", ") || "Sin categoría"}
+                  </TableCell>
                   <TableCell>
                     <ContactActions
                       name={s.name}
@@ -984,6 +1020,10 @@ export function OperationsPanel({
                     >
                       {itemName(o.itemId)}
                     </Button>
+                    <small className="cell-detail text-muted-foreground">
+                      {source.items.find((i) => i.id === o.itemId)
+                        ?.businessCategory ?? "Sin categoría"}
+                    </small>
                   </TableCell>
                   <TableCell>
                     {data.suppliers.find((s) => s.id === o.supplierId)?.name}
@@ -1076,6 +1116,10 @@ export function OperationsPanel({
                       >
                         {itemName(b.itemId)}
                       </Button>
+                      <small className="cell-detail text-muted-foreground">
+                        {source.items.find((i) => i.id === b.itemId)
+                          ?.businessCategory ?? "Sin categoría"}
+                      </small>
                       <small className="cell-detail">
                         {source.items.find((i) => i.id === b.itemId)?.reference}
                       </small>
@@ -1097,7 +1141,8 @@ export function OperationsPanel({
               }}
               fallbackRows={data.balances.filter((b) =>
                 filter(
-                  `${itemName(b.itemId)} ${itemSearch(b.itemId)} ${source.items.find((i) => i.id === b.itemId)?.code} ${locationName(b.locationId)}`,
+                  `${itemName(b.itemId)}
+                        <small className="cell-detail text-muted-foreground">{source.items.find(i => i.id === b.itemId)?.businessCategory ?? "Sin categoría"}</small> ${itemSearch(b.itemId)} ${source.items.find((i) => i.id === b.itemId)?.code} ${locationName(b.locationId)}`,
                 ),
               )}
             ></DataTable>
@@ -1193,6 +1238,10 @@ export function OperationsPanel({
                       >
                         {itemName(o.itemId)}
                       </Button>
+                      <small className="cell-detail text-muted-foreground">
+                        {source.items.find((i) => i.id === o.itemId)
+                          ?.businessCategory ?? "Sin categoría"}
+                      </small>
                     </TableCell>
                     <TableCell>
                       {data.suppliers.find((s) => s.id === o.supplierId)?.name}
@@ -1238,6 +1287,7 @@ export function OperationsPanel({
                 "Repuesto",
                 "Marca",
                 "Unidad",
+                "Categoría",
                 "Acciones",
               ]}
               empty="Aún no hay repuestos."
@@ -1259,6 +1309,9 @@ export function OperationsPanel({
                     </TableCell>
                     <TableCell>{i.brand || "Sin marca"}</TableCell>
                     <TableCell>{i.unit}</TableCell>
+                    <TableCell>
+                      {i.businessCategory ?? "Sin categoría"}
+                    </TableCell>
                     <TableCell>
                       <RowActions name={i.name} actions={itemActions(i.id)} />
                     </TableCell>
@@ -1366,7 +1419,7 @@ export function OperationsPanel({
       {section === "Servicios" && (
         <DataTable
           tableKey="services"
-          headers={["Código", "Servicio", "Alcance", "Acciones"]}
+          headers={["Código", "Servicio", "Alcance", "Categoría", "Acciones"]}
           empty="No hay servicios registrados."
           renderRow={(row) => {
             const i = row as OperationsView["items"][number];
@@ -1382,6 +1435,7 @@ export function OperationsPanel({
                   </Button>
                 </TableCell>
                 <TableCell>{i.notes || "Sin descripción"}</TableCell>
+                <TableCell>{i.businessCategory ?? "Sin categoría"}</TableCell>
                 <TableCell>
                   <RowActions name={i.name} actions={itemActions(i.id)} />
                 </TableCell>
@@ -1440,7 +1494,34 @@ export function OperationsPanel({
           {dialog && (
             <OperationForm
               key={`${dialog.kind}-${dialog.title}`}
-              dialog={dialog}
+              dialog={{
+                ...dialog,
+                fields: dialog.fields.map((field) =>
+                  field.key === "businessCategoryId" ||
+                  field.key === "categoryIds"
+                    ? {
+                        ...field,
+                        options: [
+                          ...(field.key === "businessCategoryId"
+                            ? [{ id: "", label: "Seleccionar categoría" }]
+                            : []),
+                          ...(categories.data ?? [])
+                            .filter(
+                              (c) =>
+                                c.active ||
+                                c.id === dialog.extra?.businessCategoryId ||
+                                (Array.isArray(dialog.extra?.categoryIds) &&
+                                  dialog.extra.categoryIds.includes(c.id)),
+                            )
+                            .map((c) => ({
+                              id: c.id,
+                              label: c.name + (c.active ? "" : " (inactiva)"),
+                            })),
+                        ],
+                      }
+                    : field,
+                ),
+              }}
               submit={async (values) => {
                 await safeRun(dialog.kind, values);
                 setDialog(null);

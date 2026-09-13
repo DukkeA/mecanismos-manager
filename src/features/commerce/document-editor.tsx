@@ -290,6 +290,17 @@ export function DocumentEditor({
                 ]}
               />
             </Field>
+            <p className="text-sm text-muted-foreground">
+              Categoría:{" "}
+              {mode === "sale" && orderId
+                ? (orders.find((o) => o.id === orderId)?.businessCategory ??
+                  "Sin categoría")
+                : fromQuote
+                  ? (source?.lines?.[index]?.businessCategory?.name ??
+                    "Sin categoría")
+                  : (data.items.find((i) => i.id === line.itemId)
+                      ?.businessCategory ?? "Sin categoría")}
+            </p>
             <Field>
               <FieldLabel htmlFor={`line-description-${index}`}>
                 Detalle acordado

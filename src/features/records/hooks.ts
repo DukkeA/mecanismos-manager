@@ -24,6 +24,7 @@ export function useRecordPage<T>(table: TableKey | undefined) {
     "status",
     "archive",
     "brand",
+    "businessCategoryId",
     "location",
     "responsible",
     "kind",

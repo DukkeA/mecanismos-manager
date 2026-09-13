@@ -20,6 +20,7 @@
     "db:seed:commerce": "node --conditions=react-server --import tsx scripts/local-job.ts commerce",
     "db:seed:attendance": "node --conditions=react-server --import tsx scripts/local-job.ts attendance",
     "db:seed:benefits": "node --conditions=react-server --import tsx scripts/local-job.ts benefits",
+    "db:seed:categories": "node --conditions=react-server --import tsx scripts/local-job.ts categories",
     "db:seed:payroll": "node --conditions=react-server --import tsx scripts/local-job.ts payroll",
     "db:seed:team": "node --conditions=react-server --import tsx scripts/local-job.ts team",
     "db:seed:control": "node --conditions=react-server --import tsx scripts/local-job.ts control",

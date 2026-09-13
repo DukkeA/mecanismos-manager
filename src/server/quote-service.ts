@@ -44,7 +44,13 @@ export async function snapshotLines(tx: Tx, lines: DocumentLineInput[]) {
     } catch {
       throw new DomainError("El descuento supera el valor de la línea.");
     }
-    result.push({ ...line, total, kind: item.kind, reference: item.reference });
+    result.push({
+      ...line,
+      total,
+      kind: item.kind,
+      reference: item.reference,
+      businessCategoryId: item.businessCategoryId,
+    });
   }
   return result;
 }

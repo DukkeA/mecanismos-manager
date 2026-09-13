@@ -42,6 +42,8 @@ export function lineTotal(
 }
 
 export type CommercialLine = {
+  businessCategoryId?: string | null;
+  businessCategory?: { name: string } | null;
   id: string;
   itemId: string;
   description: string;
