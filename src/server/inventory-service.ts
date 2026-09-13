@@ -6,6 +6,8 @@ import Decimal from "decimal.js";
 import { db } from "./db";
 import { once, type Actor } from "./commands";
 import { requirePermission } from "@/domain/permissions";
+import { catalogLabelKey, cleanCatalogLabel } from "@/domain/catalog-label";
+import { serializable } from "./commands";
 
 const quantity = z
   .string()
@@ -27,7 +29,18 @@ export async function saveItem(actor: Actor, raw: unknown) {
       notes: z.string().trim().max(5000).default(""),
     })
     .parse(raw);
-  return db().$transaction(async (tx) => {
+  if (input.kind === "SERVICE") input.name = cleanCatalogLabel(input.name);
+  return serializable(async (tx) => {
+    if (input.kind === "SERVICE") {
+      const duplicate = await tx.$queryRaw<{ id: string; name: string }[]>`
+        SELECT id, name FROM workshop."CatalogItem"
+        WHERE kind = 'SERVICE' AND workshop.catalog_label_key(name) = ${catalogLabelKey(input.name)}
+          AND id <> ${input.id ?? "00000000-0000-0000-0000-000000000000"}::uuid LIMIT 1`;
+      if (duplicate.length)
+        throw new DomainError(
+          `Ya existe el servicio «${duplicate[0].name}». Puedes editarlo desde Servicios.`,
+        );
+    }
     if (input.id) {
       const current = await tx.catalogItem.findUniqueOrThrow({
         where: { id: input.id },

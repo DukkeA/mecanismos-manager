@@ -1,4 +1,5 @@
 import "server-only";
+import { catalogLabelKey } from "@/domain/catalog-label";
 import { z } from "zod";
 import Decimal from "decimal.js";
 import { once, type Actor } from "./commands";
@@ -229,13 +230,13 @@ export async function previewCount(actor: Actor, raw: unknown) {
       if (r.categoryName) {
         const category = await tx.businessCategory.findFirst({
           where: {
-            name: { equals: r.categoryName, mode: "insensitive" },
+            nameKey: catalogLabelKey(r.categoryName),
             active: true,
           },
         });
         if (!category)
           errors.push(
-            `Fila ${i + 1}: crea o activa la categoría "${r.categoryName}" en Configuración.`,
+            `Fila ${i + 1}: la categoría "${r.categoryName}" no está activa. Puedes crearla al editar un repuesto o reactivarla en Configuración.`,
           );
         else r.businessCategoryId = category.id;
       }

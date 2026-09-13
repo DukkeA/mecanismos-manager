@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { catalogLabelKey } from "../src/domain/catalog-label";
 import { db } from "../src/server/db";
 import { once } from "../src/server/commands";
 import { issueSale } from "../src/server/sales-service";
@@ -13,7 +14,8 @@ const id = (key: string) => {
 };
 try {
   const categories = await db().businessCategory.findMany(),
-    category = (name: string) => categories.find((c) => c.name === name)!.id;
+    category = (name: string) =>
+      categories.find((c) => c.nameKey === catalogLabelKey(name))!.id;
   const pumps = category("Bombas de inyección"),
     injectors = category("Inyectores"),
     engines = category("Motores diésel"),

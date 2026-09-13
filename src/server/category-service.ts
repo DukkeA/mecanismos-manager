@@ -4,6 +4,59 @@ import { db } from "./db";
 import { once, type Actor, type Tx } from "./commands";
 import { DomainError } from "@/domain/errors";
 import { requirePermission } from "@/domain/permissions";
+import {
+  catalogLabelError,
+  catalogLabelKey,
+  cleanCatalogLabel,
+} from "@/domain/catalog-label";
+
+const categoryName = z.string().transform((value) => {
+  const error = catalogLabelError(value);
+  if (error) throw new DomainError(error);
+  return cleanCatalogLabel(value);
+});
+
+export async function createCategory(actor: Actor, raw: unknown) {
+  requirePermission(actor.role, "inventory:write");
+  const input = z
+    .object({ requestId: z.uuid(), name: categoryName })
+    .parse(raw);
+  return once(actor, input.requestId, "CATEGORY_CREATED", input, async (tx) => {
+    const existing = await tx.businessCategory.findUnique({
+      where: { nameKey: catalogLabelKey(input.name) },
+    });
+    if (existing && !existing.active)
+      throw new DomainError(
+        `La categoría «${existing.name}» está desactivada. Administración puede reactivarla en Configuración.`,
+      );
+    if (existing)
+      return {
+        id: existing.id,
+        name: existing.name,
+        active: existing.active,
+        version: existing.version,
+        created: false,
+      };
+    const category = await tx.businessCategory.create({
+      data: { name: input.name },
+    });
+    await tx.auditEvent.create({
+      data: {
+        actorId: actor.id,
+        entityId: category.id,
+        action: "CATEGORY_CREATED",
+        details: { name: category.name, active: true },
+      },
+    });
+    return {
+      id: category.id,
+      name: category.name,
+      active: category.active,
+      version: category.version,
+      created: true,
+    };
+  });
+}
 
 export async function assertCategory(
   tx: Tx,
@@ -25,7 +78,7 @@ export async function saveCategory(actor: Actor, raw: unknown) {
       requestId: z.uuid(),
       id: z.uuid().optional(),
       version: z.number().int().nonnegative().optional(),
-      name: z.string().trim().min(2).max(100),
+      name: categoryName,
       active: z.boolean(),
     })
     .parse(raw);
@@ -40,7 +93,7 @@ export async function saveCategory(actor: Actor, raw: unknown) {
     if (
       await tx.businessCategory.findFirst({
         where: {
-          name: { equals: input.name, mode: "insensitive" },
+          nameKey: catalogLabelKey(input.name),
           ...(input.id ? { id: { not: input.id } } : {}),
         },
       })

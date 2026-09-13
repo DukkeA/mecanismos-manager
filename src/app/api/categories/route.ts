@@ -1,6 +1,7 @@
 import { requireMember } from "@/server/auth";
 import {
   assignOrderCategory,
+  createCategory,
   listCategories,
   saveCategory,
 } from "@/server/category-service";
@@ -20,12 +21,14 @@ export async function POST(request: Request) {
     return Response.json({ error: "Inicia sesión." }, { status: 401 });
   try {
     const { kind, input } = await request.json();
-    if (!["save", "order"].includes(kind))
+    if (!["save", "order", "create"].includes(kind))
       throw new DomainError("Acción no válida.");
     return Response.json(
       await (kind === "order"
         ? assignOrderCategory(actor, input)
-        : saveCategory(actor, input)),
+        : kind === "create"
+          ? createCategory(actor, input)
+          : saveCategory(actor, input)),
     );
   } catch (e) {
     return Response.json(

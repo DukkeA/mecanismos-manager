@@ -38,6 +38,23 @@ for (const [role, name] of [
       (c) => c.name === "Bombas de inyección",
     ),
   );
+  const createdCategory = await fetch(base + "/api/categories", {
+    method: "POST",
+    headers: { cookie, origin: base, "content-type": "application/json" },
+    body: JSON.stringify({
+      kind: "create",
+      input: {
+        requestId: crypto.randomUUID(),
+        name: "BOMBAS DE INYECCION",
+      },
+    }),
+  });
+  assert.equal(createdCategory.status, role === "mechanic" ? 403 : 200);
+  if (role !== "mechanic") {
+    const selectedCategory = await createdCategory.json();
+    assert.equal(selectedCategory.name, "Bombas de inyección");
+    assert.equal(selectedCategory.created, false);
+  }
   if (role !== "admin") {
     const denied = await fetch(base + "/api/categories", {
       method: "POST",
