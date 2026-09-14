@@ -248,7 +248,7 @@ h2 { font-size:27px;line-height:1.15; }
 .observation-list small { font-size:11px;color:var(--muted-foreground); }
 .muted-copy { color:var(--muted-foreground);line-height:1.6;margin-top:12px; }
 .login-page { min-height:100dvh;display:grid;place-items:center;padding:24px; }
-.login-panel { width:min(440px,100%);display:flex;flex-direction:column;gap:25px; }
+.login-panel { width:min(440px,100%);display:flex;flex-direction:column;align-items:center;gap:25px;text-align:center; }
 .login-panel .brand { padding:0;width:180px; }
 .login-panel h1 { font-size:48px;line-height:1.1;margin-top:12px; }
 .login-panel>p { color:var(--muted-foreground);line-height:1.7; }
@@ -502,3 +502,11 @@ textarea.form-control{min-height:96px;padding:10px 12px}
 
 .table-pagination [data-slot=pagination] button { width:var(--control-height);height:var(--control-height); }
 [data-slot=table-body] [data-slot=table-row]:has([data-slot=empty]):hover { background:transparent; }
+
+.login-panel > form { display:flex;justify-content:center;width:100%; }
+.login-panel [data-slot=alert] { text-align:center; }
+.login-panel [data-slot=alert-description] { text-wrap:pretty; }
+/* Google Identity light button colors and spacing follow its branding guide. */
+.google-sign-in[data-slot=button] { background:#fff;color:#1f1f1f;border:1px solid #747775;border-radius:4px;min-height:44px;padding:10px 12px;gap:10px;font-size:14px;font-weight:500; }
+.google-sign-in[data-slot=button]:hover { background:#f8faff;border-color:#747775; }
+.google-sign-in img { flex-shrink:0;width:20px;height:20px; }

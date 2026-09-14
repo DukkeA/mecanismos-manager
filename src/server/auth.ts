@@ -25,6 +25,9 @@ export async function supabaseServer() {
   });
 }
 
+// Distinguishes a valid identity without workshop access from a missing session.
+export class MembershipRequired extends AccessDenied {}
+
 export async function requireMember() {
   const supabase = await supabaseServer();
   const {
@@ -50,7 +53,7 @@ export async function requireMember() {
       });
       member = await tx.member.findUnique({ where: { authSubject: user.id } });
     }
-    if (!member?.active) throw new AccessDenied();
+    if (!member?.active) throw new MembershipRequired();
     return {
       id: member.id,
       name: member.name,
