@@ -21,14 +21,6 @@ export default async function Login({
         <BrandLogo className="login-logo" />
         <h1>Ingresar al taller</h1>
         <p>Mecanismos Técnicos SAS</p>
-        {process.env.APP_ENVIRONMENT === "test" && (
-          <Alert>
-            <AlertTitle>Entorno de pruebas</AlertTitle>
-            <AlertDescription>
-              Los cambios se guardan en la base de pruebas del taller.
-            </AlertDescription>
-          </Alert>
-        )}
         {error && (
           <Alert variant="destructive">
             <AlertTitle>No se pudo iniciar sesión</AlertTitle>

@@ -1,6 +1,6 @@
 "use client";
 import { useWorkshopScope } from "@/features/workshop/query";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BrandLogo } from "@/components/brand-logo";
 import {
   DropdownMenu,
@@ -109,7 +109,7 @@ export function AppSidebar({
   navigate,
   localTesting,
 }: {
-  actor: { name: string; role: Role };
+  actor: { name: string; role: Role; avatarUrl?: string };
   section: string;
   navigate: (section: string) => void;
   localTesting: boolean;
@@ -214,6 +214,13 @@ export function AppSidebar({
                   aria-label={`Menú de ${actor.name}`}
                 >
                   <Avatar>
+                    {actor.avatarUrl && (
+                      <AvatarImage
+                        src={actor.avatarUrl}
+                        alt={`Foto de ${actor.name}`}
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
                     <AvatarFallback>
                       {actor.name
                         .split(" ")
