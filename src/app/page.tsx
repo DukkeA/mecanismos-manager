@@ -10,7 +10,19 @@ export default async function Home() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) redirect("/login");
   const actor = await requireMember().catch(() => null);
   if (!actor) redirect("/login");
-  const queryClient=new QueryClient();
-  const {orders,locations,operations}=await queryClient.fetchQuery({queryKey:["workshop",actor.id],queryFn:()=>getWorkshopSnapshot(actor)});
-  return <Workshop initialOrders={orders} actor={actor} locations={locations} initialOperations={operations} localTesting={localTestAccessEnabled()} />;
+  const queryClient = new QueryClient();
+  const { orders, locations, operations } = await queryClient.fetchQuery({
+    queryKey: ["workshop", actor.id],
+    queryFn: () => getWorkshopSnapshot(actor),
+  });
+  return (
+    <Workshop
+      initialOrders={orders}
+      actor={actor}
+      locations={locations}
+      initialOperations={operations}
+      localTesting={localTestAccessEnabled()}
+      cloudTesting={process.env.APP_ENVIRONMENT === "test"}
+    />
+  );
 }

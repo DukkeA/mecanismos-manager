@@ -1,0 +1,16 @@
+/.env
+/.env.*
+/.secrets
+/.local-backups
+/.supabase
+/.impeccable
+/supabase
+/docs
+/scripts
+/tests
+/test-results
+/playwright-report
+/coverage
+/.next
+/node_modules
+/src/generated/prisma
