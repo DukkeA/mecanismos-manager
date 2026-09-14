@@ -115,7 +115,7 @@ export function DataTable({
           }
         />
       )}
-      {total > 0 && <Pager total={total} state={pagination} />}
+      <Pager total={total} state={pagination} />
     </div>
   );
 }

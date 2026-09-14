@@ -1,10 +1,12 @@
 "use client";
+import { SortButton } from "@/components/sortable-head";
+import { TablePagination } from "@/components/workshop-controls";
 import { SearchX as EmptySearchX } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowUpDown, ScanLine, Plus } from "lucide-react";
+import { ScanLine, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,135 +259,135 @@ export function AttendanceWorkspace({
         )}
       </div>
       {query.isError && <p role="alert">{query.error.message}</p>}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {[
-              ["name", "Empleado / fecha"],
-              ["startedAt", "Entrada"],
-              ["endedAt", "Salida"],
-              ["", "Tiempo"],
-              ["", "Retraso"],
-              ["", "Adicional"],
-              ...[...(team ? [["", "Acciones"]] : [])],
-            ].map(([key, label]) => (
-              <TableHead key={label}>
-                {key ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      update({
-                        orderBy: key,
-                        direction:
-                          q.get("orderBy") === key &&
-                          q.get("direction") !== "asc"
-                            ? "asc"
-                            : "desc",
-                      })
-                    }
-                  >
-                    {label}
-                    <ArrowUpDown />
-                  </Button>
-                ) : (
-                  label
-                )}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {query.data?.rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>
-                <strong>{row.name}</strong>
-                {team && (
-                  <div>
-                    <RecordStamp id={row.id} />
-                  </div>
-                )}
-                <small className="cell-detail">
-                  {dateLabel(row.workedOn)} · {row.location}
-                </small>
-                <small className="cell-detail">
-                  {row.source === "QR" ? "Código QR" : "Registro manual"}
-                  {row.note ? ` · ${row.note}` : ""}
-                </small>
-              </TableCell>
-              <TableCell>{clock(row.startedAt)}</TableCell>
-              <TableCell>
-                {row.endedAt ? (
-                  clock(row.endedAt)
-                ) : (
-                  <Badge variant="outline">Sin salida</Badge>
-                )}
-                {row.endedAt &&
-                  new Intl.DateTimeFormat("en-CA", {
-                    timeZone: "America/Bogota",
-                  }).format(new Date(row.endedAt)) !== row.workedOn && (
-                    <small className="cell-detail">Día siguiente</small>
-                  )}
-              </TableCell>
-              <TableCell>{duration(row.workedMinutes)}</TableCell>
-              <TableCell className={row.lateMinutes ? "text-destructive" : ""}>
-                {duration(row.lateMinutes)}
-                {row.authorizedMinutes > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Permiso: {duration(row.authorizedMinutes)}
-                  </p>
-                )}
-              </TableCell>
-              <TableCell>{duration(row.extraMinutes)}</TableCell>
-              {team && (
-                <TableCell>
-                  <RowActions
-                    name={row.name}
-                    actions={[
-                      { label: "Corregir marcación", run: () => correct(row) },
-                    ]}
-                  />
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-          {!query.isError && !query.data?.rows.length && (
+      <div className="data-panel">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={team ? 7 : 6} className="p-0">
-                {query.isPending ? (
-                  <p role="status">Consultando asistencia…</p>
-                ) : (
-                  <DataEmpty
-                    icon={EmptySearchX}
-                    title="Sin marcaciones para esta consulta"
-                    description="Revisa el período y los filtros seleccionados."
-                  />
-                )}
-              </TableCell>
+              {[
+                ["name", "Empleado / fecha"],
+                ["startedAt", "Entrada"],
+                ["endedAt", "Salida"],
+                ["", "Tiempo"],
+                ["", "Retraso"],
+                ["", "Adicional"],
+                ...[...(team ? [["", "Acciones"]] : [])],
+              ].map(([key, label]) => (
+                <TableHead
+                  key={label}
+                  aria-sort={
+                    key && q.get("orderBy") === key
+                      ? q.get("direction") === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                >
+                  {key ? (
+                    <SortButton
+                      active={q.get("orderBy") === key}
+                      direction={q.get("direction")}
+                      onClick={() =>
+                        update({
+                          orderBy: key,
+                          direction:
+                            q.get("orderBy") === key &&
+                            q.get("direction") !== "asc"
+                              ? "asc"
+                              : "desc",
+                        })
+                      }
+                    >
+                      {label}
+                    </SortButton>
+                  ) : (
+                    label
+                  )}
+                </TableHead>
+              ))}
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      <div className="flex flex-wrap justify-between items-center gap-3">
-        <span className="text-sm">
-          {query.data?.total ?? 0} jornadas · Página {query.data?.page ?? 1}
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            disabled={!query.data || query.data.page <= 1}
-            onClick={() => update({ page: String(query.data!.page - 1) })}
-          >
-            Anterior
-          </Button>
-          <Button
-            variant="outline"
-            disabled={!query.data || query.data.page * 10 >= query.data.total}
-            onClick={() => update({ page: String(query.data!.page + 1) })}
-          >
-            Siguiente
-          </Button>
-        </div>
+          </TableHeader>
+          <TableBody>
+            {query.data?.rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>
+                  <strong>{row.name}</strong>
+                  {team && (
+                    <div>
+                      <RecordStamp id={row.id} />
+                    </div>
+                  )}
+                  <small className="cell-detail">
+                    {dateLabel(row.workedOn)} · {row.location}
+                  </small>
+                  <small className="cell-detail">
+                    {row.source === "QR" ? "Código QR" : "Registro manual"}
+                    {row.note ? ` · ${row.note}` : ""}
+                  </small>
+                </TableCell>
+                <TableCell>{clock(row.startedAt)}</TableCell>
+                <TableCell>
+                  {row.endedAt ? (
+                    clock(row.endedAt)
+                  ) : (
+                    <Badge variant="outline">Sin salida</Badge>
+                  )}
+                  {row.endedAt &&
+                    new Intl.DateTimeFormat("en-CA", {
+                      timeZone: "America/Bogota",
+                    }).format(new Date(row.endedAt)) !== row.workedOn && (
+                      <small className="cell-detail">Día siguiente</small>
+                    )}
+                </TableCell>
+                <TableCell>{duration(row.workedMinutes)}</TableCell>
+                <TableCell
+                  className={row.lateMinutes ? "text-destructive" : ""}
+                >
+                  {duration(row.lateMinutes)}
+                  {row.authorizedMinutes > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Permiso: {duration(row.authorizedMinutes)}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>{duration(row.extraMinutes)}</TableCell>
+                {team && (
+                  <TableCell>
+                    <RowActions
+                      name={row.name}
+                      actions={[
+                        {
+                          label: "Corregir marcación",
+                          run: () => correct(row),
+                        },
+                      ]}
+                    />
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+            {!query.isError && !query.data?.rows.length && (
+              <TableRow>
+                <TableCell colSpan={team ? 7 : 6} className="p-0">
+                  {query.isPending ? (
+                    <p role="status">Consultando asistencia…</p>
+                  ) : (
+                    <DataEmpty
+                      icon={EmptySearchX}
+                      title="Sin marcaciones para esta consulta"
+                      description="Revisa el período y los filtros seleccionados."
+                    />
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+        <TablePagination
+          total={query.data?.total ?? 0}
+          page={query.data?.page ?? 1}
+          pageSize={10}
+          onPageChange={(next) => update({ page: String(next) })}
+        />
       </div>
       {query.data && (
         <p className="border-t pt-4 text-sm text-muted-foreground">

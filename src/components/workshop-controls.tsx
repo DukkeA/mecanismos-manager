@@ -131,19 +131,48 @@ export function Pager({
 }) {
   const [, setSize] = useQueryState("size", "10");
   return (
+    <TablePagination
+      total={total}
+      page={state.page}
+      pageSize={state.size}
+      onPageChange={state.set}
+      onPageSizeChange={(size) => setSize(String(size))}
+    />
+  );
+}
+
+export function TablePagination({
+  total,
+  page,
+  pageSize = 10,
+  onPageChange,
+  onPageSizeChange,
+  disabled = false,
+}: {
+  total: number;
+  page: number;
+  pageSize?: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
+  disabled?: boolean;
+}) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const current = total === 0 ? 1 : Math.max(1, Math.min(page, pages));
+  const start = (current - 1) * pageSize;
+  const unavailable = disabled || total === 0;
+  return (
     <div className="table-pagination">
-      <span role="status">
-        {total ? state.start + 1 : 0}–
-        {Math.min(state.start + state.size, total)} de {total}
+      <span role="status" className="tabular-nums text-muted-foreground">
+        {total ? start + 1 : 0}–{Math.min(start + pageSize, total)} de {total}
       </span>
       <Choice
         label="Filas por página"
-        value={String(state.size)}
-        onChange={setSize}
-        options={[10, 25, 50].map((n) => ({
-          id: String(n),
-          label: `${n} por página`,
-        }))}
+        value={String(pageSize)}
+        disabled={unavailable || !onPageSizeChange}
+        onChange={(value) => onPageSizeChange?.(Number(value))}
+        options={[...new Set([10, 25, 50, pageSize])]
+          .sort((a, b) => a - b)
+          .map((size) => ({ id: String(size), label: `${size} por página` }))}
       />
       <Pagination aria-label="Paginación">
         <PaginationContent>
@@ -152,15 +181,18 @@ export function Pager({
               variant="outline"
               size="icon"
               aria-label="Página anterior"
-              disabled={state.page <= 1}
-              onClick={() => state.set(state.page - 1)}
+              disabled={unavailable || current <= 1}
+              onClick={() => onPageChange(current - 1)}
             >
-              <ChevronLeft />
+              <ChevronLeft aria-hidden="true" />
             </Button>
           </PaginationItem>
           <PaginationItem>
-            <span>
-              {state.page} / {state.pages}
+            <span
+              className="tabular-nums"
+              aria-label={`Página ${current} de ${pages}`}
+            >
+              {current} / {pages}
             </span>
           </PaginationItem>
           <PaginationItem>
@@ -168,10 +200,10 @@ export function Pager({
               variant="outline"
               size="icon"
               aria-label="Página siguiente"
-              disabled={state.page >= state.pages}
-              onClick={() => state.set(state.page + 1)}
+              disabled={unavailable || current >= pages}
+              onClick={() => onPageChange(current + 1)}
             >
-              <ChevronRight />
+              <ChevronRight aria-hidden="true" />
             </Button>
           </PaginationItem>
         </PaginationContent>

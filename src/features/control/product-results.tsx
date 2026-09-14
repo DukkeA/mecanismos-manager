@@ -1,11 +1,12 @@
 "use client";
+import { SortButton } from "@/components/sortable-head";
+import { TablePagination } from "@/components/workshop-controls";
 import { SearchX as EmptySearchX } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { CategoryProfitability } from "@/features/categories/profitability";
 import { useCategories } from "@/features/categories/hooks";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "next/navigation";
-import { ArrowUpDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -122,123 +123,115 @@ export function ProductResults({ from, to }: { from?: string; to?: string }) {
         ) : null
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {[
-                  ["name", "Servicio / repuesto"],
-                  ["", "Categoría"],
-                  ["", "Tipo"],
-                  ["quantity", "Cantidad"],
-                  ["revenue", "Ventas netas"],
-                  ["", "Costo atribuido"],
-                  ["margin", "Margen de contribución"],
-                ].map(([key, label]) => (
-                  <TableHead key={label}>
-                    {key ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          update({
-                            orderBy: key,
-                            direction:
-                              q.get("orderBy") === key &&
-                              q.get("direction") !== "asc"
-                                ? "asc"
-                                : "desc",
-                          })
-                        }
-                      >
-                        {label}
-                        <ArrowUpDown />
-                      </Button>
-                    ) : (
-                      label
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {query.data?.rows.map((row) => (
-                <TableRow
-                  key={`${row.id}-${row.category}-${row.businessCategoryId}`}
-                >
-                  <TableCell>
-                    <strong>{row.name}</strong>
-                    <small className="cell-detail">{row.reference}</small>
-                  </TableCell>
-                  <TableCell>{row.businessCategory}</TableCell>
-                  <TableCell>{productCategories[row.category]}</TableCell>
-                  <TableCell>
-                    {Number(row.quantity).toLocaleString("es-CO")}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {cop(row.revenue)}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {row.cost === null ? "Costo pendiente" : cop(row.cost)}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {row.margin === null ? (
-                      <span className="text-muted-foreground">
-                        Sin costo completo
-                      </span>
-                    ) : (
-                      <span
-                        className={
-                          Number(row.margin) < 0
-                            ? "text-destructive"
-                            : "font-semibold"
-                        }
-                      >
-                        {cop(row.margin)}
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!query.isError && !query.data?.rows.length && (
+          <div className="data-panel">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="p-0">
-                    {query.isPending ? (
-                      <p role="status">Consultando ventas…</p>
-                    ) : (
-                      <DataEmpty
-                        icon={EmptySearchX}
-                        title="Sin ventas para esta consulta"
-                        description="Revisa el período y los filtros seleccionados."
-                      />
-                    )}
-                  </TableCell>
+                  {[
+                    ["name", "Servicio / repuesto"],
+                    ["", "Categoría"],
+                    ["", "Tipo"],
+                    ["quantity", "Cantidad"],
+                    ["revenue", "Ventas netas"],
+                    ["", "Costo atribuido"],
+                    ["margin", "Margen de contribución"],
+                  ].map(([key, label]) => (
+                    <TableHead
+                      key={label}
+                      aria-sort={
+                        key && q.get("orderBy") === key
+                          ? q.get("direction") === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : undefined
+                      }
+                    >
+                      {key ? (
+                        <SortButton
+                          active={q.get("orderBy") === key}
+                          direction={q.get("direction")}
+                          onClick={() =>
+                            update({
+                              orderBy: key,
+                              direction:
+                                q.get("orderBy") === key &&
+                                q.get("direction") !== "asc"
+                                  ? "asc"
+                                  : "desc",
+                            })
+                          }
+                        >
+                          {label}
+                        </SortButton>
+                      ) : (
+                        label
+                      )}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm">
-              {query.data?.total ?? 0} resultados · Página{" "}
-              {query.data?.page ?? 1}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={!query.data || query.data.page <= 1}
-                onClick={() => update({ page: String(query.data!.page - 1) })}
-              >
-                Anterior
-              </Button>
-              <Button
-                variant="outline"
-                disabled={
-                  !query.data || query.data.page * 10 >= query.data.total
-                }
-                onClick={() => update({ page: String(query.data!.page + 1) })}
-              >
-                Siguiente
-              </Button>
-            </div>
+              </TableHeader>
+              <TableBody>
+                {query.data?.rows.map((row) => (
+                  <TableRow
+                    key={`${row.id}-${row.category}-${row.businessCategoryId}`}
+                  >
+                    <TableCell>
+                      <strong>{row.name}</strong>
+                      <small className="cell-detail">{row.reference}</small>
+                    </TableCell>
+                    <TableCell>{row.businessCategory}</TableCell>
+                    <TableCell>{productCategories[row.category]}</TableCell>
+                    <TableCell>
+                      {Number(row.quantity).toLocaleString("es-CO")}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {cop(row.revenue)}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {row.cost === null ? "Costo pendiente" : cop(row.cost)}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {row.margin === null ? (
+                        <span className="text-muted-foreground">
+                          Sin costo completo
+                        </span>
+                      ) : (
+                        <span
+                          className={
+                            Number(row.margin) < 0
+                              ? "text-destructive"
+                              : "font-semibold"
+                          }
+                        >
+                          {cop(row.margin)}
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!query.isError && !query.data?.rows.length && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="p-0">
+                      {query.isPending ? (
+                        <p role="status">Consultando ventas…</p>
+                      ) : (
+                        <DataEmpty
+                          icon={EmptySearchX}
+                          title="Sin ventas para esta consulta"
+                          description="Revisa el período y los filtros seleccionados."
+                        />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <TablePagination
+              total={query.data?.total ?? 0}
+              page={query.data?.page ?? 1}
+              pageSize={10}
+              onPageChange={(next) => update({ page: String(next) })}
+            />
           </div>
         </>
       )}

@@ -341,7 +341,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
             </BreadcrumbList>
           </Breadcrumb>
           <span className="sync-indicator">
-            {query.isFetching ? "Actualizando…" : "Datos del taller"}
+            {query.isFetching ? "Actualizando…" : null}
           </span>
           {actor.role === "ADMIN" && !demo && <AdminNotifications />}
         </div>

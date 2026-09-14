@@ -1,4 +1,6 @@
 "use client";
+import { SortButton } from "@/components/sortable-head";
+import { TablePagination } from "@/components/workshop-controls";
 import {
   History as EmptyHistory,
   Users as EmptyUsers,
@@ -11,7 +13,7 @@ import type { Role } from "@/domain/permissions";
 import { useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Decimal from "decimal.js";
-import { ArrowUpDown, Plus, CalendarDays } from "lucide-react";
+import { Plus, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { FormSheet } from "@/components/form-sheet";
 import { RowActions } from "@/components/row-actions";
@@ -78,31 +80,9 @@ function Pages({
   page: number;
   change: (page: number) => void;
 }) {
-  const pages = Math.max(1, Math.ceil(total / 10));
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t p-3">
-      <span className="text-sm text-muted-foreground">
-        {total} registros · Página {page} de {pages}
-      </span>
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          disabled={page <= 1}
-          onClick={() => change(page - 1)}
-        >
-          Anterior
-        </Button>
-        <Button
-          variant="outline"
-          disabled={page >= pages}
-          onClick={() => change(page + 1)}
-        >
-          Siguiente
-        </Button>
-      </div>
-    </div>
-  );
+  return <TablePagination total={total} page={page} onPageChange={change} />;
 }
+
 function EmptyBenefitRow({ children }: { children: ReactNode }) {
   return (
     <TableRow>
@@ -187,10 +167,13 @@ export function BenefitsWorkspace({
           : "none"
       }
     >
-      <Button variant="ghost" size="sm" onClick={() => sort(key)}>
+      <SortButton
+        active={q.get("orderBy") === key}
+        direction={q.get("direction")}
+        onClick={() => sort(key)}
+      >
         {label}
-        <ArrowUpDown className="size-3.5" />
-      </Button>
+      </SortButton>
     </TableHead>
   );
   const selected = detail

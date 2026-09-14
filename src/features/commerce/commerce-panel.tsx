@@ -1,4 +1,6 @@
 "use client";
+import { SortButton } from "@/components/sortable-head";
+import { TablePagination } from "@/components/workshop-controls";
 import { Wallet as EmptyWallet } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { useCategories } from "@/features/categories/hooks";
@@ -8,7 +10,6 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Plus,
-  ArrowUpDown,
   MoreVertical,
   Pencil,
   Check,
@@ -401,11 +402,7 @@ export function CommercePanel({
           ),
         }
       : dialog;
-  const page = query.data?.page ?? 1,
-    pages = Math.max(
-      1,
-      Math.ceil((query.data?.total ?? 0) / (query.data?.pageSize ?? 10)),
-    );
+  const page = query.data?.page ?? 1;
   function sort(key: string) {
     filter({
       orderBy: key,
@@ -582,14 +579,13 @@ export function CommercePanel({
                       }
                     >
                       {key ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <SortButton
+                          active={params.get("orderBy") === key}
+                          direction={params.get("direction")}
                           onClick={() => sort(key)}
                         >
                           {label}
-                          <ArrowUpDown data-icon="inline-end" />
-                        </Button>
+                        </SortButton>
                       ) : (
                         label
                       )}
@@ -714,27 +710,13 @@ export function CommercePanel({
               }
             />
           )}
-          <div className="flex items-center justify-between gap-3 border-t p-3">
-            <span className="text-sm text-muted-foreground">
-              {query.data?.total ?? 0} registros · Página {page} de {pages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={page <= 1 || query.isFetching}
-                onClick={() => filter({ page: String(page - 1) })}
-              >
-                Anterior
-              </Button>
-              <Button
-                variant="outline"
-                disabled={page >= pages || query.isFetching}
-                onClick={() => filter({ page: String(page + 1) })}
-              >
-                Siguiente
-              </Button>
-            </div>
-          </div>
+          <TablePagination
+            total={query.data?.total ?? 0}
+            page={page}
+            pageSize={query.data?.pageSize ?? 10}
+            disabled={query.isFetching}
+            onPageChange={(next) => filter({ page: String(next) })}
+          />
         </div>
       )}
       <Sheet
