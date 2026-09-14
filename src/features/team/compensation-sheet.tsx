@@ -1,4 +1,6 @@
 "use client";
+import { Wallet as EmptyWallet } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { toast } from "sonner";
 import { FormSheet } from "@/components/form-sheet";
 import { OperationForm } from "@/components/operation-form";
@@ -200,9 +202,12 @@ export function CompensationSheet({
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Aún no tiene salario registrado.
-                  </p>
+                  <DataEmpty
+                    icon={EmptyWallet}
+                    compact
+                    title="Sin salario registrado"
+                    description="El historial mostrará los salarios y sus fechas de vigencia."
+                  />
                 )}
               </section>
             </>

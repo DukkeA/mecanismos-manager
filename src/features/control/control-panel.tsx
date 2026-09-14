@@ -1,4 +1,6 @@
 "use client";
+import { SearchX as EmptySearchX } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { ManagementReport } from "./management-report";
 import { Attachments } from "./attachments";
@@ -42,7 +44,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+
 import {
   Choice,
   DateRangePicker,
@@ -804,7 +806,7 @@ export function ControlPanel({
       )}
       {query.isPending ? (
         <Skeleton className="h-40" />
-      ) : (
+      ) : query.isError ? null : (
         <div className="data-panel">
           {query.data?.rows.length ? (
             <Table>
@@ -934,11 +936,11 @@ export function ControlPanel({
               </TableBody>
             </Table>
           ) : (
-            <Empty>
-              <EmptyHeader>
-                <EmptyTitle>No hay registros para esta consulta</EmptyTitle>
-              </EmptyHeader>
-            </Empty>
+            <DataEmpty
+              icon={EmptySearchX}
+              title="Sin registros para esta consulta"
+              description="Ajusta los filtros para consultar otro período o estado."
+            />
           )}
           {
             <div className="flex justify-between items-center gap-3 border-t p-3">

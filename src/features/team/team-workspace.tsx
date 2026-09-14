@@ -1,4 +1,6 @@
 "use client";
+import { SearchX as EmptySearchX } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { useState, type ComponentProps } from "react";
 import { useSearchParams } from "next/navigation";
@@ -404,11 +406,12 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell
-                        colSpan={7}
-                        className="py-10 text-center text-muted-foreground"
-                      >
-                        No hay bonos ni horas extra para esta consulta.
+                      <TableCell colSpan={7} className="p-0">
+                        <DataEmpty
+                          icon={EmptySearchX}
+                          title="Sin bonos para esta consulta"
+                          description="Revisa el empleado y el período seleccionados."
+                        />
                       </TableCell>
                     </TableRow>
                   )}

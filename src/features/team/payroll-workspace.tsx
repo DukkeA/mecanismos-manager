@@ -1,4 +1,6 @@
 "use client";
+import { SearchX as EmptySearchX, Wallet as EmptyWallet } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Decimal from "decimal.js";
@@ -434,7 +436,11 @@ export function PayrollWorkspace({
                 {!rows.length && (
                   <TableRow>
                     <TableCell colSpan={9}>
-                      No hay empleados con esa búsqueda.
+                      <DataEmpty
+                        icon={EmptySearchX}
+                        title="Sin empleados para esta consulta"
+                        description="Prueba con otro nombre o correo."
+                      />
                     </TableCell>
                   </TableRow>
                 )}
@@ -544,9 +550,12 @@ export function PayrollWorkspace({
               <RecordStamp id={employee.memberId} />
               <h3 className="font-semibold">Historial de pagos</h3>
               {!employee.payments.length && (
-                <p className="text-sm text-muted-foreground">
-                  Todavía no se han registrado pagos de este mes.
-                </p>
+                <DataEmpty
+                  icon={EmptyWallet}
+                  compact
+                  title="Sin pagos en este mes"
+                  description="Los pagos y abonos del empleado aparecerán con su fecha y cuenta de salida."
+                />
               )}
               {employee.payments.map((p) => (
                 <section

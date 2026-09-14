@@ -1,4 +1,6 @@
 "use client";
+import { Camera as EmptyCamera } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -81,7 +83,14 @@ export function TaskPhotos({
           </figure>
         ))}
       </div>
-      {!task.photos?.length && <p>No hay fotos adjuntas.</p>}
+      {!task.photos?.length && (
+        <DataEmpty
+          icon={EmptyCamera}
+          compact
+          title="Sin fotos adjuntas"
+          description="Las fotografías del trabajo aparecerán aquí."
+        />
+      )}
       {!locked &&
         !task.deletedAt &&
         !demo &&

@@ -1,4 +1,9 @@
 "use client";
+import {
+  ClipboardList as EmptyClipboardList,
+  MessageSquare as EmptyMessageSquare,
+} from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { AdminNotifications } from "@/features/activity/activity-ui";
 import {
   CategoryField,
@@ -609,7 +614,12 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="muted-copy">Todavía no hay tareas asignadas.</p>
+                  <DataEmpty
+                    icon={EmptyClipboardList}
+                    compact
+                    title="Sin tareas asignadas"
+                    description="Las tareas de esta orden aparecerán junto con su estado y tiempo registrado."
+                  />
                 )}
               </section>
 
@@ -672,7 +682,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 )}
                 {!demo ? (
                   <ObservationHistory key={selected.id} orderId={selected.id} />
-                ) : (
+                ) : selected.notes.length ? (
                   <ol className="observation-list">
                     {selected.notes.map((note) => (
                       <li key={note.id}>
@@ -683,6 +693,13 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                       </li>
                     ))}
                   </ol>
+                ) : (
+                  <DataEmpty
+                    icon={EmptyMessageSquare}
+                    compact
+                    title="Sin observaciones"
+                    description="Las notas del trabajo aparecerán con su autor y fecha."
+                  />
                 )}
               </section>
             </div>

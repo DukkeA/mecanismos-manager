@@ -1,4 +1,6 @@
 "use client";
+import { DataEmpty } from "@/components/data-empty";
+import { SearchX } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ChevronsUpDown, LoaderCircle, Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -189,11 +191,20 @@ export function CategoryPicker({
             />
             <CommandList label="Categorías">
               <CommandEmpty>
-                {query.isFetching
-                  ? "Cargando categorías…"
-                  : demo
-                    ? "Las categorías se guardan en el entorno local."
-                    : "No hay categorías con ese nombre."}
+                {query.isFetching ? (
+                  <span role="status">Cargando categorías…</span>
+                ) : query.isError ? null : (
+                  <DataEmpty
+                    compact
+                    icon={SearchX}
+                    title="Sin categorías con ese nombre"
+                    description={
+                      demo
+                        ? "Las categorías se guardan en el entorno local."
+                        : "Prueba con otro nombre."
+                    }
+                  />
+                )}
               </CommandEmpty>
               <CommandGroup>
                 {visible.map((c) => (
