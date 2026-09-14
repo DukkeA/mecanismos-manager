@@ -2,11 +2,8 @@
 -- This is configuration, not the local demo seed. Never resets existing data.
 BEGIN;
 
-INSERT INTO workshop."Member" (id, email, name, role)
-VALUES
-  (gen_random_uuid(), 'admin-one@example.com', 'admin-one@example.com', 'ADMIN'),
-  (gen_random_uuid(), 'admin-two@example.com', 'admin-two@example.com', 'ADMIN')
-ON CONFLICT (email) DO NOTHING;
+-- Authorize the first administrator separately with their actual Google email.
+-- See the README. Personal access lists do not belong in this repository.
 
 INSERT INTO workshop."Location" (id, code, name)
 VALUES

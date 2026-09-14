@@ -13,7 +13,18 @@ coverage/
 test-results/
 playwright-report/
 .secrets/
-.impeccable/config.local.json
-.impeccable/questions/
+.impeccable/
+# Working notes and design experiments stay local.
+docs/*
+!docs/diagrams/
+docs/diagrams/*.receipt.json
+docs/diagrams/*.visual-check.*
+docs/diagrams/visual-review.json
+PRODUCT.md
+DESIGN.md
+CLAUDE.md
+# Only the final brand assets are shipped.
+public/brand/*.md
+public/brand/mecanismos-tecnicos-*.png
 docs/diagrams/*.visual-check.*.png
 .local-backups/
