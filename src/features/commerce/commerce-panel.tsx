@@ -546,170 +546,176 @@ export function CommercePanel({
         <Skeleton className="h-64" />
       ) : query.isError ? null : (
         <div className="data-panel">
-          {query.data?.rows.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {[
-                    ["number", "Documento"],
-                    ["customer", "Cliente"],
-                    ["date", "Fecha"],
-                    ["", "Estado"],
-                    ["total", "Total"],
-                    ...(resource === "quotes"
-                      ? []
-                      : [
-                          [
-                            "",
-                            resource === "payments"
-                              ? "Saldo a favor"
-                              : "Por cobrar",
-                          ],
-                        ]),
-                    ["", "Acciones"],
-                  ].map(([key, label]) => (
-                    <TableHead
-                      key={label}
-                      aria-sort={
-                        key && params.get("orderBy") === key
-                          ? params.get("direction") === "asc"
-                            ? "ascending"
-                            : "descending"
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {[
+                  ["number", "Documento"],
+                  ["customer", "Cliente"],
+                  ["date", "Fecha"],
+                  ["", "Estado"],
+                  ["total", "Total"],
+                  ...(resource === "quotes"
+                    ? []
+                    : [
+                        [
+                          "",
+                          resource === "payments"
+                            ? "Saldo a favor"
+                            : "Por cobrar",
+                        ],
+                      ]),
+                  ["", "Acciones"],
+                ].map(([key, label]) => (
+                  <TableHead
+                    key={label}
+                    aria-sort={
+                      key && params.get("orderBy") === key
+                        ? params.get("direction") === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : undefined
+                    }
+                  >
+                    {key ? (
+                      <SortButton
+                        active={params.get("orderBy") === key}
+                        direction={params.get("direction")}
+                        onClick={() => sort(key)}
+                      >
+                        {label}
+                      </SortButton>
+                    ) : (
+                      label
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {query.data?.rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <Button variant="link" onClick={() => setSelected(row)}>
+                      {row.number
+                        ? `${resource === "quotes" ? "COT" : "VTA"}-${row.number}`
+                        : row.title}
+                    </Button>
+                    {resource === "payments" && (
+                      <div>
+                        <RecordStamp id={row.id} />
+                      </div>
+                    )}
+                    <div className="max-w-72 truncate text-sm text-muted-foreground">
+                      {row.number ? row.title : ""}
+                      {row.revision ? ` · versión ${row.revision}` : ""}
+                    </div>
+                  </TableCell>
+                  <TableCell>{row.customer}</TableCell>
+                  <TableCell>
+                    {dateLabel(row.date)}
+                    {row.dueOn && (
+                      <div className="text-xs text-muted-foreground">
+                        Vence {dateLabel(row.dueOn)}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      data-payment-state={
+                        resource === "sales" && row.status === "ISSUED"
+                          ? Number(row.balance) === 0
+                            ? "paid"
+                            : Number(row.paid) > 0
+                              ? "partial"
+                              : "pending"
                           : undefined
                       }
+                      variant={
+                        row.status === "APPROVED" || row.status === "RECEIVED"
+                          ? "default"
+                          : "secondary"
+                      }
                     >
-                      {key ? (
-                        <SortButton
-                          active={params.get("orderBy") === key}
-                          direction={params.get("direction")}
-                          onClick={() => sort(key)}
-                        >
-                          {label}
-                        </SortButton>
-                      ) : (
-                        label
-                      )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {query.data.rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <Button variant="link" onClick={() => setSelected(row)}>
-                        {row.number
-                          ? `${resource === "quotes" ? "COT" : "VTA"}-${row.number}`
-                          : row.title}
-                      </Button>
-                      {resource === "payments" && (
-                        <div>
-                          <RecordStamp id={row.id} />
-                        </div>
-                      )}
-                      <div className="max-w-72 truncate text-sm text-muted-foreground">
-                        {row.number ? row.title : ""}
-                        {row.revision ? ` · versión ${row.revision}` : ""}
-                      </div>
-                    </TableCell>
-                    <TableCell>{row.customer}</TableCell>
-                    <TableCell>
-                      {dateLabel(row.date)}
-                      {row.dueOn && (
-                        <div className="text-xs text-muted-foreground">
-                          Vence {dateLabel(row.dueOn)}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        data-payment-state={
-                          resource === "sales" && row.status === "ISSUED"
-                            ? Number(row.balance) === 0
-                              ? "paid"
-                              : Number(row.paid) > 0
-                                ? "partial"
-                                : "pending"
-                            : undefined
-                        }
-                        variant={
-                          row.status === "APPROVED" || row.status === "RECEIVED"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {resource === "sales" && row.status === "ISSUED"
-                          ? Number(row.total) === 0
-                            ? "Devuelta"
-                            : Number(row.balance) === 0
-                              ? "Pagada"
-                              : Number(row.paid) > 0
-                                ? "Con abono"
-                                : "Por cobrar"
-                          : (statuses[row.status] ?? row.status)}
-                      </Badge>
-                    </TableCell>
+                      {resource === "sales" && row.status === "ISSUED"
+                        ? Number(row.total) === 0
+                          ? "Devuelta"
+                          : Number(row.balance) === 0
+                            ? "Pagada"
+                            : Number(row.paid) > 0
+                              ? "Con abono"
+                              : "Por cobrar"
+                        : (statuses[row.status] ?? row.status)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {cop(row.total)}
+                  </TableCell>
+                  {resource !== "quotes" && (
                     <TableCell className="tabular-nums">
-                      {cop(row.total)}
+                      {cop(row.balance)}
                     </TableCell>
-                    {resource !== "quotes" && (
-                      <TableCell className="tabular-nums">
-                        {cop(row.balance)}
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Acciones ${row.number ?? row.title}`}
-                          >
-                            <MoreVertical />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuGroup>
-                            <DropdownMenuItem onSelect={() => setSelected(row)}>
-                              Ver detalle
+                  )}
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Acciones ${row.number ?? row.title}`}
+                        >
+                          <MoreVertical />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem onSelect={() => setSelected(row)}>
+                            Ver detalle
+                          </DropdownMenuItem>
+                          {actions(row).map((a) => (
+                            <DropdownMenuItem
+                              key={a.label}
+                              variant={a.danger ? "destructive" : "default"}
+                              onSelect={a.run}
+                            >
+                              {a.label}
                             </DropdownMenuItem>
-                            {actions(row).map((a) => (
-                              <DropdownMenuItem
-                                key={a.label}
-                                variant={a.danger ? "destructive" : "default"}
-                                onSelect={a.run}
-                              >
-                                {a.label}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <DataEmpty
-              title={
-                <>
-                  {receivables
-                    ? "No hay ventas pendientes de cobro"
-                    : "No hay documentos"}
-                </>
-              }
-              description={
-                <>
-                  {params.get("q")
-                    ? "Prueba otra búsqueda o limpia los filtros."
-                    : receivables
-                      ? "Las ventas con deuda aparecerán aquí hasta que se paguen."
-                      : "Registra el primer documento para comenzar."}
-                </>
-              }
-            />
-          )}
+                          ))}
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!query.data?.rows.length && (
+                <TableRow>
+                  <TableCell
+                    colSpan={resource === "quotes" ? 6 : 7}
+                    className="p-0"
+                  >
+                    <DataEmpty
+                      title={
+                        <>
+                          {receivables
+                            ? "No hay ventas pendientes de cobro"
+                            : "No hay documentos"}
+                        </>
+                      }
+                      description={
+                        <>
+                          {params.get("q")
+                            ? "Prueba otra búsqueda o limpia los filtros."
+                            : receivables
+                              ? "Las ventas con deuda aparecerán aquí hasta que se paguen."
+                              : "Registra el primer documento para comenzar."}
+                        </>
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
           <TablePagination
             total={query.data?.total ?? 0}
             page={page}

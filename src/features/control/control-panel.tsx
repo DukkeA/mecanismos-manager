@@ -806,151 +806,148 @@ export function ControlPanel({
         <Skeleton className="h-40" />
       ) : query.isError ? null : (
         <div className="data-panel">
-          {query.data?.rows.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {[
-                    ["title", "Registro"],
-                    [
-                      "date",
-                      resource === "assets" ? "Último ingreso" : "Fecha",
-                    ],
-                    ["", resource === "assets" ? "Tipo" : "Estado"],
-                    [
-                      "amount",
-                      units
-                        ? "Cantidad"
-                        : resource === "margins"
-                          ? "Margen (COP)"
-                          : resource === "closures"
-                            ? "Diferencia (COP)"
-                            : resource === "purchases"
-                              ? "Saldo por pagar (COP)"
-                              : "Importe (COP)",
-                    ],
-                  ]
-                    .filter(([key]) => key !== "amount" || showAmount)
-                    .map(([key, label]) => (
-                      <TableHead
-                        key={label}
-                        aria-sort={
-                          key && params.get("orderBy") === key
-                            ? params.get("direction") === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : undefined
-                        }
-                      >
-                        {key && !orderId ? (
-                          <SortButton
-                            active={params.get("orderBy") === key}
-                            direction={params.get("direction")}
-                            onClick={() =>
-                              update({
-                                orderBy: key,
-                                direction:
-                                  params.get("orderBy") === key &&
-                                  params.get("direction") === "asc"
-                                    ? "desc"
-                                    : "asc",
-                              })
-                            }
-                          >
-                            {label}
-                          </SortButton>
-                        ) : (
-                          label
-                        )}
-                      </TableHead>
-                    ))}
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {query.data.rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <Button variant="link" onClick={() => setSelected(row)}>
-                        {row.title}
-                      </Button>
-                      {["closures", "recurring"].includes(resource) && (
-                        <div>
-                          <RecordStamp id={row.id} />
-                        </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {[
+                  ["title", "Registro"],
+                  ["date", resource === "assets" ? "Último ingreso" : "Fecha"],
+                  ["", resource === "assets" ? "Tipo" : "Estado"],
+                  [
+                    "amount",
+                    units
+                      ? "Cantidad"
+                      : resource === "margins"
+                        ? "Margen (COP)"
+                        : resource === "closures"
+                          ? "Diferencia (COP)"
+                          : resource === "purchases"
+                            ? "Saldo por pagar (COP)"
+                            : "Importe (COP)",
+                  ],
+                ]
+                  .filter(([key]) => key !== "amount" || showAmount)
+                  .map(([key, label]) => (
+                    <TableHead
+                      key={label}
+                      aria-sort={
+                        key && params.get("orderBy") === key
+                          ? params.get("direction") === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : undefined
+                      }
+                    >
+                      {key && !orderId ? (
+                        <SortButton
+                          active={params.get("orderBy") === key}
+                          direction={params.get("direction")}
+                          onClick={() =>
+                            update({
+                              orderBy: key,
+                              direction:
+                                params.get("orderBy") === key &&
+                                params.get("direction") === "asc"
+                                  ? "desc"
+                                  : "asc",
+                            })
+                          }
+                        >
+                          {label}
+                        </SortButton>
+                      ) : (
+                        label
                       )}
-                      <p className="max-w-80 truncate text-xs text-muted-foreground">
-                        {row.subtitle}
-                      </p>
-                    </TableCell>
-                    <TableCell>{dateLabel(row.date)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          [
-                            "PASS",
-                            "CONFIRMED",
-                            "AVAILABLE",
-                            "ACCEPTED",
-                          ].includes(row.status ?? "")
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {statusNames[row.status ?? ""] ?? row.status}
-                      </Badge>
-                    </TableCell>
-                    {showAmount && (
-                      <TableCell
-                        className={
-                          Number(row.amount) < 0
-                            ? "text-destructive tabular-nums"
-                            : "tabular-nums"
-                        }
-                      >
-                        {row.amount === undefined
-                          ? "—"
-                          : units
-                            ? row.amount
-                            : cop(row.amount)}
-                      </TableCell>
+                    </TableHead>
+                  ))}
+                <TableHead>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {query.data?.rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <Button variant="link" onClick={() => setSelected(row)}>
+                      {row.title}
+                    </Button>
+                    {["closures", "recurring"].includes(resource) && (
+                      <div>
+                        <RecordStamp id={row.id} />
+                      </div>
                     )}
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Acciones de ${row.title}`}
-                          >
-                            <MoreVertical />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuGroup>
-                            <DropdownMenuItem onSelect={() => setSelected(row)}>
-                              Ver detalle
-                            </DropdownMenuItem>
-                            {actions(row).map((a) => (
-                              <DropdownMenuItem key={a.label} onSelect={a.run}>
-                                {a.label}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <p className="max-w-80 truncate text-xs text-muted-foreground">
+                      {row.subtitle}
+                    </p>
+                  </TableCell>
+                  <TableCell>{dateLabel(row.date)}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        ["PASS", "CONFIRMED", "AVAILABLE", "ACCEPTED"].includes(
+                          row.status ?? "",
+                        )
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {statusNames[row.status ?? ""] ?? row.status}
+                    </Badge>
+                  </TableCell>
+                  {showAmount && (
+                    <TableCell
+                      className={
+                        Number(row.amount) < 0
+                          ? "text-destructive tabular-nums"
+                          : "tabular-nums"
+                      }
+                    >
+                      {row.amount === undefined
+                        ? "—"
+                        : units
+                          ? row.amount
+                          : cop(row.amount)}
                     </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <DataEmpty
-              icon={EmptySearchX}
-              title="Sin registros para esta consulta"
-              description="Ajusta los filtros para consultar otro período o estado."
-            />
-          )}
+                  )}
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Acciones de ${row.title}`}
+                        >
+                          <MoreVertical />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem onSelect={() => setSelected(row)}>
+                            Ver detalle
+                          </DropdownMenuItem>
+                          {actions(row).map((a) => (
+                            <DropdownMenuItem key={a.label} onSelect={a.run}>
+                              {a.label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!query.data?.rows.length && (
+                <TableRow>
+                  <TableCell colSpan={showAmount ? 5 : 4} className="p-0">
+                    <DataEmpty
+                      icon={EmptySearchX}
+                      title="Sin registros para esta consulta"
+                      description="Ajusta los filtros para consultar otro período o estado."
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
           {
             <TablePagination
               total={query.data?.total ?? 0}

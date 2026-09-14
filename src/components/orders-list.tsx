@@ -216,16 +216,21 @@ export function OrdersList({
                 </TableCell>
               </TableRow>
             ))}
+            {!visible.length &&
+              (!server.serverEnabled ||
+                (!server.isPending && !server.isError)) && (
+                <TableRow>
+                  <TableCell colSpan={8} className="p-0">
+                    <DataEmpty
+                      icon={EmptySearchX}
+                      title="Sin órdenes para esta consulta"
+                      description="Prueba otra búsqueda o ajusta los filtros de estado y fechas."
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
           </TableBody>
         </Table>
-        {!visible.length &&
-          (!server.serverEnabled || (!server.isPending && !server.isError)) && (
-            <DataEmpty
-              icon={EmptySearchX}
-              title="Sin órdenes para esta consulta"
-              description="Prueba otra búsqueda o ajusta los filtros de estado y fechas."
-            />
-          )}
         <Pager
           total={server.data?.total ?? filtered.length}
           state={pagination}
