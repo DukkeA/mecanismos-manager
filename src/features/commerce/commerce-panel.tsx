@@ -1,4 +1,6 @@
 "use client";
+import { Wallet as EmptyWallet } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { useCategories } from "@/features/categories/hooks";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { Attachments } from "@/features/control/attachments";
@@ -48,12 +50,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyTitle,
-  EmptyDescription,
-} from "@/components/ui/empty";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Choice,
@@ -550,7 +547,7 @@ export function CommercePanel({
       )}
       {query.isPending ? (
         <Skeleton className="h-64" />
-      ) : (
+      ) : query.isError ? null : (
         <div className="data-panel">
           {query.data?.rows.length ? (
             <Table>
@@ -698,22 +695,24 @@ export function CommercePanel({
               </TableBody>
             </Table>
           ) : (
-            <Empty>
-              <EmptyHeader>
-                <EmptyTitle>
+            <DataEmpty
+              title={
+                <>
                   {receivables
                     ? "No hay ventas pendientes de cobro"
                     : "No hay documentos"}
-                </EmptyTitle>
-                <EmptyDescription>
+                </>
+              }
+              description={
+                <>
                   {params.get("q")
                     ? "Prueba otra búsqueda o limpia los filtros."
                     : receivables
                       ? "Las ventas con deuda aparecerán aquí hasta que se paguen."
                       : "Registra el primer documento para comenzar."}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+                </>
+              }
+            />
           )}
           <div className="flex items-center justify-between gap-3 border-t p-3">
             <span className="text-sm text-muted-foreground">
@@ -872,9 +871,12 @@ export function CommercePanel({
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Esta venta aún no tiene abonos.
-                    </p>
+                    <DataEmpty
+                      icon={EmptyWallet}
+                      compact
+                      title="Sin abonos registrados"
+                      description="Los pagos aplicados a esta venta aparecerán con su fecha y cuenta."
+                    />
                   )}
                   <p className="mt-3 text-sm">
                     Abonos vigentes: <strong>{cop(selected.paid)}</strong>

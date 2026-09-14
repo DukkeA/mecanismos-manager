@@ -1,4 +1,6 @@
 "use client";
+import { SearchX as EmptySearchX } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { CategoryProfitability } from "@/features/categories/profitability";
 import { useCategories } from "@/features/categories/hooks";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -197,12 +199,18 @@ export function ProductResults({ from, to }: { from?: string; to?: string }) {
                   </TableCell>
                 </TableRow>
               ))}
-              {!query.data?.rows.length && (
+              {!query.isError && !query.data?.rows.length && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center">
-                    {query.isPending
-                      ? "Consultando ventas…"
-                      : "No hay ventas para esta consulta."}
+                  <TableCell colSpan={7} className="p-0">
+                    {query.isPending ? (
+                      <p role="status">Consultando ventas…</p>
+                    ) : (
+                      <DataEmpty
+                        icon={EmptySearchX}
+                        title="Sin ventas para esta consulta"
+                        description="Revisa el período y los filtros seleccionados."
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               )}

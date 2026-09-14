@@ -1,4 +1,6 @@
 "use client";
+import { Wallet as EmptyWallet } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -134,9 +136,12 @@ export function FinancialOverview({
                 </div>
               </>
             ) : (
-              <p className="finance-empty">
-                Aún no hay gastos registrados para este mes.
-              </p>
+              <DataEmpty
+                icon={EmptyWallet}
+                compact
+                title="Sin gastos en este mes"
+                description="Los compromisos registrados permitirán calcular cuánto falta por pagar."
+              />
             )}
           </CardContent>
           <CardFooter>
@@ -172,7 +177,12 @@ export function FinancialOverview({
                 {cop(summary.available)}
               </strong>
             ) : (
-              <p className="finance-empty">Sin cuentas registradas</p>
+              <DataEmpty
+                icon={EmptyWallet}
+                compact
+                title="Sin cuentas registradas"
+                description="Añade una cuenta con su saldo inicial desde Dinero."
+              />
             )}
             <div className="account-breakdown">
               {data.accounts.map((a) => (
@@ -280,7 +290,12 @@ export function FinancialOverview({
                   </BarChart>
                 </ChartContainer>
               ) : (
-                <p>No hay movimientos registrados este mes.</p>
+                <DataEmpty
+                  icon={EmptyWallet}
+                  compact
+                  title="Sin movimientos en este mes"
+                  description="Los cobros y pagos registrados aparecerán en esta gráfica."
+                />
               )}
             </CardContent>
           </Card>
@@ -324,7 +339,12 @@ export function FinancialOverview({
                   ))}
                 </ul>
               ) : (
-                <p>No hay obligaciones pendientes registradas.</p>
+                <DataEmpty
+                  icon={EmptyWallet}
+                  compact
+                  title="Sin pagos pendientes"
+                  description="Los compromisos por pagar aparecerán aquí según su vencimiento."
+                />
               )}
             </CardContent>
           </Card>

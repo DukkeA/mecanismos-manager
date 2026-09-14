@@ -1,4 +1,6 @@
 "use client";
+import { ClipboardList as EmptyClipboardList } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { TaskActions, TaskDetail } from "./task-detail";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FormSheet } from "@/components/form-sheet";
@@ -381,7 +383,6 @@ export function TasksPanel({
             "Fecha límite",
             "Acciones",
           ]}
-
           empty="No hay tareas con estos filtros."
           renderRow={(row) => {
             const t = row as OperationsView["tasks"][number];
@@ -516,7 +517,12 @@ export function TasksPanel({
                     />
                   ))}
                 {!filtered.some((t) => t.status === state) && (
-                  <p className="kanban-empty">Sin tareas</p>
+                  <DataEmpty
+                    icon={EmptyClipboardList}
+                    compact
+                    title="Sin tareas"
+                    description="Las tareas en este estado aparecerán aquí."
+                  />
                 )}
               </TaskColumn>
             ))}

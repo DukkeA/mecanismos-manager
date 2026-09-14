@@ -1,4 +1,9 @@
 "use client";
+import {
+  ChartNoAxesCombined as EmptyChartNoAxesCombined,
+  Inbox as EmptyInbox,
+} from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { ProductResults } from "./product-results";
 import { useManagementReport } from "./hooks";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
@@ -59,6 +64,17 @@ export function ManagementReport({ from, to }: { from?: string; to?: string }) {
           </TableRow>
         </TableHeader>
         <TableBody>
+          {!groups.length && (
+            <TableRow>
+              <TableCell colSpan={5}>
+                <DataEmpty
+                  icon={EmptyInbox}
+                  title="Sin ventas en este período"
+                  description="Las ventas registradas permitirán comparar sus garantías y costos."
+                />
+              </TableCell>
+            </TableRow>
+          )}
           {groups.map((g) => (
             <TableRow key={g.type}>
               <TableCell>{names[g.type] ?? g.type}</TableCell>
@@ -101,38 +117,46 @@ export function ManagementReport({ from, to }: { from?: string; to?: string }) {
           identifica al causante de una garantía.
         </p>
       </div>
-      <ChartContainer
-        className="h-80 w-full"
-        config={{
-          hours: { label: "Horas registradas", color: "var(--chart-1)" },
-        }}
-      >
-        <BarChart
-          layout="vertical"
-          data={team.map((m) => ({
-            ...m,
-            hours: Number((m.minutes / 60).toFixed(1)),
-            label: m.name.split(" ").slice(0, 2).join(" "),
-          }))}
+      {team.some((m) => m.minutes > 0) ? (
+        <ChartContainer
+          className="h-80 w-full"
+          config={{
+            hours: { label: "Horas registradas", color: "var(--chart-1)" },
+          }}
         >
-          <CartesianGrid vertical={false} />
-          <XAxis type="number" tickLine={false} axisLine={false} />
-          <YAxis
-            type="category"
-            dataKey="label"
-            width={100}
-            tickLine={false}
-            axisLine={false}
-            fontSize={11}
-          />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          <Bar
-            dataKey="hours"
-            fill="var(--color-hours)"
-            radius={[0, 4, 4, 0]}
-          />
-        </BarChart>
-      </ChartContainer>
+          <BarChart
+            layout="vertical"
+            data={team.map((m) => ({
+              ...m,
+              hours: Number((m.minutes / 60).toFixed(1)),
+              label: m.name.split(" ").slice(0, 2).join(" "),
+            }))}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis type="number" tickLine={false} axisLine={false} />
+            <YAxis
+              type="category"
+              dataKey="label"
+              width={100}
+              tickLine={false}
+              axisLine={false}
+              fontSize={11}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar
+              dataKey="hours"
+              fill="var(--color-hours)"
+              radius={[0, 4, 4, 0]}
+            />
+          </BarChart>
+        </ChartContainer>
+      ) : (
+        <DataEmpty
+          icon={EmptyChartNoAxesCombined}
+          title="Sin horas registradas"
+          description="Los tiempos registrados en las tareas aparecerán por mecánico."
+        />
+      )}
     </section>
   );
 }

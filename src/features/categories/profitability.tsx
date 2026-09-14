@@ -1,4 +1,9 @@
 "use client";
+import {
+  ChartNoAxesCombined as EmptyChartNoAxesCombined,
+  SearchX as EmptySearchX,
+} from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { useState } from "react";
 import { ArrowUpDown } from "lucide-react";
 import {
@@ -106,6 +111,13 @@ export function CategoryProfitability({
             </Bar>
           </BarChart>
         </ChartContainer>
+      )}
+      {rows.length > 0 && complete.length === 0 && (
+        <DataEmpty
+          icon={EmptyChartNoAxesCombined}
+          title="Margen pendiente de calcular"
+          description="Completa los costos de estas ventas para compararlos en la gráfica."
+        />
       )}
       {pending.length > 0 && (
         <p className="text-sm text-muted-foreground">
@@ -216,8 +228,12 @@ export function CategoryProfitability({
           ))}
           {!rows.length && (
             <TableRow>
-              <TableCell colSpan={5} className="py-8 text-center">
-                No hay ventas con estos filtros.
+              <TableCell colSpan={5} className="p-0">
+                <DataEmpty
+                  icon={EmptySearchX}
+                  title="Sin ventas para esta consulta"
+                  description="Revisa el período y la categoría seleccionados."
+                />
               </TableCell>
             </TableRow>
           )}

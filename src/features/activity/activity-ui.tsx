@@ -1,4 +1,6 @@
 "use client";
+import { Bell as EmptyBell, History as EmptyHistory } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { useState } from "react";
 import { Bell, History } from "lucide-react";
 import { toast } from "sonner";
@@ -160,9 +162,12 @@ function Changes({ params }: { params: URLSearchParams }) {
   return (
     <div className="flex flex-col gap-5">
       {!query.data.length && (
-        <p className="text-sm text-muted-foreground">
-          No hay cambios registrados.
-        </p>
+        <DataEmpty
+          icon={EmptyHistory}
+          compact
+          title="Sin cambios registrados"
+          description="Las actualizaciones mostrarán su autor, fecha y detalle."
+        />
       )}
       {query.data.map((c) => {
         const changed = Object.keys(c.after).filter(
@@ -379,9 +384,12 @@ export function AdminNotifications() {
                     ))}
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No hay notificaciones.
-                  </p>
+                  <DataEmpty
+                    icon={EmptyBell}
+                    compact
+                    title="Sin notificaciones"
+                    description="Aquí recibirás los avisos de actividad del taller."
+                  />
                 )}
                 <div className="flex justify-between gap-3">
                   <Button

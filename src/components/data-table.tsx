@@ -1,9 +1,12 @@
 "use client";
+import { DataEmpty } from "@/components/data-empty";
 import type { ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
+import { Inbox, SearchX } from "lucide-react";
 import { SortableHead } from "./sortable-head";
 import type { TableKey } from "@/domain/table-sort";
 import { useRecordPage } from "@/features/records/hooks";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
+
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Pager, usePagination } from "./workshop-controls";
 import { Skeleton } from "./ui/skeleton";
@@ -27,6 +30,27 @@ export function DataTable({
   renderRow?: (row: unknown) => ReactNode;
   renderMobileRow?: (row: unknown) => ReactNode;
 }) {
+  const params = useSearchParams();
+  const filtered =
+    !!tableKey &&
+    !tableKey.endsWith("Detail") &&
+    [
+      "q",
+      "status",
+      "brand",
+      "businessCategoryId",
+      "location",
+      "responsible",
+      "kind",
+      "period",
+      "from",
+      "to",
+      "min",
+      "max",
+    ].some((key) => {
+      const value = params.get(key);
+      return !!value && value !== "ALL";
+    });
   const query = useRecordPage<unknown>(renderRow ? tableKey : undefined),
     local = fallbackRows ?? [],
     total = query.serverEnabled
@@ -83,14 +107,15 @@ export function DataTable({
           </Table>
         </>
       ) : (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>Sin registros</EmptyTitle>
-            <EmptyDescription>{empty}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <DataEmpty
+          icon={filtered ? SearchX : Inbox}
+          title={filtered ? "Sin resultados" : empty}
+          description={
+            filtered ? "Prueba otra búsqueda o ajusta los filtros." : undefined
+          }
+        />
       )}
-      <Pager total={total} state={pagination} />
+      {total > 0 && <Pager total={total} state={pagination} />}
     </div>
   );
 }

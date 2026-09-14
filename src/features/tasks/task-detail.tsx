@@ -1,4 +1,9 @@
 "use client";
+import {
+  History as EmptyHistory,
+  MessageSquare as EmptyMessageSquare,
+} from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { TaskPhotos } from "./task-photos";
 import {
   MoreVertical,
@@ -260,9 +265,9 @@ export function TaskDetail({
                     {task.description || "Sin instrucciones adicionales."}
                   </p>
                 </section>
-                {!!task.timeEntries?.length && (
-                  <section className="detail-section">
-                    <h3>Registro de tiempo</h3>
+                <section className="detail-section">
+                  <h3>Registro de tiempo</h3>
+                  {task.timeEntries?.length ? (
                     <ul className="detail-list">
                       {task.timeEntries.map((e) => (
                         <li key={e.id}>
@@ -278,8 +283,14 @@ export function TaskDetail({
                         </li>
                       ))}
                     </ul>
-                  </section>
-                )}
+                  ) : (
+                    <DataEmpty
+                      compact
+                      title="Sin tiempo registrado"
+                      description="Las horas dedicadas a esta tarea aparecerán con su autor y fecha."
+                    />
+                  )}
+                </section>
               </TabsContent>
               <TabsContent value="notes">
                 <ul className="detail-list">
@@ -293,7 +304,12 @@ export function TaskDetail({
                   ))}
                 </ul>
                 {!task.notes?.length && (
-                  <p>No hay observaciones registradas.</p>
+                  <DataEmpty
+                    icon={EmptyMessageSquare}
+                    compact
+                    title="Sin observaciones"
+                    description="Las notas sobre el trabajo quedarán en este historial."
+                  />
                 )}
                 {!locked && !task.deletedAt && (
                   <OperationForm
@@ -344,7 +360,12 @@ export function TaskDetail({
                   ))}
                 </ul>
                 {!task.history?.length && (
-                  <p>No hay cambios registrados desde la creación.</p>
+                  <DataEmpty
+                    icon={EmptyHistory}
+                    compact
+                    title="Sin cambios posteriores"
+                    description="Aquí aparecerán las actualizaciones de la tarea y quién las realizó."
+                  />
                 )}
               </TabsContent>
             </DetailTabs>

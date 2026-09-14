@@ -1,4 +1,6 @@
 "use client";
+import { SearchX as EmptySearchX } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { CategoryFilter } from "@/features/categories/category-fields";
 import { useRecordPage } from "@/features/records/hooks";
 import { SortableHead } from "./sortable-head";
@@ -163,6 +165,12 @@ export function OrdersList({
       {from && to && from > to && (
         <p role="alert">La fecha inicial debe ser anterior a la final.</p>
       )}
+      {server.serverEnabled && server.isPending && (
+        <p role="status">Consultando órdenes…</p>
+      )}
+      {server.serverEnabled && server.isError && (
+        <p role="alert">{server.error.message}</p>
+      )}
       <div className="data-panel">
         <Table>
           <TableHeader>
@@ -210,9 +218,14 @@ export function OrdersList({
             ))}
           </TableBody>
         </Table>
-        {!visible.length && !server.isPending && (
-          <p className="empty-results">No hay órdenes con estos filtros.</p>
-        )}
+        {!visible.length &&
+          (!server.serverEnabled || (!server.isPending && !server.isError)) && (
+            <DataEmpty
+              icon={EmptySearchX}
+              title="Sin órdenes para esta consulta"
+              description="Prueba otra búsqueda o ajusta los filtros de estado y fechas."
+            />
+          )}
         <Pager
           total={server.data?.total ?? filtered.length}
           state={pagination}

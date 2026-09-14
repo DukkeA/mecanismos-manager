@@ -1,4 +1,11 @@
 "use client";
+import {
+  Bell as EmptyBell,
+  ClipboardList as EmptyClipboardList,
+  Inbox as EmptyInbox,
+  MessageSquare as EmptyMessageSquare,
+} from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -121,34 +128,42 @@ export function WorkshopDashboard({
       <div className="dashboard-columns">
         <section className="dashboard-card">
           <h2>Órdenes abiertas por estado</h2>
-          <ChartContainer
-            config={{ total: { label: "Órdenes", color: "var(--chart-1)" } }}
-            className="h-72 w-full"
-          >
-            <BarChart
-              accessibilityLayer
-              data={chart}
-              layout="vertical"
-              margin={{ left: 5, right: 22 }}
+          {open.length ? (
+            <ChartContainer
+              config={{ total: { label: "Órdenes", color: "var(--chart-1)" } }}
+              className="h-72 w-full"
             >
-              <CartesianGrid horizontal={false} />
-              <XAxis type="number" allowDecimals={false} />
-              <YAxis
-                dataKey="name"
-                type="category"
-                width={118}
-                tickLine={false}
-                axisLine={false}
-              />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar
-                isAnimationActive={!reducedMotion}
-                dataKey="total"
-                fill="var(--color-total)"
-                radius={3}
-              />
-            </BarChart>
-          </ChartContainer>
+              <BarChart
+                accessibilityLayer
+                data={chart}
+                layout="vertical"
+                margin={{ left: 5, right: 22 }}
+              >
+                <CartesianGrid horizontal={false} />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  width={118}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar
+                  isAnimationActive={!reducedMotion}
+                  dataKey="total"
+                  fill="var(--color-total)"
+                  radius={3}
+                />
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <DataEmpty
+              icon={EmptyInbox}
+              title="Sin órdenes abiertas"
+              description="Las órdenes activas aparecerán agrupadas por estado."
+            />
+          )}
           <ul className="sr-only">
             {chart.map((c) => (
               <li key={c.name}>
@@ -160,7 +175,12 @@ export function WorkshopDashboard({
         <section className="dashboard-card">
           <h2>Avisos</h2>
           {!overdue.length && !ready.length && !blocked.length ? (
-            <p>No hay entregas pendientes ni tareas bloqueadas.</p>
+            <DataEmpty
+              icon={EmptyBell}
+              compact
+              title="Sin avisos pendientes"
+              description="Aquí aparecen las entregas por coordinar, los retrasos y las tareas bloqueadas."
+            />
           ) : (
             <ul className="dashboard-alerts">
               {overdue.slice(0, 3).map((o) => (
@@ -249,7 +269,12 @@ export function WorkshopDashboard({
               </BarChart>
             </ChartContainer>
           ) : (
-            <p>No hay tareas pendientes.</p>
+            <DataEmpty
+              icon={EmptyClipboardList}
+              compact
+              title="Sin tareas pendientes"
+              description="Las tareas por completar aparecerán agrupadas por responsable."
+            />
           )}
           <Button variant="link" onClick={() => navigate("Tareas")}>
             Ver tareas
@@ -272,7 +297,12 @@ export function WorkshopDashboard({
               ))}
             </ol>
           ) : (
-            <p>Aún no hay observaciones.</p>
+            <DataEmpty
+              icon={EmptyMessageSquare}
+              compact
+              title="Sin observaciones"
+              description="Las notas de las órdenes aparecerán aquí, de la más reciente a la más antigua."
+            />
           )}
         </section>
       </div>

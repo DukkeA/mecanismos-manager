@@ -1,4 +1,10 @@
 "use client";
+import {
+  History as EmptyHistory,
+  Users as EmptyUsers,
+  Wallet as EmptyWallet,
+} from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { PayrollWorkspace } from "./payroll-workspace";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import type { Role } from "@/domain/permissions";
@@ -97,14 +103,14 @@ function Pages({
     </div>
   );
 }
-function Empty({ children }: { children: ReactNode }) {
+function EmptyBenefitRow({ children }: { children: ReactNode }) {
   return (
     <TableRow>
-      <TableCell
-        colSpan={8}
-        className="py-12 text-center text-muted-foreground"
-      >
-        {children}
+      <TableCell colSpan={8} className="p-0">
+        <DataEmpty
+          title={children}
+          description="Revisa el empleado, el estado y las fechas seleccionadas."
+        />
       </TableCell>
     </TableRow>
   );
@@ -344,10 +350,10 @@ export function BenefitsWorkspace({
                 </TableHeader>
                 <TableBody>
                   {!query.data.rows.length && (
-                    <Empty>
+                    <EmptyBenefitRow>
                       No hay {tab === "leaves" ? "permisos" : "anticipos"} con
                       estos filtros.
-                    </Empty>
+                    </EmptyBenefitRow>
                   )}
                   {query.data.rows.map((row) => (
                     <TableRow key={row.id}>
@@ -744,6 +750,14 @@ function AdvanceDetail({
       <section className="space-y-3">
         <h3 className="font-semibold">Historial</h3>
         <Feedback pending={history.isPending} error={history.error} />
+        {history.isSuccess && history.data.length === 0 && (
+          <DataEmpty
+            icon={EmptyWallet}
+            compact
+            title="Sin movimientos registrados"
+            description="Los cambios de cuotas y descuentos aparecerán en este historial."
+          />
+        )}
         {history.data?.map((e) => (
           <div key={e.id} className="border-l-2 pl-3">
             <p className="text-sm font-medium">
@@ -818,9 +832,12 @@ function VacationBalances({ onAdjust }: { onAdjust: (id: string) => void }) {
               </Button>
               <h3 className="font-semibold">Ajustes registrados</h3>
               {!row.history.length && (
-                <p className="text-sm text-muted-foreground">
-                  No hay saldo inicial registrado.
-                </p>
+                <DataEmpty
+                  icon={EmptyHistory}
+                  compact
+                  title="Sin ajustes registrados"
+                  description="Registra el saldo inicial de vacaciones o añade un ajuste."
+                />
               )}
               {row.history.map((h) => (
                 <div key={h.id} className="border-b pb-3">
@@ -845,6 +862,17 @@ function VacationBalances({ onAdjust }: { onAdjust: (id: string) => void }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {query.data.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3}>
+                        <DataEmpty
+                          icon={EmptyUsers}
+                          title="Sin empleados registrados"
+                          description="Los saldos de vacaciones aparecerán al registrar al equipo."
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {query.data.slice((page - 1) * 10, page * 10).map((r) => (
                     <TableRow key={r.memberId}>
                       <TableCell>

@@ -1,4 +1,6 @@
 "use client";
+import { Paperclip as EmptyPaperclip } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWorkshopScope, assertConnected } from "@/features/workshop/query";
@@ -50,6 +52,15 @@ export function Attachments({
   return (
     <section className="flex flex-col gap-3 border-t pt-4">
       <h3 className="font-semibold">Fotos y documentos</h3>
+      {query.isPending && <p role="status">Consultando adjuntos…</p>}
+      {query.isSuccess && query.data.length === 0 && (
+        <DataEmpty
+          icon={EmptyPaperclip}
+          compact
+          title="Sin archivos adjuntos"
+          description="Añade fotografías o documentos relacionados con este registro."
+        />
+      )}
       {query.data?.map((a) => (
         <div key={a.id} className="flex items-center gap-3">
           <FileText className="size-4 shrink-0" />

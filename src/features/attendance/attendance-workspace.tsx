@@ -1,4 +1,6 @@
 "use client";
+import { SearchX as EmptySearchX } from "lucide-react";
+import { DataEmpty } from "@/components/data-empty";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -347,12 +349,18 @@ export function AttendanceWorkspace({
               )}
             </TableRow>
           ))}
-          {!query.data?.rows.length && (
+          {!query.isError && !query.data?.rows.length && (
             <TableRow>
-              <TableCell colSpan={team ? 7 : 6} className="py-8 text-center">
-                {query.isPending
-                  ? "Consultando asistencia…"
-                  : "No hay marcaciones en estas fechas."}
+              <TableCell colSpan={team ? 7 : 6} className="p-0">
+                {query.isPending ? (
+                  <p role="status">Consultando asistencia…</p>
+                ) : (
+                  <DataEmpty
+                    icon={EmptySearchX}
+                    title="Sin marcaciones para esta consulta"
+                    description="Revisa el período y los filtros seleccionados."
+                  />
+                )}
               </TableCell>
             </TableRow>
           )}
