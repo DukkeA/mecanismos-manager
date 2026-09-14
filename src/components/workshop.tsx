@@ -108,8 +108,7 @@ type Props = {
   initialOrders: OrderView[];
   demo?: boolean;
   localTesting?: boolean;
-  cloudTesting?: boolean;
-  actor: { id: string; name: string; role: Role };
+  actor: { id: string; name: string; role: Role; avatarUrl?: string };
   locations: { id: string; name: string }[];
 };
 
@@ -135,12 +134,7 @@ export function Workshop(props: Props) {
     </WorkshopQueryProvider>
   );
 }
-function WorkshopContent({
-  demo = false,
-  localTesting = false,
-  cloudTesting = false,
-  actor,
-}: Props) {
+function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
   const query = useWorkshopQuery();
   const { orders, operations, locations } = query.data ?? {
     orders: [],
@@ -347,26 +341,18 @@ function WorkshopContent({
           {actor.role === "ADMIN" && !demo && <AdminNotifications />}
         </div>
         <div className="workspace-content">
-          {(localTesting || cloudTesting || demo) && (
+          {(localTesting || demo) && (
             <Alert className="demo-alert">
               <AlertTitle>
-                {demo
-                  ? "Demostración"
-                  : cloudTesting
-                    ? "Entorno de pruebas"
-                    : "Pruebas locales"}
+                {demo ? "Demostración" : "Pruebas locales"}
               </AlertTitle>
               <AlertDescription>
                 {demo
                   ? "Datos ficticios. Los cambios se pierden al recargar."
-                  : cloudTesting
-                    ? "Los cambios se guardan en la base de pruebas del taller."
-                    : "Datos ficticios guardados en la base local."}{" "}
-                {!cloudTesting && (
-                  <Link href="/login" className="underline">
-                    Cambiar usuario
-                  </Link>
-                )}
+                  : "Datos ficticios guardados en la base local."}{" "}
+                <Link href="/login" className="underline">
+                  Cambiar usuario
+                </Link>
               </AlertDescription>
             </Alert>
           )}

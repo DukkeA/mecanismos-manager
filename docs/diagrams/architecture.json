@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Mecanismos · Arquitectura implementada",
+    "title": "Mecanismos · Arquitectura",
     "quality_profile": "showcase",
     "viewBox": [
       1360,
@@ -61,7 +61,7 @@
       "id": "backend",
       "type": "backend",
       "label": "Servidor Next.js",
-      "sublabel": "Sesión · Permisos · Reglas",
+      "sublabel": "Vercel · Permisos · Reglas",
       "pos": [
         730,
         340
@@ -75,7 +75,7 @@
       "id": "postgres",
       "type": "database",
       "label": "PostgreSQL privado",
-      "sublabel": "workshop · 58 modelos",
+      "sublabel": "Supabase · 63 modelos",
       "pos": [
         1100,
         340
@@ -89,7 +89,7 @@
       "id": "identity",
       "type": "security",
       "label": "Supabase Auth",
-      "sublabel": "Identidad y cookies",
+      "sublabel": "Google OAuth · Cookies",
       "pos": [
         730,
         70
@@ -174,20 +174,18 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "Código actual · entorno local",
+      "title": "Acceso y operación",
       "items": [
-        "Consultas por módulo con TanStack Query; rentabilidad por categoría y producto",
-        "Member define el rol; las asignaciones limitan la evidencia técnica",
-        "Equipo y Dinero: Admin y Oficina; anulaciones y accesos, solo Admin",
-        "Pantalla QR con cookie de dispositivo; no concede acceso al resto de la app",
-        "RecordChange conserva valores anteriores; la actividad de Oficina avisa a los admins"
+        "TanStack Query organiza consultas y mutaciones por módulo",
+        "Member y las asignaciones delimitan el acceso al taller",
+        "RecordChange conserva cambios; la actividad de Oficina avisa a los admins"
       ]
     },
     {
       "dot": "amber",
-      "title": "Pendiente de puesta en marcha",
+      "title": "Despliegue y archivos",
       "items": [
-        "Google y despliegue requieren completar la configuración cloud",
+        "GitHub conserva el código; Vercel publica la rama main",
         "La PWA usa el backend conectado; APK aún no generada",
         "Los adjuntos se autorizan en servidor; el bucket no es público"
       ]

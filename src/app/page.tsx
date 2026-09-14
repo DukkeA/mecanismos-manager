@@ -22,7 +22,6 @@ export default async function Home() {
       locations={locations}
       initialOperations={operations}
       localTesting={localTestAccessEnabled()}
-      cloudTesting={process.env.APP_ENVIRONMENT === "test"}
     />
   );
 }
