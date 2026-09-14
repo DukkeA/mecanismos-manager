@@ -1,10 +1,12 @@
 "use client";
+import { SortButton } from "@/components/sortable-head";
+import { TablePagination } from "@/components/workshop-controls";
 import { SearchX as EmptySearchX, Wallet as EmptyWallet } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Decimal from "decimal.js";
-import { ArrowUpDown, CheckCheck } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useTeamRequest, useTeamCommand } from "./hooks";
 import { type PayrollPreview } from "@/domain/employee-benefits";
@@ -116,10 +118,13 @@ export function PayrollWorkspace({
           : "none"
       }
     >
-      <Button variant="ghost" size="sm" onClick={() => sort(key)}>
+      <SortButton
+        active={orderBy === key}
+        direction={direction}
+        onClick={() => sort(key)}
+      >
         {label}
-        <ArrowUpDown />
-      </Button>
+      </SortButton>
     </TableHead>
   );
   return (
@@ -446,28 +451,12 @@ export function PayrollWorkspace({
                 )}
               </TableBody>
             </Table>
-            <div className="flex items-center justify-between gap-3 border-t p-3">
-              <span className="text-sm">
-                {rows.length} empleados · Página {page} de{" "}
-                {Math.max(1, Math.ceil(rows.length / 10))}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={page * 10 >= rows.length}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Siguiente
-                </Button>
-              </div>
-            </div>
+            <TablePagination
+              total={rows.length}
+              page={page}
+              pageSize={10}
+              onPageChange={setPage}
+            />
           </div>
         </>
       )}

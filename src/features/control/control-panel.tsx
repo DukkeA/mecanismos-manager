@@ -1,4 +1,6 @@
 "use client";
+import { SortButton } from "@/components/sortable-head";
+import { TablePagination } from "@/components/workshop-controls";
 import { SearchX as EmptySearchX } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { RecordStamp } from "@/features/activity/activity-ui";
@@ -6,7 +8,7 @@ import { ManagementReport } from "./management-report";
 import { Attachments } from "./attachments";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, ArrowUpDown, MoreVertical, Download } from "lucide-react";
+import { Plus, MoreVertical, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useControlPage, useControlCommand } from "./hooks";
 import { PurchaseEditor } from "./purchase-editor";
@@ -643,11 +645,7 @@ export function ControlPanel({
     return a;
   }
   const canCreate = !["assets", "margins", "audit", "rates"].includes(resource),
-    page = query.data?.page ?? 1,
-    pages = Math.max(
-      1,
-      Math.ceil((query.data?.total ?? 0) / (query.data?.pageSize ?? 10)),
-    );
+    page = query.data?.page ?? 1;
   const showAmount = ![
     "assets",
     "checks",
@@ -834,25 +832,36 @@ export function ControlPanel({
                   ]
                     .filter(([key]) => key !== "amount" || showAmount)
                     .map(([key, label]) => (
-                      <TableHead key={label}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={!key || !!orderId}
-                          onClick={() =>
-                            update({
-                              orderBy: key,
-                              direction:
-                                params.get("orderBy") === key &&
-                                params.get("direction") === "asc"
-                                  ? "desc"
-                                  : "asc",
-                            })
-                          }
-                        >
-                          {label}
-                          {key && <ArrowUpDown />}
-                        </Button>
+                      <TableHead
+                        key={label}
+                        aria-sort={
+                          key && params.get("orderBy") === key
+                            ? params.get("direction") === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : undefined
+                        }
+                      >
+                        {key && !orderId ? (
+                          <SortButton
+                            active={params.get("orderBy") === key}
+                            direction={params.get("direction")}
+                            onClick={() =>
+                              update({
+                                orderBy: key,
+                                direction:
+                                  params.get("orderBy") === key &&
+                                  params.get("direction") === "asc"
+                                    ? "desc"
+                                    : "asc",
+                              })
+                            }
+                          >
+                            {label}
+                          </SortButton>
+                        ) : (
+                          label
+                        )}
                       </TableHead>
                     ))}
                   <TableHead>Acciones</TableHead>
@@ -943,35 +952,14 @@ export function ControlPanel({
             />
           )}
           {
-            <div className="flex justify-between items-center gap-3 border-t p-3">
-              <span className="text-sm text-muted-foreground">
-                {query.data?.total ?? 0} registros · Página {page} de {pages}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  disabled={page <= 1}
-                  onClick={() =>
-                    orderId
-                      ? setLocalPage(page - 1)
-                      : update({ page: String(page - 1) })
-                  }
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={page >= pages}
-                  onClick={() =>
-                    orderId
-                      ? setLocalPage(page + 1)
-                      : update({ page: String(page + 1) })
-                  }
-                >
-                  Siguiente
-                </Button>
-              </div>
-            </div>
+            <TablePagination
+              total={query.data?.total ?? 0}
+              page={page}
+              pageSize={query.data?.pageSize ?? 10}
+              onPageChange={(next) =>
+                orderId ? setLocalPage(next) : update({ page: String(next) })
+              }
+            />
           }
         </div>
       )}

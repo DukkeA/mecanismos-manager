@@ -1,11 +1,12 @@
 "use client";
+import { SortButton } from "@/components/sortable-head";
+import { TablePagination } from "@/components/workshop-controls";
 import {
   ChartNoAxesCombined as EmptyChartNoAxesCombined,
   SearchX as EmptySearchX,
 } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { useState } from "react";
-import { ArrowUpDown } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -126,142 +127,125 @@ export function CategoryProfitability({
           costos pendientes y aún no aparecen en el gráfico.
         </p>
       )}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {[
-              ["name", "Categoría"],
-              ["revenue", "Ventas netas"],
-              ["cost", "Costo atribuido"],
-              ["margin", "Margen"],
-              ["", "% de margen"],
-            ].map(([key, label]) => (
-              <TableHead
-                key={label}
-                aria-sort={
-                  orderBy === key
-                    ? direction === "asc"
-                      ? "ascending"
-                      : "descending"
-                    : undefined
-                }
-              >
-                {key ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setPage(1);
-                      update({
-                        businessOrderBy: key,
-                        businessDirection:
-                          orderBy === key && direction === "desc"
-                            ? "asc"
-                            : "desc",
-                      });
-                    }}
-                  >
-                    {label}
-                    <ArrowUpDown />
-                  </Button>
-                ) : (
-                  label
-                )}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.slice((current - 1) * 10, current * 10).map((r) => (
-            <TableRow key={r.id ?? "NONE"}>
-              <TableCell>
-                <Button
-                  variant="link"
-                  onClick={() =>
-                    update({
-                      businessCategoryId: r.id ?? "NONE",
-                      display: "products",
-                    })
+      <div className="data-panel">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {[
+                ["name", "Categoría"],
+                ["revenue", "Ventas netas"],
+                ["cost", "Costo atribuido"],
+                ["margin", "Margen"],
+                ["", "% de margen"],
+              ].map(([key, label]) => (
+                <TableHead
+                  key={label}
+                  aria-sort={
+                    orderBy === key
+                      ? direction === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
                   }
                 >
-                  {r.name}
-                </Button>
-                {r.missing > 0 && (
-                  <small className="cell-detail">
-                    {r.missing}{" "}
-                    {r.missing === 1
-                      ? "línea con costo pendiente"
-                      : "líneas con costo pendiente"}
-                  </small>
-                )}
-              </TableCell>
-              <TableCell className="tabular-nums">{cop(r.revenue)}</TableCell>
-              <TableCell className="tabular-nums">
-                {r.cost === null ? "Costo pendiente" : cop(r.cost)}
-              </TableCell>
-              <TableCell className="tabular-nums">
-                {r.margin === null ? (
-                  "Sin costo completo"
-                ) : (
-                  <span
-                    className={
-                      Number(r.margin) < 0
-                        ? "font-semibold text-destructive"
-                        : "font-semibold"
+                  {key ? (
+                    <SortButton
+                      active={orderBy === key}
+                      direction={direction}
+                      onClick={() => {
+                        setPage(1);
+                        update({
+                          businessOrderBy: key,
+                          businessDirection:
+                            orderBy === key && direction === "desc"
+                              ? "asc"
+                              : "desc",
+                        });
+                      }}
+                    >
+                      {label}
+                    </SortButton>
+                  ) : (
+                    label
+                  )}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.slice((current - 1) * 10, current * 10).map((r) => (
+              <TableRow key={r.id ?? "NONE"}>
+                <TableCell>
+                  <Button
+                    variant="link"
+                    onClick={() =>
+                      update({
+                        businessCategoryId: r.id ?? "NONE",
+                        display: "products",
+                      })
                     }
                   >
-                    {cop(r.margin)}
-                    {Number(r.margin) < 0 && (
-                      <Badge variant="destructive" className="ml-2">
-                        Pérdida
-                      </Badge>
-                    )}
-                  </span>
-                )}
-              </TableCell>
-              <TableCell>
-                {r.marginPercent === null
-                  ? "—"
-                  : `${Number(r.marginPercent).toLocaleString("es-CO")}%`}
-              </TableCell>
-            </TableRow>
-          ))}
-          {!rows.length && (
-            <TableRow>
-              <TableCell colSpan={5} className="p-0">
-                <DataEmpty
-                  icon={EmptySearchX}
-                  title="Sin ventas para esta consulta"
-                  description="Revisa el período y la categoría seleccionados."
-                />
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      {rows.length > 10 && (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm">
-            Página {current} de {pages}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              disabled={current === 1}
-              onClick={() => setPage(current - 1)}
-            >
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              disabled={current === pages}
-              onClick={() => setPage(current + 1)}
-            >
-              Siguiente
-            </Button>
-          </div>
-        </div>
-      )}
+                    {r.name}
+                  </Button>
+                  {r.missing > 0 && (
+                    <small className="cell-detail">
+                      {r.missing}{" "}
+                      {r.missing === 1
+                        ? "línea con costo pendiente"
+                        : "líneas con costo pendiente"}
+                    </small>
+                  )}
+                </TableCell>
+                <TableCell className="tabular-nums">{cop(r.revenue)}</TableCell>
+                <TableCell className="tabular-nums">
+                  {r.cost === null ? "Costo pendiente" : cop(r.cost)}
+                </TableCell>
+                <TableCell className="tabular-nums">
+                  {r.margin === null ? (
+                    "Sin costo completo"
+                  ) : (
+                    <span
+                      className={
+                        Number(r.margin) < 0
+                          ? "font-semibold text-destructive"
+                          : "font-semibold"
+                      }
+                    >
+                      {cop(r.margin)}
+                      {Number(r.margin) < 0 && (
+                        <Badge variant="destructive" className="ml-2">
+                          Pérdida
+                        </Badge>
+                      )}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {r.marginPercent === null
+                    ? "—"
+                    : `${Number(r.marginPercent).toLocaleString("es-CO")}%`}
+                </TableCell>
+              </TableRow>
+            ))}
+            {!rows.length && (
+              <TableRow>
+                <TableCell colSpan={5} className="p-0">
+                  <DataEmpty
+                    icon={EmptySearchX}
+                    title="Sin ventas para esta consulta"
+                    description="Revisa el período y la categoría seleccionados."
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+        <TablePagination
+          total={rows.length}
+          page={current}
+          onPageChange={setPage}
+        />
+      </div>
     </div>
   );
 }

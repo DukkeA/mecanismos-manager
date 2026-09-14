@@ -46,3 +46,26 @@ export function SortableHead({
     </TableHead>
   );
 }
+
+export function SortButton({
+  children,
+  active,
+  direction,
+  ...props
+}: Omit<React.ComponentProps<typeof Button>, "children"> & {
+  children: React.ReactNode;
+  active: boolean;
+  direction: string | null;
+}) {
+  const Icon = active
+    ? direction === "asc"
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown;
+  return (
+    <Button {...props} variant="ghost" size="sm" className="sort-heading">
+      {children}
+      <Icon data-icon="inline-end" aria-hidden="true" />
+    </Button>
+  );
+}

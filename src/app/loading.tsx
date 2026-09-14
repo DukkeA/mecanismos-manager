@@ -1,14 +1,22 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
+
 export default function Loading() {
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-6" aria-busy="true">
-      <p role="status">Cargando el taller…</p>
-      <Skeleton className="h-10 w-64" />
-      <div className="grid gap-6 md:grid-cols-2">
-        <Skeleton className="h-48" />
-        <Skeleton className="h-48" />
+    <main className="app-loading" aria-busy="true">
+      <div className="app-loading-content" role="status">
+        <Image
+          src="/brand/logo.png"
+          alt="Mecanismos"
+          width={1755}
+          height={328}
+          preload
+          className="brand-logo app-loading-logo"
+        />
+        <div className="app-loading-track" aria-hidden="true">
+          <span />
+        </div>
+        <span className="sr-only">Cargando el taller</span>
       </div>
-      <Skeleton className="h-64" />
     </main>
   );
 }

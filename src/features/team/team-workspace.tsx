@@ -1,10 +1,12 @@
 "use client";
+import { SortButton } from "@/components/sortable-head";
+import { TablePagination } from "@/components/workshop-controls";
 import { SearchX as EmptySearchX } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { useState, type ComponentProps } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, ArrowUpDown } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { RowActions } from "@/components/row-actions";
 import { AttendanceWorkspace } from "@/features/attendance/attendance-workspace";
@@ -303,11 +305,20 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
                       ["", "Estado"],
                       ["", "Acciones"],
                     ].map(([key, label]) => (
-                      <TableHead key={label}>
+                      <TableHead
+                        key={label}
+                        aria-sort={
+                          key && params.get("orderBy") === key
+                            ? params.get("direction") === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : undefined
+                        }
+                      >
                         {key ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <SortButton
+                            active={params.get("orderBy") === key}
+                            direction={params.get("direction")}
                             onClick={() =>
                               update({
                                 orderBy: key,
@@ -320,8 +331,7 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
                             }
                           >
                             {label}
-                            <ArrowUpDown />
-                          </Button>
+                          </SortButton>
                         ) : (
                           label
                         )}
@@ -417,36 +427,12 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
                   )}
                 </TableBody>
               </Table>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t p-3">
-                <span className="text-sm">
-                  {overtime.data?.total ?? 0} registros · Página{" "}
-                  {overtime.data?.page ?? 1}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    disabled={!overtime.data || overtime.data.page <= 1}
-                    onClick={() =>
-                      update({ page: String((overtime.data?.page ?? 1) - 1) })
-                    }
-                  >
-                    Anterior
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={
-                      !overtime.data ||
-                      overtime.data.page * overtime.data.pageSize >=
-                        overtime.data.total
-                    }
-                    onClick={() =>
-                      update({ page: String((overtime.data?.page ?? 1) + 1) })
-                    }
-                  >
-                    Siguiente
-                  </Button>
-                </div>
-              </div>
+              <TablePagination
+                total={overtime.data?.total ?? 0}
+                page={overtime.data?.page ?? 1}
+                pageSize={overtime.data?.pageSize ?? 10}
+                onPageChange={(next) => update({ page: String(next) })}
+              />
             </div>
           )}
         </>
