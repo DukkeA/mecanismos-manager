@@ -19,6 +19,83 @@ try {
   });
   const fixtures = [
     {
+      key: "rich-pump-reception",
+      kind: "NOTE",
+      visibility: "GENERAL",
+      title: "Lista de recepción de bombas",
+      richContent: {
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: { level: 2 },
+            content: [{ type: "text", text: "Antes de llevar al banco" }],
+          },
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Anotar la referencia completa",
+                marks: [{ type: "bold" }],
+              },
+              { type: "text", text: " y confirmar el teléfono del cliente." },
+            ],
+          },
+          {
+            type: "taskList",
+            content: [
+              {
+                type: "taskItem",
+                attrs: { checked: true },
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [
+                      {
+                        type: "text",
+                        text: "Revisar piezas y accesorios recibidos",
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: "taskItem",
+                attrs: { checked: false },
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [
+                      {
+                        type: "text",
+                        text: "Anotar daños visibles en la orden",
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: "taskItem",
+                attrs: { checked: false },
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [
+                      {
+                        type: "text",
+                        text: "Confirmar quién autoriza la reparación",
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
       key: "parts",
       kind: "NOTE",
       visibility: "GENERAL",

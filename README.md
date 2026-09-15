@@ -40,6 +40,10 @@ Las fechas de ingreso y cierre se registran automáticamente. La mano de obra se
 
 Las notas y pendientes personales solo son visibles para su autor, incluso frente a otros administradores. Los generales se comparten entre oficina y administración; la eliminación de registros generales queda reservada a administración. Un pendiente con **Añadir a calendario** se muestra usando el mismo registro: editarlo, completarlo o eliminarlo actualiza ambas vistas. El calendario muestra entregas de órdenes abiertas, eventos y pendientes programados en hora de Bogotá. Estos módulos no están disponibles para mecánicos, tampoco mediante la API.
 
+Las notas admiten títulos, formato de texto, listas, casillas, enlaces y hasta cinco imágenes. El contenido se valida como un documento estructurado; las imágenes se convierten a WebP y se guardan en el bucket privado existente. Cada lectura comprueba los permisos de la nota. Las vistas de mes, semana y agenda comparten los mismos eventos.
+
+Las categorías se crean desde los selectores de órdenes, inventario y servicios, con normalización para evitar duplicados; no requieren una sección de Configuración.
+
 ## Arquitectura
 
 ![Arquitectura: navegador, Next.js, Supabase Auth, PostgreSQL y Storage](docs/diagrams/architecture.png)

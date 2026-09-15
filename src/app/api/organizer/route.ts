@@ -40,7 +40,21 @@ export async function POST(request: Request) {
   if (!actor)
     return Response.json({ error: "Inicia sesión." }, { status: 401 });
   try {
-    const { kind, input } = await request.json();
+    const reader = request.body?.getReader();
+    if (!reader) throw new DomainError("Faltan los datos de la nota.");
+    const chunks: Uint8Array[] = [];
+    let bytes = 0;
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      bytes += chunk.value.length;
+      if (bytes > 3 * 1024 * 1024) {
+        await reader.cancel();
+        throw new DomainError("La nota supera el tamaño permitido.");
+      }
+      chunks.push(chunk.value);
+    }
+    const { kind, input } = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     if (kind !== "save" && kind !== "delete")
       throw new DomainError("Acción no válida.");
     return Response.json(

@@ -9,6 +9,7 @@ import { bogotaDate, type OrganizerItem } from "@/domain/organizer";
 import type { OrderView } from "@/domain/workshop-view";
 import { todayInBogota } from "@/features/cash/summary";
 import { cn } from "@/lib/utils";
+import { shiftDay, weekDates, calendarDayLabel } from "./calendar-dates";
 export function CalendarView({
   entries,
   orders,
@@ -23,8 +24,10 @@ export function CalendarView({
   create: (date: string) => void;
 }) {
   const today = todayInBogota(),
-    [month, setMonth] = useState(today.slice(0, 7)),
+    [anchor, setAnchor] = useState(today),
     [view, setView] = useState("month");
+  const month = anchor.slice(0, 7),
+    week = weekDates(anchor);
   const [year, number] = month.split("-").map(Number);
   const start = new Date(Date.UTC(year, number - 1, 1));
   const startDay = (start.getUTCDay() + 6) % 7;
@@ -46,6 +49,7 @@ export function CalendarView({
           hour: "2-digit",
           minute: "2-digit",
         }),
+        sortTime: e.startsAt!,
         type: e.kind === "TODO" ? "Pendiente" : "Evento",
         done: e.completed,
         run: () => edit(e),
@@ -58,18 +62,25 @@ export function CalendarView({
         date: bogotaDate(o.dueAt!),
         endDate: bogotaDate(o.dueAt!),
         time: "Entrega",
+        sortTime: o.dueAt!,
         type: "Orden",
         done: false,
         run: () => openOrder(o.id),
       })),
   ].sort(
-    (a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time),
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      new Date(a.sortTime).getTime() - new Date(b.sortTime).getTime(),
   );
   const forDay = (date: string) =>
     events.filter((e) => e.date <= date && e.endDate >= date);
   function move(delta: number) {
-    setMonth(
-      new Date(Date.UTC(year, number - 1 + delta, 1)).toISOString().slice(0, 7),
+    setAnchor(
+      view === "week"
+        ? shiftDay(anchor, delta * 7)
+        : new Date(Date.UTC(year, number - 1 + delta, 1))
+            .toISOString()
+            .slice(0, 10),
     );
   }
   return (
@@ -79,40 +90,50 @@ export function CalendarView({
           <Button
             variant="outline"
             size="icon"
-            aria-label="Mes anterior"
+            aria-label={view === "week" ? "Semana anterior" : "Mes anterior"}
             onClick={() => move(-1)}
           >
             <ChevronLeft />
           </Button>
-          <h2 className="min-w-44 text-center font-semibold capitalize">
-            {start.toLocaleDateString("es-CO", {
-              timeZone: "UTC",
-              month: "long",
-              year: "numeric",
-            })}
+          <h2 className="calendar-period min-w-0 text-center font-semibold">
+            {view === "week"
+              ? `${calendarDayLabel(week[0])} – ${calendarDayLabel(week[6])}, ${week[6].slice(0, 4)}`
+              : start.toLocaleDateString("es-CO", {
+                  timeZone: "UTC",
+                  month: "long",
+                  year: "numeric",
+                })}
           </h2>
           <Button
             variant="outline"
             size="icon"
-            aria-label="Mes siguiente"
+            aria-label={view === "week" ? "Semana siguiente" : "Mes siguiente"}
             onClick={() => move(1)}
           >
             <ChevronRight />
           </Button>
-          <Button variant="outline" onClick={() => setMonth(today.slice(0, 7))}>
+          <Button variant="outline" onClick={() => setAnchor(today)}>
             Hoy
           </Button>
         </div>
-        <Tabs value={view} onValueChange={setView}>
+        <Tabs className="workspace-tabs" value={view} onValueChange={setView}>
           <TabsList aria-label="Vista del calendario">
             <TabsTrigger value="month">Mes</TabsTrigger>
+            <TabsTrigger value="week">Semana</TabsTrigger>
             <TabsTrigger value="agenda">Agenda</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
-      {view === "month" ? (
+      {view === "month" || view === "week" ? (
         <div className="overflow-x-auto rounded-xl border bg-card">
-          <div className="grid min-w-[840px] grid-cols-7">
+          <div
+            className={cn(
+              "grid",
+              view === "week"
+                ? "grid-cols-1 md:min-w-[840px] md:grid-cols-7"
+                : "min-w-[840px] grid-cols-7",
+            )}
+          >
             {[
               "Lunes",
               "Martes",
@@ -124,17 +145,21 @@ export function CalendarView({
             ].map((day) => (
               <div
                 key={day}
-                className="border-b bg-muted/50 p-3 text-center text-xs font-medium text-muted-foreground"
+                className={cn(
+                  "border-b bg-muted/50 p-3 text-center text-xs font-medium text-muted-foreground",
+                  view === "week" && "hidden md:block",
+                )}
               >
                 {day}
               </div>
             ))}
-            {days.map((date) => (
+            {(view === "week" ? week : days).map((date) => (
               <div
                 key={date}
                 className={cn(
                   "flex min-h-36 flex-col gap-1 border-b border-r p-2",
-                  !date.startsWith(month) && "bg-muted/30",
+                  view === "week" && "md:min-h-96",
+                  view === "month" && !date.startsWith(month) && "bg-muted/30",
                 )}
               >
                 <Button
@@ -146,6 +171,16 @@ export function CalendarView({
                 >
                   {Number(date.slice(-2))}
                 </Button>
+                {view === "week" && (
+                  <span className="mb-2 text-center text-xs text-muted-foreground">
+                    {new Date(`${date}T12:00:00Z`).toLocaleDateString("es-CO", {
+                      timeZone: "UTC",
+                      weekday: "long",
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </span>
+                )}
                 {forDay(date).map((e) => (
                   <Button
                     key={e.id}
@@ -156,8 +191,20 @@ export function CalendarView({
                     )}
                     onClick={e.run}
                   >
-                    <span className="line-clamp-2">
-                      {e.time} · {e.title}
+                    <span
+                      className={
+                        view === "week" ? "flex flex-col gap-1" : "line-clamp-2"
+                      }
+                    >
+                      {view === "week" && (
+                        <span className="text-xs text-muted-foreground">
+                          {e.type} · {e.time}
+                          {e.date !== e.endDate
+                            ? ` · ${calendarDayLabel(e.date)}–${calendarDayLabel(e.endDate)}`
+                            : ""}
+                        </span>
+                      )}
+                      {view === "week" ? e.title : `${e.time} · ${e.title}`}
                     </span>
                   </Button>
                 ))}

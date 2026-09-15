@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useOrganizer, useOrganizerCommand } from "./hooks";
 import { EntryEditor, type EntryDraft } from "./entry-editor";
 import { CalendarView } from "./calendar-view";
+import { NotePreview } from "./note-preview";
 import { bogotaDate, type OrganizerItem } from "@/domain/organizer";
 import type { OrderView } from "@/domain/workshop-view";
 import type { Role } from "@/domain/permissions";
@@ -141,6 +142,7 @@ export function OrganizerWorkspace({
       </div>
       {!calendar && (
         <Tabs
+          className="workspace-tabs"
           value={scope}
           onValueChange={(value) => {
             setScope(value);
@@ -240,9 +242,7 @@ export function OrganizerWorkspace({
                       <RowActions name={e.title} actions={actions(e)} />
                     </CardHeader>
                     <CardContent className="flex flex-col gap-3">
-                      <p className="line-clamp-6 whitespace-pre-wrap text-sm">
-                        {e.body || "Sin contenido adicional."}
-                      </p>
+                      <NotePreview content={e.richContent} text={e.body} />
                       <div className="flex gap-2">
                         {e.pinned && (
                           <Badge variant="outline">

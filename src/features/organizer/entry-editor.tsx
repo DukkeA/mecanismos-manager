@@ -20,6 +20,12 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Choice, DateField } from "@/components/workshop-controls";
 import { useFormSheet } from "@/components/form-sheet";
+import dynamic from "next/dynamic";
+import { notePlainText, type NoteNode } from "@/domain/note-content";
+const NoteEditor = dynamic(
+  () => import("./note-editor").then((m) => m.NoteEditor),
+  { ssr: false },
+);
 export type EntryDraft = Partial<OrganizerItem> &
   Pick<OrganizerItem, "kind" | "visibility">;
 const timeOf = (value?: string | null) =>
@@ -45,6 +51,10 @@ export function EntryEditor({
     entry.kind === "EVENT" || !!entry.calendar,
   );
   const [error, setError] = useState("");
+  const [richContent, setRichContent] = useState<NoteNode | null>(
+    entry.richContent ?? null,
+  );
+  const [imageBusy, setImageBusy] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   return (
     <form
@@ -52,6 +62,7 @@ export function EntryEditor({
       onChange={() => setRequestId(crypto.randomUUID())}
       onSubmit={async (e) => {
         e.preventDefault();
+        if (imageBusy || command.isPending) return;
         const form = new FormData(e.currentTarget);
         setError("");
         try {
@@ -61,7 +72,13 @@ export function EntryEditor({
               ...entry,
               requestId,
               title: form.get("title"),
-              body: form.get("body"),
+              body:
+                entry.kind === "NOTE"
+                  ? richContent
+                    ? notePlainText(richContent)
+                    : (entry.body ?? "")
+                  : form.get("body"),
+              richContent: entry.kind === "NOTE" ? richContent : null,
               priority: form.get("priority"),
               calendar,
               startsAt: organizerDateTime(
@@ -103,13 +120,26 @@ export function EntryEditor({
           <FieldLabel htmlFor="entry-body">
             {entry.kind === "NOTE" ? "Nota" : "Detalles"}
           </FieldLabel>
-          <Textarea
-            id="entry-body"
-            name="body"
-            maxLength={10000}
-            rows={7}
-            defaultValue={entry.body}
-          />
+          {entry.kind === "NOTE" ? (
+            <NoteEditor
+              content={entry.richContent}
+              text={entry.body ?? ""}
+              onBusy={setImageBusy}
+              onChange={(content) => {
+                setRichContent(content);
+                draft.change();
+                setRequestId(crypto.randomUUID());
+              }}
+            />
+          ) : (
+            <Textarea
+              id="entry-body"
+              name="body"
+              maxLength={10000}
+              rows={7}
+              defaultValue={entry.body}
+            />
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="entry-priority">Prioridad</FieldLabel>
@@ -226,7 +256,7 @@ export function EntryEditor({
           >
             Cancelar
           </Button>
-          <Button type="submit" disabled={command.isPending}>
+          <Button type="submit" disabled={command.isPending || imageBusy}>
             {command.isPending ? "Guardando…" : "Guardar"}
           </Button>
         </div>

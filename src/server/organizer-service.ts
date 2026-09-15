@@ -7,6 +7,9 @@ import {
 } from "@/domain/organizer";
 import { DomainError } from "@/domain/errors";
 import { once, serializable, setActor, type Actor } from "./commands";
+import { Prisma } from "@/generated/prisma/client";
+import { notePlainText } from "@/domain/note-content";
+import { persistNoteImages } from "./note-images";
 
 export async function listOrganizer(actor: Actor) {
   assertOrganizerAccess(actor);
@@ -71,6 +74,13 @@ export async function saveOrganizer(actor: Actor, raw: unknown) {
     const { requestId: _request, id, version: _version, ...values } = input;
     const data = {
       ...values,
+      richContent:
+        input.richContent === undefined
+          ? undefined
+          : input.richContent === null
+            ? Prisma.DbNull
+            : (input.richContent as Prisma.InputJsonObject),
+      body: input.richContent ? notePlainText(input.richContent) : input.body,
       calendar: input.kind === "EVENT" || input.calendar,
       completed: input.kind === "TODO" && input.completed,
       startsAt: input.startsAt ? new Date(input.startsAt) : null,
@@ -86,6 +96,18 @@ export async function saveOrganizer(actor: Actor, raw: unknown) {
       : await tx.organizerEntry.create({
           data: { ...data, ownerId: actor.id },
         });
+    if (input.richContent) {
+      const content = await persistNoteImages(
+        tx,
+        actor,
+        result.id,
+        input.richContent,
+      );
+      await tx.organizerEntry.update({
+        where: { id: result.id },
+        data: { richContent: content as Prisma.InputJsonObject },
+      });
+    }
     await tx.auditEvent.create({
       data: {
         actorId: actor.id,

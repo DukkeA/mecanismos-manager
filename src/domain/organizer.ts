@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AccessDenied, type Role } from "./permissions";
+import { normalizeNoteContent, type NoteNode } from "./note-content";
 export const organizerInput = z
   .object({
     requestId: z.uuid(),
@@ -9,6 +10,7 @@ export const organizerInput = z
     visibility: z.enum(["PERSONAL", "GENERAL"]),
     title: z.string().trim().min(3).max(200),
     body: z.string().trim().max(10000).default(""),
+    richContent: z.unknown().transform(normalizeNoteContent).optional(),
     priority: z.enum(["NORMAL", "HIGH"]).default("NORMAL"),
     pinned: z.boolean().default(false),
     completed: z.boolean().default(false),
@@ -18,6 +20,8 @@ export const organizerInput = z
     orderId: z.uuid().nullable().default(null),
   })
   .superRefine((v, ctx) => {
+    if (v.kind !== "NOTE" && v.richContent)
+      ctx.addIssue({ code: "custom", message: "El contenido enriquecido solo corresponde a las notas." });
     if ((v.calendar || v.kind === "EVENT") && !v.startsAt)
       ctx.addIssue({
         code: "custom",
@@ -41,6 +45,7 @@ export type OrganizerItem = {
   visibility: "PERSONAL" | "GENERAL";
   title: string;
   body: string;
+  richContent?: NoteNode | null;
   priority: "NORMAL" | "HIGH";
   pinned: boolean;
   completed: boolean;

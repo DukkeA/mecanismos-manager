@@ -4,6 +4,12 @@ import assert from "node:assert/strict";
 it("connects reception, task time, private notes and calendar without persisting fixtures", async () => {
   const { db } = await import("@/server/db");
   const { setActor } = await import("@/server/commands");
+  const { readNoteImage } = await import("@/server/note-images");
+  const { storageAdmin, attachmentBucket } = await import(
+    "@/server/private-storage"
+  );
+  const sharp = (await import("sharp")).default;
+  const uploadedPaths: string[] = [];
   const { receiveOrder } = await import("@/server/operations-service");
   const { recordTaskTime } = await import("@/server/task-service");
   const { getOrders } = await import("@/server/workshop-query");
@@ -99,9 +105,89 @@ it("connects reception, task time, private notes and calendar without persisting
           kind: "NOTE",
           visibility: "PERSONAL",
           title: "Private service test",
+          richContent: {
+            type: "doc",
+            content: [
+              {
+                type: "heading",
+                attrs: { level: 2 },
+                content: [{ type: "text", text: "Referencias" }],
+              },
+              {
+                type: "taskList",
+                content: [
+                  {
+                    type: "taskItem",
+                    attrs: { checked: true },
+                    content: [
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "Confirmar con proveedor" },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: "image",
+                attrs: {
+                  src: `data:image/png;base64,${(
+                    await sharp({
+                      create: {
+                        width: 4,
+                        height: 4,
+                        channels: 3,
+                        background: "#123456",
+                      },
+                    })
+                      .png()
+                      .toBuffer()
+                  ).toString("base64")}`,
+                  alt: "Referencia",
+                },
+              },
+            ],
+          },
         };
         const note = await saveOrganizer(office, noteInput);
         assert.deepEqual(await saveOrganizer(office, noteInput), note);
+        const image = await tx.attachment.findFirstOrThrow({
+          where: { entityType: "NOTE", entityId: String(note.id) },
+        });
+        uploadedPaths.push(image.path);
+        assert.ok((await readNoteImage(office, image.id)).bytes.length > 0);
+        await assert.rejects(readNoteImage(admin, image.id));
+        await assert.rejects(readNoteImage(mechanic, image.id));
+        const savedNote = (await listOrganizer(office)).find(
+          (n) => n.id === note.id,
+        )!;
+        assert.ok(savedNote.body.includes("Confirmar con proveedor"));
+        assert.ok(
+          JSON.stringify(savedNote.richContent).includes(
+            `/api/organizer/images?id=${image.id}`,
+          ),
+        );
+        assert.ok(!JSON.stringify(savedNote.richContent).includes("base64"));
+        await saveOrganizer(office, {
+          ...savedNote,
+          requestId: randomUUID(),
+          pinned: true,
+        });
+        assert.equal(
+          await tx.attachment.count({ where: { entityId: String(note.id) } }),
+          1,
+        );
+        await assert.rejects(
+          saveOrganizer(admin, {
+            requestId: randomUUID(),
+            kind: "NOTE",
+            visibility: "GENERAL",
+            title: "Forged image reference",
+            richContent: savedNote.richContent,
+          }),
+        );
         const todo = await saveOrganizer(office, {
           requestId: randomUUID(),
           kind: "TODO",
@@ -160,6 +246,12 @@ it("connects reception, task time, private notes and calendar without persisting
     if (error !== rollback) throw error;
   } finally {
     cache.workshopDb = original;
+    if (uploadedPaths.length) {
+      const removed = await storageAdmin()
+        .from(attachmentBucket)
+        .remove(uploadedPaths);
+      assert.equal(removed.error, null);
+    }
     await root.$disconnect();
   }
 }, 60000);

@@ -95,6 +95,7 @@ model OrganizerEntry {
   visibility String @db.VarChar(10)
   title String @db.VarChar(200)
   body String @default("") @db.Text
+  richContent Json?
   priority String @default("NORMAL") @db.VarChar(10)
   pinned Boolean @default(false)
   completed Boolean @default(false)
