@@ -28,6 +28,9 @@ import {
 import type { Role } from "@/domain/permissions";
 import { useSignOut } from "@/features/workshop/session";
 import {
+  StickyNote,
+  ListTodo,
+  CalendarDays,
   Clock3,
   Settings,
   Boxes,
@@ -50,6 +53,9 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 export const workshopSections = [
+  { label: "Notas", icon: StickyNote },
+  { label: "Pendientes", icon: ListTodo },
+  { label: "Calendario", icon: CalendarDays },
   { label: "Resumen", icon: Home },
   { label: "Órdenes", icon: ClipboardList },
   { label: "Tareas", icon: Wrench },
@@ -73,7 +79,7 @@ export const workshopSections = [
 ];
 export function sectionTitle(section: string) {
   if (["Caja", "Cartera", "Control de caja"].includes(section)) return "Dinero";
-  if (section === "Cotizaciones") return "Ventas";
+  if (["Cotizaciones", "Ventas"].includes(section)) return "Órdenes";
   if (section === "Control de inventario") return "Inventario";
   if (section === "Activos") return "Clientes";
   return section;
@@ -121,6 +127,7 @@ export function AppSidebar({
     (s) =>
       sectionAvailable(s.label, actor.role, demo) &&
       ![
+        "Ventas",
         "Cotizaciones",
         "Cartera",
         "Control de caja",
@@ -147,62 +154,66 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {["Taller", "Comercial", "Administración"].map((group) => {
-          const items = visible.filter(
-            (s) =>
-              ([
-                "Caja",
-                "Equipo",
-                "Rentabilidad",
-                "Control de caja",
-                "Configuración",
-              ].includes(s.label)
-                ? "Administración"
-                : [
-                      "Clientes",
-                      "Proveedores",
-                      "Cotizaciones",
-                      "Ventas",
-                      "Cartera",
-                      "Compras",
-                    ].includes(s.label)
-                  ? "Comercial"
-                  : "Taller") === group,
-          );
-          return (
-            items.length > 0 && (
-              <SidebarGroup key={group}>
-                <SidebarGroupLabel>{group}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {items.map(({ label, icon: Icon }) => (
-                      <SidebarMenuItem key={label}>
-                        <SidebarMenuButton
-                          isActive={
-                            sectionTitle(section) === sectionTitle(label)
-                          }
-                          tooltip={sectionTitle(label)}
-                          onClick={() => {
-                            navigate(label);
-                            setOpenMobile(false);
-                          }}
-                          aria-current={
-                            sectionTitle(section) === sectionTitle(label)
-                              ? "page"
-                              : undefined
-                          }
-                        >
-                          <Icon />
-                          <span>{sectionTitle(label)}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            )
-          );
-        })}
+        {["Taller", "Comercial", "Administración", "Organización"].map(
+          (group) => {
+            const items = visible.filter(
+              (s) =>
+                (["Notas", "Pendientes", "Calendario"].includes(s.label)
+                  ? "Organización"
+                  : [
+                        "Caja",
+                        "Equipo",
+                        "Rentabilidad",
+                        "Control de caja",
+                        "Configuración",
+                      ].includes(s.label)
+                    ? "Administración"
+                    : [
+                          "Clientes",
+                          "Proveedores",
+                          "Cotizaciones",
+                          "Ventas",
+                          "Cartera",
+                          "Compras",
+                        ].includes(s.label)
+                      ? "Comercial"
+                      : "Taller") === group,
+            );
+            return (
+              items.length > 0 && (
+                <SidebarGroup key={group}>
+                  <SidebarGroupLabel>{group}</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {items.map(({ label, icon: Icon }) => (
+                        <SidebarMenuItem key={label}>
+                          <SidebarMenuButton
+                            isActive={
+                              sectionTitle(section) === sectionTitle(label)
+                            }
+                            tooltip={sectionTitle(label)}
+                            onClick={() => {
+                              navigate(label);
+                              setOpenMobile(false);
+                            }}
+                            aria-current={
+                              sectionTitle(section) === sectionTitle(label)
+                                ? "page"
+                                : undefined
+                            }
+                          >
+                            <Icon />
+                            <span>{sectionTitle(label)}</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )
+            );
+          },
+        )}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

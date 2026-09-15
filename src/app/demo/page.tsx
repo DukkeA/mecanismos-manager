@@ -10,7 +10,13 @@ export default function Demo() {
   return (
     <Workshop
       demo
-      initialOrders={demoOrders}
+      initialOrders={demoOrders.map((o, i) => ({
+        ...o,
+        tasks: o.tasks.map((t) => ({
+          ...t,
+          memberIds: [`tech-${(i % 4) + 1}`],
+        })),
+      }))}
       initialOperations={{
         ...demoOperations,
         tasks: demoOrders.flatMap((o, i) =>

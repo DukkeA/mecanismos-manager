@@ -530,8 +530,7 @@ export function OperationsPanel({
             Exportar inventario
           </Button>
         )}
-        {role !== "MECHANIC" &&
-          (section !== "Inventario" || tab === "catalog") && (
+        {role !== "MECHANIC" && (
             <Button onClick={() => setDialog(primary())}>
               <Plus data-icon="inline-start" />
               {section === "Caja"
@@ -1080,10 +1079,13 @@ export function OperationsPanel({
               </div>
               <Button
                 variant="outline"
-                disabled={!itemOptions.length || !locations.length}
-                onClick={() => setDialog(stockForm)}
+                onClick={() => {
+                  if (!itemOptions.length) setDialog(itemForm);
+                  else if (!locations.length) setNotice("Configura una sede antes de registrar existencias.");
+                  else setDialog(stockForm);
+                }}
               >
-                Registrar movimiento
+                {itemOptions.length ? "Registrar movimiento" : "Crear primer repuesto"}
               </Button>
             </div>
             <DataTable

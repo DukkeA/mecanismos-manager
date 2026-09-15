@@ -12,13 +12,14 @@ Aplicación de gestión para Mecanismos Técnicos, un taller de Bogotá dedicado
 
 | Área | Operaciones |
 | --- | --- |
-| Órdenes y tareas | Recepción de vehículos y componentes, diagnóstico, responsables, lista y kanban, fotos, observaciones, tiempos, pruebas y entrega. |
+| Órdenes y tareas | Reparación, reconstrucción propia o venta de mostrador desde una misma sección. Responsable y tareas iniciales al crear la orden; lista y kanban, fotos, observaciones, tiempos, pruebas y entrega. |
 | Clientes y ventas | Historial por cliente y vehículo, cotizaciones, aprobación, ventas de mostrador, abonos, cartera y devoluciones. |
 | Inventario y proveedores | Repuestos nuevos, usados y reconstruidos; referencias, categorías, existencias por sede, reservas, traslados, conteos, compras y precios por proveedor. |
 | Servicios | Catálogo de servicios y clasificación por categoría, separado de los repuestos físicos. |
 | Dinero | Cuentas, cobros, pagos, gastos recurrentes, obligaciones, transferencias entre cuentas y cierres. |
 | Equipo | Salarios, bonos, horas extra, permisos, vacaciones, anticipos en cuotas y pagos de nómina. Asistencia con QR dinámico y horario configurable, incluido el sábado. |
 | Rentabilidad | Resultados por categoría, servicio, repuesto y empleado; costos de mano de obra, garantías y cobertura de los gastos del mes. |
+| Organización | Notas y pendientes personales o generales para oficina y administración. Calendario de entregas, eventos y pendientes programados. |
 | Seguimiento | Autor de los cambios, historial de modificaciones y avisos a administración cuando oficina modifica Dinero o Equipo. |
 
 La configuración inicial contempla dos sedes, moneda COP y zona horaria `America/Bogota`.
@@ -30,6 +31,14 @@ Una reparación puede empezar con una cotización o con la recepción del vehíc
 En mostrador se puede registrar una venta y cobrarla completa o recibir abonos. Los movimientos de dinero actualizan las cuentas y la cartera. Una transferencia entre cuentas conserva el saldo total de la empresa.
 
 La entrega de una reparación requiere las comprobaciones y la constancia de entrega correspondientes. El estado del trabajo y el saldo por cobrar se registran por separado. La reconstrucción de unidades propias conserva sus costos hasta su venta.
+
+Las pestañas de Órdenes reúnen reparaciones, ventas y cotizaciones. Al crear una orden se elige su tipo: una reparación solicita recepción, responsable y tareas; una venta solicita líneas, precios y forma de pago. Los documentos comerciales conservan su historial y sus controles de inventario y dinero.
+
+El responsable de una reparación puede asignarse aunque todavía no tenga tareas. Las tareas iniciales se guardan junto con la orden, con sus empleados y minutos previstos. El kanban usa las mismas reglas que el cambio de estado desde el detalle: terminar tareas, aprobar pruebas y registrar la entrega cuando corresponda.
+
+Las fechas de ingreso y cierre se registran automáticamente. La mano de obra se registra por tarea y empleado en **Detalle de orden → Registrar tiempo trabajado**; oficina puede cargar el tiempo de un mecánico y la auditoría identifica a quien lo ingresó. El total incluye horas extra vinculadas a tareas y excluye bonos de importe fijo. La permanencia en el taller no se convierte automáticamente en tiempo productivo.
+
+Las notas y pendientes personales solo son visibles para su autor, incluso frente a otros administradores. Los generales se comparten entre oficina y administración; la eliminación de registros generales queda reservada a administración. Un pendiente con **Añadir a calendario** se muestra usando el mismo registro: editarlo, completarlo o eliminarlo actualiza ambas vistas. El calendario muestra entregas de órdenes abiertas, eventos y pendientes programados en hora de Bogotá. Estos módulos no están disponibles para mecánicos, tampoco mediante la API.
 
 ## Arquitectura
 
@@ -47,7 +56,7 @@ Next.js sirve la interfaz, las rutas API y las acciones del servidor. TanStack Q
 | Despliegue | Vercel, conectado a GitHub |
 | Instalación móvil | Manifiesto PWA y service worker |
 
-El esquema privado `workshop` contiene 63 modelos. Las restricciones contables, los movimientos de inventario y la auditoría se refuerzan mediante restricciones y funciones SQL. [Los cinco diagramas](docs/diagrams/README.md) incluyen arquitectura, datos, reparación, dinero y reconstrucción propia.
+El esquema privado `workshop` contiene 64 modelos. Las restricciones contables, los movimientos de inventario y la auditoría se refuerzan mediante restricciones y funciones SQL. [Los cinco diagramas](docs/diagrams/README.md) incluyen arquitectura, datos, reparación, dinero y reconstrucción propia.
 
 ## Roles y acceso
 
@@ -110,6 +119,7 @@ Abrir [localhost:3100/login](http://localhost:3100/login) y elegir un perfil. Lo
 ```powershell
 pnpm test
 pnpm typecheck
+pnpm db:seed:organizer # Opcional: notas y pendientes ficticios, solo en Docker local
 pnpm db:validate
 pnpm db:verify:fixtures
 pnpm test:integration

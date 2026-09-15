@@ -529,7 +529,7 @@ export function CommercePanel({
             {resource === "quotes"
               ? "Nueva cotización"
               : resource === "sales"
-                ? "Nueva venta"
+                ? "Nueva orden de venta"
                 : "Recibir anticipo"}
           </Button>
         )}
@@ -915,7 +915,7 @@ export function CommercePanel({
           <SheetHeader>
             <SheetTitle>
               {editor?.mode === "sale"
-                ? "Registrar venta"
+                ? "Orden de venta"
                 : editor?.source
                   ? "Nueva versión de cotización"
                   : "Nueva cotización"}
