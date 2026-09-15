@@ -88,7 +88,7 @@ describe("operational transactions against PostgreSQL", () => {
       (
         await db().workOrder.findUniqueOrThrow({ where: { id: orderId } })
       ).dueAt?.toISOString(),
-    ).toBe("2026-09-20T17:00:00.000Z");
+    ).toBe("2026-09-20T22:00:00.000Z");
   });
   it("enforces assignments and versioned lifecycle", async () => {
     const task = await assignTask(admin, {

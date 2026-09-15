@@ -27,7 +27,8 @@
     "db:seed:supports": "node --conditions=react-server --import tsx scripts/local-job.ts supports",
     "db:migrate:photos:local": "node --conditions=react-server --import tsx scripts/local-job.ts photos",
     "db:backup:local": "node --import tsx scripts/backup-local.ts",
-    "test:access": "node scripts/test-local-access.mjs"
+    "test:access": "node scripts/test-local-access.mjs",
+    "db:seed:organizer": "node --conditions=react-server --import tsx scripts/local-job.ts organizer"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

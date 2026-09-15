@@ -1,6 +1,6 @@
 import "server-only";
 import { DomainError } from "@/domain/errors";
-import { once, type Actor } from "./commands";
+import { once, setActor, type Actor } from "./commands";
 import { requirePermission } from "@/domain/permissions";
 import { z } from "zod";
 import { serializable } from "./commands";
@@ -10,6 +10,7 @@ import {
   type Role,
 } from "@/domain/permissions";
 const timeInput = z.object({
+  memberId: z.uuid().optional(),
   taskId: z.uuid(),
   idempotencyKey: z.uuid(),
   minutes: z.number().int().min(1).max(1440),
@@ -21,7 +22,11 @@ export async function recordTaskTime(
   raw: unknown,
 ) {
   const input = timeInput.parse(raw);
+  const memberId = input.memberId ?? actor.id;
+  if (actor.role === "MECHANIC" && memberId !== actor.id)
+    throw new AccessDenied();
   return serializable(async (tx) => {
+    await setActor(tx, actor);
     const task = await tx.task.findUnique({
       where: { id: input.taskId },
       select: {
@@ -41,12 +46,19 @@ export async function recordTaskTime(
       )
     )
       throw new AccessDenied();
+    if (
+      !task.assignments.some((a) => a.memberId === memberId) ||
+      !(await tx.member.findFirst({ where: { id: memberId, active: true } }))
+    )
+      throw new DomainError(
+        "El empleado debe estar activo y asignado a esta tarea.",
+      );
     const existing = await tx.timeEntry.findUnique({
       where: { idempotencyKey: input.idempotencyKey },
     });
     if (existing) {
       if (
-        existing.memberId !== actor.id ||
+        existing.memberId !== memberId ||
         existing.taskId !== input.taskId ||
         existing.minutes !== input.minutes ||
         existing.note !== input.note ||
@@ -60,11 +72,11 @@ export async function recordTaskTime(
     const workedOn = new Date(`${input.workedOn}T00:00:00.000Z`);
     const [regular, extra] = await Promise.all([
       tx.timeEntry.aggregate({
-        where: { memberId: actor.id, workedOn },
+        where: { memberId, workedOn },
         _sum: { minutes: true },
       }),
       tx.overtimeEntry.aggregate({
-        where: { memberId: actor.id, workedOn, voidedAt: null },
+        where: { memberId, workedOn, voidedAt: null },
         _sum: { minutes: true },
       }),
     ]);
@@ -78,7 +90,7 @@ export async function recordTaskTime(
     const entry = await tx.timeEntry.create({
       data: {
         ...input,
-        memberId: actor.id,
+        memberId,
         workedOn: new Date(`${input.workedOn}T00:00:00.000Z`),
       },
     });
@@ -87,7 +99,7 @@ export async function recordTaskTime(
         actorId: actor.id,
         action: "TASK_TIME_RECORDED",
         entityId: entry.id,
-        details: { taskId: input.taskId, minutes: input.minutes },
+        details: { taskId: input.taskId, memberId, minutes: input.minutes },
       },
     });
     return { id: entry.id };

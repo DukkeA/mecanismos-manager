@@ -1,4 +1,5 @@
 export type OrderView = {
+  responsibleId?: string | null;
   businessCategoryLocked?: boolean;
   businessCategoryId?: string | null;
   businessCategory?: string;
@@ -25,6 +26,8 @@ export type OrderView = {
     done: boolean;
     status: string;
     minutes: number;
+    plannedMinutes?: number | null;
+    memberIds?: string[];
   }[];
   notes: {
     id: string;

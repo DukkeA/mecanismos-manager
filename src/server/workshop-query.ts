@@ -12,18 +12,25 @@ export async function getOrders(
       ...(ids ? { id: { in: ids } } : {}),
       ...(actor.role === "MECHANIC"
         ? {
-            tasks: {
-              some: {
-                deletedAt: null,
-                assignments: { some: { memberId: actor.id } },
+            OR: [
+              { responsibleId: actor.id },
+              {
+                tasks: {
+                  some: {
+                    deletedAt: null,
+                    assignments: { some: { memberId: actor.id } },
+                  },
+                },
               },
-            },
+            ],
           }
         : {}),
     },
     orderBy: { receivedAt: "desc" },
     select: {
       id: true,
+      responsibleId: true,
+      responsible: { select: { name: true } },
       number: true,
       businessCategoryId: true,
       sales: { where: { status: "ISSUED" }, select: { id: true }, take: 1 },
@@ -56,7 +63,10 @@ export async function getOrders(
           id: true,
           title: true,
           status: true,
-          assignments: { select: { member: { select: { name: true } } } },
+          plannedMinutes: true,
+          assignments: {
+            select: { memberId: true, member: { select: { name: true } } },
+          },
           timeEntries: { select: { minutes: true } },
         },
       },
@@ -72,6 +82,18 @@ export async function getOrders(
       },
     },
   });
+  const overtime = await db().overtimeEntry.groupBy({
+    by: ["taskId"],
+    where: {
+      taskId: { in: orders.flatMap((o) => o.tasks.map((t) => t.id)) },
+      voidedAt: null,
+      kind: { not: "FIXED" },
+    },
+    _sum: { minutes: true },
+  });
+  const extraMinutes = new Map(
+    overtime.map((e) => [e.taskId, e._sum.minutes ?? 0]),
+  );
   return orders.map((order) => {
     const asset = order.assets[0]?.asset;
     return {
@@ -94,12 +116,15 @@ export async function getOrders(
               ? "Vehículo"
               : "Componente suelto",
       status: order.status,
+      responsibleId: order.responsibleId,
       responsible:
-        [
+        order.responsible?.name ??
+        ([
           ...new Set(
             order.tasks.flatMap((t) => t.assignments.map((a) => a.member.name)),
           ),
-        ].join(", ") || "Sin asignar",
+        ].join(", ") ||
+          "Sin asignar"),
       nextStep:
         order.tasks.find((t) => t.status !== "DONE")?.title ??
         (order.status === "CLOSED"
@@ -124,7 +149,11 @@ export async function getOrders(
         title: t.title,
         done: t.status === "DONE",
         status: t.status,
-        minutes: t.timeEntries.reduce((s, e) => s + e.minutes, 0),
+        plannedMinutes: t.plannedMinutes,
+        minutes:
+          t.timeEntries.reduce((s, e) => s + e.minutes, 0) +
+          (extraMinutes.get(t.id) ?? 0),
+        memberIds: t.assignments.map((a) => a.memberId),
       })),
       notes: order.observations.map((o) => ({
         id: o.id,

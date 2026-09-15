@@ -111,6 +111,17 @@ export async function saveCustomer(actor: Actor, raw: unknown) {
 }
 const orderInput = z
   .object({
+    responsibleId: z.uuid().optional(),
+    initialTasks: z
+      .array(
+        z.object({
+          title: z.string().trim().min(3).max(250),
+          memberId: z.uuid(),
+          plannedMinutes: z.number().int().min(1).max(43200).optional(),
+        }),
+      )
+      .max(30)
+      .default([]),
     businessCategoryId: z.uuid().nullable().optional(),
     assetId: z.uuid().optional(),
     quoteId: z.uuid().optional(),
@@ -148,6 +159,19 @@ export async function receiveOrder(actor: Actor, raw: unknown) {
         : parsed.reference.trim(),
   };
   return once(actor, input.requestId, "ORDER_RECEIVED", input, async (tx) => {
+    const memberIds = [
+      ...new Set([
+        ...(input.responsibleId ? [input.responsibleId] : []),
+        ...input.initialTasks.map((t) => t.memberId),
+      ]),
+    ];
+    if (
+      memberIds.length !==
+      (await tx.member.count({
+        where: { id: { in: memberIds }, active: true },
+      }))
+    )
+      throw new DomainError("Selecciona responsables activos del equipo.");
     const quote = input.quoteId
       ? await tx.quote.findUniqueOrThrow({
           where: { id: input.quoteId },
@@ -260,12 +284,40 @@ export async function receiveOrder(actor: Actor, raw: unknown) {
         reportedProblem: input.problem,
         authorization: input.authorization,
         purpose: input.purpose,
+        responsibleId: input.responsibleId,
+        tasks: {
+          create: input.initialTasks.map((t) => ({
+            title: t.title,
+            plannedMinutes: t.plannedMinutes,
+            dueAt: input.dueAt
+              ? new Date(`${input.dueAt}T22:00:00Z`)
+              : undefined,
+            assignments: { create: { memberId: t.memberId } },
+          })),
+        },
         customerId,
         locationId: input.locationId,
-        dueAt: input.dueAt ? new Date(`${input.dueAt}T17:00:00Z`) : undefined,
+        dueAt: input.dueAt ? new Date(`${input.dueAt}T22:00:00Z`) : undefined,
         assets: { create: { assetId: asset.id } },
       },
+      include: {
+        tasks: {
+          select: { id: true, assignments: { select: { memberId: true } } },
+        },
+      },
     });
+    for (const task of order.tasks ?? [])
+      await tx.auditEvent.create({
+        data: {
+          actorId: actor.id,
+          entityId: task.id,
+          action: "TASK_ASSIGNED",
+          details: {
+            members: task.assignments.map((a) => a.memberId),
+            orderId: order.id,
+          },
+        },
+      });
     if (quote)
       await tx.quote.updateMany({
         where: { groupId: quote.groupId },
@@ -280,6 +332,8 @@ export async function receiveOrder(actor: Actor, raw: unknown) {
           number: order.number,
           purpose: input.purpose,
           quoteId: quote?.id ?? null,
+          responsibleId: input.responsibleId ?? null,
+          initialTasks: input.initialTasks.length,
         },
       },
     });
