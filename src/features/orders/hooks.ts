@@ -56,16 +56,42 @@ export function useOrderCommand() {
               kind: input.kind as "VEHICLE" | "COMPONENT",
               status: "RECEIVED",
               family: "Recepción",
-              responsible: "Sin asignar",
+              responsibleId: input.responsibleId as string | undefined,
+              responsible:
+                next.operations.members.find(
+                  (m) => m.id === input.responsibleId,
+                )?.name ?? "Sin asignar",
               nextStep: "Asignar tarea",
               problem: String(input.problem),
               location:
                 next.locations.find((l) => l.id === input.locationId)?.name ??
                 "Taller",
               receivedAt: new Date().toISOString(),
-              tasks: [],
+              tasks: (
+                (input.initialTasks ?? []) as {
+                  title: string;
+                  memberId: string;
+                }[]
+              ).map((t) => ({
+                id: crypto.randomUUID(),
+                title: t.title,
+                memberIds: [t.memberId],
+                done: false,
+                status: "TODO",
+                minutes: 0,
+              })),
               notes: [],
             });
+            const created = next.orders[0];
+            next.operations.tasks.unshift(
+              ...created.tasks.map((t) => ({
+                id: t.id,
+                title: t.title,
+                orderId: created.id,
+                status: t.status,
+                members: t.memberIds ?? [],
+              })),
+            );
           }
           return next;
         });

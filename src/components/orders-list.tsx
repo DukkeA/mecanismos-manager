@@ -1,4 +1,6 @@
 "use client";
+import { OrderBoard } from "@/features/orders/order-board";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchX as EmptySearchX } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { CategoryFilter } from "@/features/categories/category-fields";
@@ -33,7 +35,9 @@ export function OrdersList({
   orders,
   openOrder,
   createAction,
+  editable = false,
 }: {
+  editable?: boolean;
   createAction?: React.ReactNode;
   orders: OrderView[];
   openOrder: (id: string) => void;
@@ -42,6 +46,7 @@ export function OrdersList({
     "businessCategoryId",
     "ALL",
   );
+  const [layout, setLayout] = useQueryState("orderLayout", "list");
   const [q, setQ] = useQueryState("q");
   const [status, setStatus] = useQueryState("status", "ALL");
   const [kind, setKind] = useQueryState("kind", "ALL");
@@ -76,6 +81,12 @@ export function OrdersList({
         <p>Ingresos, reparaciones y entregas del taller.</p>
         {createAction}
       </div>
+      <Tabs value={layout} onValueChange={setLayout}>
+        <TabsList aria-label="Vista de órdenes">
+          <TabsTrigger value="list">Lista</TabsTrigger>
+          <TabsTrigger value="kanban">Kanban</TabsTrigger>
+        </TabsList>
+      </Tabs>
       <FilterBar>
         <CategoryFilter />
         <label className="search-filter">
@@ -171,71 +182,89 @@ export function OrdersList({
       {server.serverEnabled && server.isError && (
         <p role="alert">{server.error.message}</p>
       )}
-      <div className="data-panel">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {[
-                "Orden / unidad",
-                "Categoría",
-                "Cliente",
-                "Estado",
-                "Responsable",
-                "Ingreso",
-                "Entrega prevista",
-                "Salida",
-              ].map((h, index) => (
-                <SortableHead key={h} table="orders" index={index}>
-                  {h}
-                </SortableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visible.map((o) => (
-              <TableRow key={o.id}>
-                <TableCell>
-                  <Button variant="link" onClick={() => openOrder(o.id)}>
-                    OT-{String(o.number).padStart(4, "0")}
-                  </Button>
-                  <strong className="cell-detail">{o.title}</strong>
-                  <span className="cell-detail">{o.reference}</span>
-                </TableCell>
-                <TableCell>{o.businessCategory ?? "Sin categoría"}</TableCell>
-                <TableCell>{o.customer}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary" data-status={o.status}>
-                    {statusLabels[o.status]}
-                  </Badge>
-                </TableCell>
-                <TableCell>{o.responsible}</TableCell>
-                <TableCell>{dateLabel(o.receivedAt)}</TableCell>
-                <TableCell>{dateLabel(o.dueAt)}</TableCell>
-                <TableCell>
-                  {o.closedAt ? dateLabel(o.closedAt) : "—"}
-                </TableCell>
+      {layout === "kanban" ? (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Órdenes de esta página, agrupadas por estado. Usa los filtros para
+            acotar el trabajo.
+          </p>
+          <OrderBoard
+            orders={visible}
+            openOrder={openOrder}
+            editable={editable}
+          />
+          <Pager
+            total={server.data?.total ?? filtered.length}
+            state={pagination}
+          />
+        </>
+      ) : (
+        <div className="data-panel">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {[
+                  "Orden / unidad",
+                  "Categoría",
+                  "Cliente",
+                  "Estado",
+                  "Responsable",
+                  "Ingreso",
+                  "Entrega prevista",
+                  "Salida",
+                ].map((h, index) => (
+                  <SortableHead key={h} table="orders" index={index}>
+                    {h}
+                  </SortableHead>
+                ))}
               </TableRow>
-            ))}
-            {!visible.length &&
-              (!server.serverEnabled ||
-                (!server.isPending && !server.isError)) && (
-                <TableRow>
-                  <TableCell colSpan={8} className="p-0">
-                    <DataEmpty
-                      icon={EmptySearchX}
-                      title="Sin órdenes para esta consulta"
-                      description="Prueba otra búsqueda o ajusta los filtros de estado y fechas."
-                    />
+            </TableHeader>
+            <TableBody>
+              {visible.map((o) => (
+                <TableRow key={o.id}>
+                  <TableCell>
+                    <Button variant="link" onClick={() => openOrder(o.id)}>
+                      OT-{String(o.number).padStart(4, "0")}
+                    </Button>
+                    <strong className="cell-detail">{o.title}</strong>
+                    <span className="cell-detail">{o.reference}</span>
+                  </TableCell>
+                  <TableCell>{o.businessCategory ?? "Sin categoría"}</TableCell>
+                  <TableCell>{o.customer}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" data-status={o.status}>
+                      {statusLabels[o.status]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{o.responsible}</TableCell>
+                  <TableCell>{dateLabel(o.receivedAt)}</TableCell>
+                  <TableCell>{dateLabel(o.dueAt)}</TableCell>
+                  <TableCell>
+                    {o.closedAt ? dateLabel(o.closedAt) : "—"}
                   </TableCell>
                 </TableRow>
-              )}
-          </TableBody>
-        </Table>
-        <Pager
-          total={server.data?.total ?? filtered.length}
-          state={pagination}
-        />
-      </div>
+              ))}
+              {!visible.length &&
+                (!server.serverEnabled ||
+                  (!server.isPending && !server.isError)) && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="p-0">
+                      <DataEmpty
+                        icon={EmptySearchX}
+                        title="Sin órdenes para esta consulta"
+                        description="Prueba otra búsqueda o ajusta los filtros de estado y fechas."
+                      />
+                    </TableCell>
+                  </TableRow>
+                )}
+            </TableBody>
+          </Table>
+          <Pager
+            total={server.data?.total ?? filtered.length}
+            state={pagination}
+          />
+        </div>
+      )}
     </section>
   );
 }

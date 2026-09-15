@@ -51,6 +51,10 @@ import { CashPanel } from "@/features/cash/cash-panel";
 import { TasksPanel } from "@/features/tasks/tasks-panel";
 import { WorkshopDashboard } from "./workshop-dashboard";
 
+import { OrganizerWorkspace } from "@/features/organizer/organizer-workspace";
+import { OrderWorkspaceTabs } from "@/features/orders/order-workspace-tabs";
+import { DocumentEditor } from "@/features/commerce/document-editor";
+import { OrderPlanningFields } from "@/features/orders/order-planning-fields";
 import { OrdersList } from "./orders-list";
 
 import { Choice, DateField } from "./workshop-controls";
@@ -232,6 +236,9 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
         kind: "time",
         input: {
           taskId,
+          memberId:
+            String(form.get("memberId") ?? "").replace("__none", "") ||
+            undefined,
           minutes,
           note,
           idempotencyKey: key,
@@ -265,6 +272,10 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
         orderRequest.current ?? (orderRequest.current = crypto.randomUUID()),
       customerId: (demo ? selectedCustomer : orderCustomer) || undefined,
       purpose: orderPurpose,
+      responsibleId:
+        String(form.get("responsibleId") ?? "").replace("__none", "") ||
+        undefined,
+      initialTasks: JSON.parse(String(form.get("initialTasks") ?? "[]")),
       businessCategoryId:
         String(form.get("businessCategoryId") ?? "").replace("__none", "") ||
         undefined,
@@ -287,6 +298,14 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
 
     if (!demo && !input.businessCategoryId) {
       setError("Selecciona la categoría del trabajo.");
+      return;
+    }
+    if (
+      input.initialTasks.some((task: { memberId?: string }) => !task.memberId)
+    ) {
+      setError(
+        "Selecciona un empleado para cada tarea o un responsable de la orden.",
+      );
       return;
     }
     setError("");
@@ -362,13 +381,14 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
             </Alert>
           )}
           <header className="workspace-header">
-            <h1>
-              {section === "Órdenes"
-                ? "Órdenes de trabajo"
-                : sectionTitle(section)}
-            </h1>
+            <h1>{section === "Órdenes" ? "Órdenes" : sectionTitle(section)}</h1>
           </header>
 
+          {!demo &&
+            actor.role !== "MECHANIC" &&
+            ["Órdenes", "Ventas", "Cotizaciones"].includes(section) && (
+              <OrderWorkspaceTabs section={section} navigate={navigate} />
+            )}
           {query.isError && (
             <Alert variant="destructive">
               <AlertTitle>{query.error.message}</AlertTitle>
@@ -392,6 +412,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
             />
           ) : section === "Órdenes" ? (
             <OrdersList
+              editable={actor.role !== "MECHANIC"}
               orders={orders}
               openOrder={setSelectedId}
               createAction={
@@ -414,6 +435,15 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   </Button>
                 )
               }
+            />
+          ) : ["Notas", "Pendientes", "Calendario"].includes(section) &&
+            actor.role !== "MECHANIC" ? (
+            <OrganizerWorkspace
+              key={section}
+              section={section}
+              role={actor.role}
+              orders={orders}
+              openOrder={setSelectedId}
             />
           ) : section === "Tareas" ? (
             <TasksPanel role={actor.role} openOrder={setSelectedId} />
@@ -564,6 +594,16 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   <dt>Responsable</dt>
                   <dd>{selected.responsible}</dd>
                 </div>
+                <div>
+                  <dt>Tiempo trabajado</dt>
+                  <dd>
+                    {selected.tasks.reduce(
+                      (total, task) => total + task.minutes,
+                      0,
+                    )}{" "}
+                    min registrados
+                  </dd>
+                </div>
               </dl>
               <section>
                 <h3>Próximo paso</h3>
@@ -639,6 +679,8 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 selected.tasks.length > 0 && (
                   <TimeForm
                     key={selected.id}
+                    members={operations.members}
+                    role={actor.role}
                     tasks={selected.tasks.filter(
                       (t) =>
                         actor.role !== "MECHANIC" ||
@@ -713,190 +755,237 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
             <SheetTitle>
               {receivingQuote
                 ? `Recibir trabajo · COT-${receivingQuote.number}`
-                : "Nueva orden de trabajo"}
+                : "Nueva orden"}
             </SheetTitle>
             <SheetDescription>
-              Recepción de un vehículo, componente o unidad propia.
+              {orderPurpose === "COUNTER_SALE"
+                ? "Repuestos, servicios y cobro al cliente."
+                : "Recepción de un vehículo, componente o unidad propia."}
               {demo ? " Los datos solo se guardan en esta demostración." : ""}
             </SheetDescription>
           </SheetHeader>
-          <form
-            className="sheet-body"
-            onChange={() => {
-              orderRequest.current = null;
-            }}
-            onSubmit={(e) => {
-              e.preventDefault();
-              saveOrder(new FormData(e.currentTarget), e.currentTarget);
-            }}
-          >
-            <FieldGroup>
+          {!receivingQuote && !demo && (
+            <div className="px-6">
               <Field>
-                <FieldLabel htmlFor="order-title">
-                  Vehículo o componente
-                </FieldLabel>
-                <Input
-                  id="order-title"
-                  name="title"
-                  defaultValue={receivingQuote?.title}
-                  required
-                  minLength={3}
-                  maxLength={250}
-                  placeholder="Ej. Bomba de inyección Bosch"
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="purpose">Tipo de trabajo</FieldLabel>
+                <FieldLabel htmlFor="new-order-type">Tipo de orden</FieldLabel>
                 <Choice
-                  id="purpose"
-                  name="purpose"
-                  disabled={!!receivingQuote}
+                  id="new-order-type"
                   value={orderPurpose}
                   onChange={setOrderPurpose}
                   options={[
                     { id: "CUSTOMER_REPAIR", label: "Reparación de cliente" },
-                    {
-                      id: "OWN_REBUILD",
-                      label: "Reconstrucción de unidad propia",
-                    },
+                    { id: "OWN_REBUILD", label: "Reconstrucción propia" },
+                    { id: "COUNTER_SALE", label: "Venta de mostrador" },
                   ]}
                 />
               </Field>
-              {orderPurpose !== "OWN_REBUILD" &&
-                (!demo ? (
-                  <CustomerPicker
-                    id="customerId"
-                    value={orderCustomer}
-                    onChange={setOrderCustomer}
-                    disabled={!!receivingQuote}
+            </div>
+          )}
+          {orderPurpose === "COUNTER_SALE" ? (
+            <DocumentEditor
+              mode="sale"
+              data={operations}
+              orders={orders}
+              locations={locations}
+              onSaved={(id) => {
+                setCreating(false);
+                window.history.pushState(
+                  null,
+                  "",
+                  `?view=Ventas&recordId=${id}`,
+                );
+              }}
+            />
+          ) : (
+            <form
+              className="sheet-body"
+              onChange={() => {
+                orderRequest.current = null;
+              }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                saveOrder(new FormData(e.currentTarget), e.currentTarget);
+              }}
+            >
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="order-title">
+                    Vehículo o componente
+                  </FieldLabel>
+                  <Input
+                    id="order-title"
+                    name="title"
+                    defaultValue={receivingQuote?.title}
+                    required
+                    minLength={3}
+                    maxLength={250}
+                    placeholder="Ej. Bomba de inyección Bosch"
                   />
-                ) : (
-                  <>
-                    <Field>
-                      <FieldLabel htmlFor="customerId">
-                        Cliente existente
-                      </FieldLabel>
-                      <Choice
-                        id="customerId"
-                        name="customerId"
-                        value={orderCustomer}
-                        onChange={setOrderCustomer}
-                        options={[
-                          { id: "", label: "Cliente nuevo / unidad propia" },
-                          ...operations.customers
-                            .filter((c) => !c.deletedAt)
-                            .map((c) => ({
-                              id: c.id,
-                              label: c.name,
-                            })),
-                        ]}
-                      />
-                    </Field>
-                    {!orderCustomer && (
+                </Field>
+
+                {(demo || receivingQuote) && (
+                  <Field>
+                    <FieldLabel htmlFor="purpose">Tipo de trabajo</FieldLabel>
+                    <Choice
+                      id="purpose"
+                      name="purpose"
+                      disabled={!!receivingQuote}
+                      value={orderPurpose}
+                      onChange={setOrderPurpose}
+                      options={[
+                        {
+                          id: "CUSTOMER_REPAIR",
+                          label: "Reparación de cliente",
+                        },
+                        {
+                          id: "OWN_REBUILD",
+                          label: "Reconstrucción de unidad propia",
+                        },
+                      ]}
+                    />
+                  </Field>
+                )}
+                {orderPurpose !== "OWN_REBUILD" &&
+                  (!demo ? (
+                    <CustomerPicker
+                      id="customerId"
+                      value={orderCustomer}
+                      onChange={setOrderCustomer}
+                      disabled={!!receivingQuote}
+                    />
+                  ) : (
+                    <>
                       <Field>
-                        <FieldLabel htmlFor="customer">
-                          Nombre del cliente nuevo
+                        <FieldLabel htmlFor="customerId">
+                          Cliente existente
                         </FieldLabel>
-                        <Input
-                          id="customer"
-                          name="customer"
-                          required
-                          minLength={3}
-                          maxLength={180}
+                        <Choice
+                          id="customerId"
+                          name="customerId"
+                          value={orderCustomer}
+                          onChange={setOrderCustomer}
+                          options={[
+                            { id: "", label: "Cliente nuevo / unidad propia" },
+                            ...operations.customers
+                              .filter((c) => !c.deletedAt)
+                              .map((c) => ({
+                                id: c.id,
+                                label: c.name,
+                              })),
+                          ]}
                         />
-                        <FieldDescription>
-                          El cliente quedará registrado al crear la orden.
-                        </FieldDescription>
                       </Field>
-                    )}
-                  </>
-                ))}
+                      {!orderCustomer && (
+                        <Field>
+                          <FieldLabel htmlFor="customer">
+                            Nombre del cliente nuevo
+                          </FieldLabel>
+                          <Input
+                            id="customer"
+                            name="customer"
+                            required
+                            minLength={3}
+                            maxLength={180}
+                          />
+                          <FieldDescription>
+                            El cliente quedará registrado al crear la orden.
+                          </FieldDescription>
+                        </Field>
+                      )}
+                    </>
+                  ))}
 
-              {!demo && <CategoryField />}
-              <Field>
-                <FieldLabel htmlFor="kind">Tipo de recepción</FieldLabel>
-                <Choice
-                  id="kind"
-                  name="kind"
-                  value={orderKind}
-                  onChange={setOrderKind}
-                  options={[
-                    { id: "VEHICLE", label: "Vehículo" },
-                    { id: "COMPONENT", label: "Componente" },
-                  ]}
-                />
-              </Field>
+                <OrderPlanningFields members={operations.members} />
+                {!demo && <CategoryField />}
+                <Field>
+                  <FieldLabel htmlFor="kind">Tipo de recepción</FieldLabel>
+                  <Choice
+                    id="kind"
+                    name="kind"
+                    value={orderKind}
+                    onChange={setOrderKind}
+                    options={[
+                      { id: "VEHICLE", label: "Vehículo" },
+                      { id: "COMPONENT", label: "Componente" },
+                    ]}
+                  />
+                </Field>
 
-              {!demo && orderCustomer && (
-                <AssetSelector
-                  key={orderCustomer}
-                  customerId={orderCustomer}
-                  onKind={setOrderKind}
-                />
-              )}
-              <Field>
-                <FieldLabel htmlFor="reference">Placa o serial</FieldLabel>
-                <Input id="reference" name="reference" maxLength={20} />
-              </Field>
+                {!demo && orderCustomer && (
+                  <AssetSelector
+                    key={orderCustomer}
+                    customerId={orderCustomer}
+                    onKind={setOrderKind}
+                  />
+                )}
+                <Field>
+                  <FieldLabel htmlFor="reference">Placa o serial</FieldLabel>
+                  <Input id="reference" name="reference" maxLength={20} />
+                </Field>
 
-              <Field>
-                <FieldLabel htmlFor="location">Sede</FieldLabel>
-                <Choice
-                  id="location"
-                  name="locationId"
-                  required
-                  options={locations.map((l) => ({ id: l.id, label: l.name }))}
-                />
-              </Field>
+                <Field>
+                  <FieldLabel htmlFor="location">Sede</FieldLabel>
+                  <Choice
+                    id="location"
+                    name="locationId"
+                    required
+                    options={locations.map((l) => ({
+                      id: l.id,
+                      label: l.name,
+                    }))}
+                  />
+                </Field>
 
-              <Field>
-                <FieldLabel htmlFor="dueAt">
-                  Entrega prevista (opcional)
-                </FieldLabel>
-                <DateField id="dueAt" name="dueAt" label="Entrega prevista" />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="authorization">
-                  Autorización de trabajo
-                </FieldLabel>
-                <Textarea
-                  id="authorization"
-                  name="authorization"
-                  defaultValue={
-                    receivingQuote
-                      ? `Cotización ${receivingQuote.number} aprobada por ${receivingQuote.approvedBy}. ${receivingQuote.approvalNote ?? ""}`
-                      : undefined
+                <Field>
+                  <FieldLabel htmlFor="dueAt">
+                    Entrega prevista (opcional)
+                  </FieldLabel>
+                  <DateField id="dueAt" name="dueAt" label="Entrega prevista" />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="authorization">
+                    Autorización de trabajo
+                  </FieldLabel>
+                  <Textarea
+                    id="authorization"
+                    name="authorization"
+                    defaultValue={
+                      receivingQuote
+                        ? `Cotización ${receivingQuote.number} aprobada por ${receivingQuote.approvedBy}. ${receivingQuote.approvalNote ?? ""}`
+                        : undefined
+                    }
+                    maxLength={5000}
+                    placeholder="Ej. Autoriza diagnóstico. Llamar antes de cambiar repuestos."
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="problem">Motivo de ingreso</FieldLabel>
+                  <Textarea
+                    id="problem"
+                    name="problem"
+                    required
+                    minLength={5}
+                    maxLength={5000}
+                  />
+                </Field>
+
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTitle>{error}</AlertTitle>
+                  </Alert>
+                )}
+                <Button
+                  type="submit"
+                  disabled={
+                    pending || creatingCategory || locations.length === 0
                   }
-                  maxLength={5000}
-                  placeholder="Ej. Autoriza diagnóstico. Llamar antes de cambiar repuestos."
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="problem">Motivo de ingreso</FieldLabel>
-                <Textarea
-                  id="problem"
-                  name="problem"
-                  required
-                  minLength={5}
-                  maxLength={5000}
-                />
-              </Field>
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertTitle>{error}</AlertTitle>
-                </Alert>
-              )}
-              <Button
-                type="submit"
-                disabled={pending || creatingCategory || locations.length === 0}
-              >
-                {pending ? "Creando…" : "Crear orden"}
-                <Plus data-icon="inline-end" />
-              </Button>
-            </FieldGroup>
-          </form>
+                >
+                  {pending ? "Creando…" : "Crear orden"}
+                  <Plus data-icon="inline-end" />
+                </Button>
+              </FieldGroup>
+            </form>
+          )}
         </SheetContent>
       </FormSheet>
 
@@ -907,13 +996,18 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
 
 function TimeForm({
   tasks,
+  members,
+  role,
   pending,
   onSubmit,
 }: {
   tasks: OrderView["tasks"];
+  members: { id: string; name: string; active: boolean }[];
+  role: string;
   pending: boolean;
   onSubmit: (form: FormData, element?: HTMLFormElement) => void;
 }) {
+  const [taskId, setTaskId] = useState(tasks[0]?.id ?? "");
   const [requestKey, setRequestKey] = useState("");
 
   useEffect(() => setRequestKey(crypto.randomUUID()), []);
@@ -926,9 +1020,10 @@ function TimeForm({
         onSubmit(new FormData(e.currentTarget), e.currentTarget);
       }}
     >
-      <h3>Registrar tiempo ordinario</h3>
+      <h3>Registrar tiempo trabajado</h3>
       <p className="text-sm text-muted-foreground">
-        El administrador registra las horas extra desde Equipo.
+        Oficina registra los minutos trabajados por cada empleado. El tiempo
+        entre ingreso y entrega no se cuenta como mano de obra.
       </p>
       <FieldGroup>
         <input type="hidden" name="requestKey" value={requestKey} />
@@ -937,10 +1032,36 @@ function TimeForm({
           <Choice
             id="time-task"
             name="taskId"
-            onChange={() => setRequestKey(crypto.randomUUID())}
+            value={taskId}
+            onChange={(value) => {
+              setTaskId(value);
+              setRequestKey(crypto.randomUUID());
+            }}
             options={tasks.map((t) => ({ id: t.id, label: t.title }))}
           />
         </Field>
+        {role !== "MECHANIC" && (
+          <Field key={taskId}>
+            <FieldLabel htmlFor="time-member">
+              Empleado que hizo el trabajo
+            </FieldLabel>
+            <Choice
+              id="time-member"
+              name="memberId"
+              required
+              onChange={() => setRequestKey(crypto.randomUUID())}
+              options={members
+                .filter(
+                  (m) =>
+                    m.active &&
+                    tasks
+                      .find((t) => t.id === taskId)
+                      ?.memberIds?.includes(m.id),
+                )
+                .map((m) => ({ id: m.id, label: m.name }))}
+            />
+          </Field>
+        )}
         <div className="time-fields">
           <Field>
             <FieldLabel htmlFor="minutes">Minutos trabajados</FieldLabel>
