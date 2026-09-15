@@ -42,6 +42,8 @@ Las notas y pendientes personales solo son visibles para su autor, incluso frent
 
 Las notas admiten títulos, formato de texto, listas, casillas, enlaces y hasta cinco imágenes. El contenido se valida como un documento estructurado; las imágenes se convierten a WebP y se guardan en el bucket privado existente. Cada lectura comprueba los permisos de la nota. Las vistas de mes, semana y agenda comparten los mismos eventos.
 
+Las categorías se crean desde los selectores de órdenes, inventario y servicios, con normalización para evitar duplicados; no requieren una sección de Configuración.
+
 ## Arquitectura
 
 ![Arquitectura: navegador, Next.js, Supabase Auth, PostgreSQL y Storage](docs/diagrams/architecture.png)
