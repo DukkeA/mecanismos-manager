@@ -115,7 +115,9 @@ export function OrderAgreement({ order }: { order: OrderView }) {
                   className="flex justify-between gap-3 text-sm"
                 >
                   <span>
-                    {line.quantity} × {line.description}
+                    {line.quantity} {line.kind === "SERVICE" ? "h" : "×"}{" "}
+                    {line.description}
+                    {line.assignedMember ? ` · ${line.assignedMember}` : ""}
                   </span>
                   <span className="tabular-nums">{cop(line.total)}</span>
                 </div>

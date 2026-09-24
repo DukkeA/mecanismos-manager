@@ -256,10 +256,26 @@ export function OperationsPanel({
     fields: [
       { key: "code", label: "Código interno" },
       categoryField,
-      { key: "reference", label: "Referencia del fabricante", optional: true },
+      { key: "reference", label: "Referencia", optional: true },
       { key: "name", label: "Nombre del repuesto" },
       { key: "brand", label: "Marca", optional: true },
       { key: "unit", label: "Unidad de medida", hint: "Unidad, litro, kit…" },
+      {
+        key: "purchasePrice",
+        label: "Precio de compra (COP)",
+        type: "money",
+        allowZero: true,
+        optional: true,
+        hint: "Valor habitual de compra. Los pedidos pueden usar otro precio.",
+      },
+      {
+        key: "salePrice",
+        label: "Precio de venta sugerido (COP)",
+        type: "money",
+        allowZero: true,
+        optional: true,
+        hint: "Se precarga al cotizar y puede cambiarse en cada documento.",
+      },
       {
         key: "notes",
         label: "Notas y compatibilidad",
@@ -271,7 +287,7 @@ export function OperationsPanel({
   const serviceForm: Dialog = {
     kind: "item",
     title: "Nuevo servicio",
-    extra: { kind: "SERVICE", unit: "servicio", brand: "" },
+    extra: { kind: "SERVICE", unit: "hora", brand: "", purchasePrice: "" },
     fields: [
       { key: "code", label: "Código del servicio" },
       categoryField,
@@ -279,6 +295,14 @@ export function OperationsPanel({
         key: "name",
         label: "Nombre del servicio",
         hint: "Escaneo, reparación de bomba, cambio de toberas…",
+      },
+      {
+        key: "salePrice",
+        label: "Tarifa sugerida por hora (COP)",
+        type: "money",
+        allowZero: true,
+        optional: true,
+        hint: "Sirve como punto de partida y puede cambiarse en cada cotización.",
       },
       {
         key: "notes",
@@ -479,7 +503,11 @@ export function OperationsPanel({
         ? [
             {
               label: "Registrar movimiento",
-              run: () => setDialog({ ...stockForm, extra: { itemId: id } }),
+              run: () =>
+                setDialog({
+                  ...stockForm,
+                  extra: { itemId: id, unitCost: item.purchasePrice ?? "0" },
+                }),
             },
           ]
         : []),
@@ -1092,15 +1120,18 @@ export function OperationsPanel({
               tableKey="balances"
               headers={[
                 "Repuesto",
+                "Referencia",
                 "Sede",
                 "Condición",
                 "Disponible",
-                "Costo material COP",
+                "Precio compra",
+                "Precio venta",
                 "Acciones",
               ]}
               empty="No hay existencias registradas."
               renderRow={(row) => {
                 const b = row as OperationsView["balances"][number];
+                const item = source.items.find((candidate) => candidate.id === b.itemId);
                 return (
                   <TableRow key={`${b.itemId}-${b.locationId}-${b.condition}`}>
                     <TableCell>
@@ -1111,19 +1142,28 @@ export function OperationsPanel({
                         {itemName(b.itemId)}
                       </Button>
                       <small className="cell-detail text-muted-foreground">
-                        {source.items.find((i) => i.id === b.itemId)
-                          ?.businessCategory ?? "Sin categoría"}
+                        {item?.businessCategory ?? "Sin categoría"}
                       </small>
                       <small className="cell-detail">
-                        {source.items.find((i) => i.id === b.itemId)?.reference}
+                        Código interno: {item?.code}
                       </small>
                     </TableCell>
+                    <TableCell>{item?.reference || "—"}</TableCell>
                     <TableCell>{locationName(b.locationId)}</TableCell>
                     <TableCell>{conditionName(b.condition)}</TableCell>
                     <TableCell>
                       {Number(b.quantity) - Number(b.reserved)}
                     </TableCell>
-                    <TableCell>{money(b.materialCost)}</TableCell>
+                    <TableCell>
+                      {item?.purchasePrice
+                        ? money(item.purchasePrice)
+                        : "Sin definir"}
+                    </TableCell>
+                    <TableCell>
+                      {item?.salePrice
+                        ? money(item.salePrice)
+                        : "Sin definir"}
+                    </TableCell>
                     <TableCell>
                       <RowActions
                         name={itemName(b.itemId)}
@@ -1282,6 +1322,8 @@ export function OperationsPanel({
                 "Marca",
                 "Unidad",
                 "Categoría",
+                "Precio compra",
+                "Precio venta",
                 "Acciones",
               ]}
               empty="Aún no hay repuestos."
@@ -1289,10 +1331,7 @@ export function OperationsPanel({
                 const i = row as OperationsView["items"][number];
                 return (
                   <TableRow key={i.id}>
-                    <TableCell>
-                      {i.code}
-                      <small className="cell-detail">{i.reference}</small>
-                    </TableCell>
+                    <TableCell>{i.reference || "—"}</TableCell>
                     <TableCell>
                       <Button
                         variant="link"
@@ -1300,11 +1339,20 @@ export function OperationsPanel({
                       >
                         {i.name}
                       </Button>
+                      <small className="cell-detail">
+                        Código interno: {i.code}
+                      </small>
                     </TableCell>
                     <TableCell>{i.brand || "Sin marca"}</TableCell>
                     <TableCell>{i.unit}</TableCell>
                     <TableCell>
                       {i.businessCategory ?? "Sin categoría"}
+                    </TableCell>
+                    <TableCell>
+                      {i.purchasePrice ? money(i.purchasePrice) : "Sin definir"}
+                    </TableCell>
+                    <TableCell>
+                      {i.salePrice ? money(i.salePrice) : "Sin definir"}
                     </TableCell>
                     <TableCell>
                       <RowActions name={i.name} actions={itemActions(i.id)} />
@@ -1413,7 +1461,14 @@ export function OperationsPanel({
       {section === "Servicios" && (
         <DataTable
           tableKey="services"
-          headers={["Código", "Servicio", "Alcance", "Categoría", "Acciones"]}
+          headers={[
+            "Código",
+            "Servicio",
+            "Alcance",
+            "Categoría",
+            "Tarifa sugerida",
+            "Acciones",
+          ]}
           empty="No hay servicios registrados."
           renderRow={(row) => {
             const i = row as OperationsView["items"][number];
@@ -1430,6 +1485,9 @@ export function OperationsPanel({
                 </TableCell>
                 <TableCell>{i.notes || "Sin descripción"}</TableCell>
                 <TableCell>{i.businessCategory ?? "Sin categoría"}</TableCell>
+                <TableCell>
+                  {i.salePrice ? `${money(i.salePrice)} / hora` : "Sin definir"}
+                </TableCell>
                 <TableCell>
                   <RowActions name={i.name} actions={itemActions(i.id)} />
                 </TableCell>
@@ -1463,7 +1521,13 @@ export function OperationsPanel({
         }}
         onStock={() => {
           if (!selectedItem) return;
-          setDialog({ ...stockForm, extra: { itemId: selectedItem.id } });
+          setDialog({
+            ...stockForm,
+            extra: {
+              itemId: selectedItem.id,
+              unitCost: selectedItem.purchasePrice ?? "0",
+            },
+          });
           setSelectedItemId(null);
         }}
       />

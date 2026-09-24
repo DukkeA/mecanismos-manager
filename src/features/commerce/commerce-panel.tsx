@@ -799,8 +799,10 @@ export function CommercePanel({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>Detalle</TableHead>
-                      <TableHead>Cantidad</TableHead>
+                      <TableHead>Cantidad / horas</TableHead>
+                      <TableHead>Precio unitario</TableHead>
                       <TableHead>Total</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -808,13 +810,20 @@ export function CommercePanel({
                     {selected.lines.map((l) => (
                       <TableRow key={l.id}>
                         <TableCell>
+                          {l.kind === "SERVICE" ? "Mano de obra" : "Repuesto"}
+                        </TableCell>
+                        <TableCell>
                           {l.description}
                           <div className="text-xs text-muted-foreground">
-                            {l.kind === "SERVICE" ? "Servicio" : l.reference} ·{" "}
+                            {l.kind === "SERVICE"
+                              ? l.assignedMember || "Responsable por asignar"
+                              : l.reference || "Sin referencia"}{" "}
+                            ·{" "}
                             {l.businessCategory?.name ?? "Sin categoría"}
                           </div>
                         </TableCell>
                         <TableCell>{l.quantity}</TableCell>
+                        <TableCell>{cop(l.unitPrice)}</TableCell>
                         <TableCell>{cop(l.total)}</TableCell>
                       </TableRow>
                     ))}

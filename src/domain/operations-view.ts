@@ -54,6 +54,8 @@ export type OperationsView = {
     kind: string;
     unit: string;
     reference?: string;
+    purchasePrice?: string | null;
+    salePrice?: string | null;
     notes?: string;
   }[];
   suppliers: {
@@ -175,6 +177,9 @@ export const demoOperations: OperationsView = {
       brand: "",
       kind: "PART",
       unit: "unidad",
+      reference: "DLLA 150 P 764",
+      purchasePrice: "120000.00",
+      salePrice: "185000.00",
     },
   ],
   suppliers: [

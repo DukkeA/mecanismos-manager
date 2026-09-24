@@ -106,7 +106,12 @@ export async function commercialPage(
         include: {
           customer: true,
           order: true,
-          lines: { include: { businessCategory: { select: { name: true } } } },
+          lines: {
+            include: {
+              businessCategory: { select: { name: true } },
+              assignedMember: { select: { name: true } },
+            },
+          },
           sale: { select: { id: true } },
         },
       }),
@@ -134,7 +139,10 @@ export async function commercialPage(
       terms: r.terms,
       approvedBy: r.approvedBy,
       approvalNote: r.approvalNote,
-      lines: plain<CommercialLine[]>(r.lines),
+      lines: r.lines.map((line) => ({
+        ...plain<CommercialLine>(line),
+        assignedMember: line.assignedMember?.name ?? null,
+      })),
     }));
   } else if (resource === "sales") {
     const unpaid =
@@ -170,6 +178,7 @@ export async function commercialPage(
             include: {
               returnLines: true,
               businessCategory: { select: { name: true } },
+              assignedMember: { select: { name: true } },
             },
           },
           allocations: {
@@ -219,6 +228,7 @@ export async function commercialPage(
         })),
         lines: r.lines.map((l) => ({
           ...plain<CommercialLine>(l),
+          assignedMember: l.assignedMember?.name ?? null,
           returnedQuantity: l.returnLines
             .reduce((s, v) => s.plus(v.quantity.toString()), new Decimal(0))
             .toString(),

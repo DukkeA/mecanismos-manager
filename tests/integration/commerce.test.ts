@@ -62,12 +62,22 @@ beforeAll(async () => {
   });
   await db().catalogItem.createMany({
     data: [
-      { id: itemId, code: uuid(), name: "Tobera de prueba", kind: "PART" },
+      {
+        id: itemId,
+        code: uuid(),
+        name: "Tobera de prueba",
+        kind: "PART",
+        reference: "DLLA-TEST-150",
+        purchasePrice: "42000",
+        salePrice: "65000",
+      },
       {
         id: serviceId,
         code: uuid(),
         name: "Calibración de prueba",
         kind: "SERVICE",
+        unit: "hora",
+        salePrice: "150000",
       },
     ],
   });
@@ -160,6 +170,48 @@ it("retains revisions and uses approved prices despite a changed catalog or subm
   expect(await db().quote.count({ where: { customerId } })).toBe(2);
   expect(await db().stockMovement.count({ where: { itemId: serviceId } })).toBe(
     0,
+  );
+});
+it("snapshots catalog cost and keeps the quoted labor assignment and selling rate", async () => {
+  const quote = await saveQuote(office, {
+    ...base(),
+    requestId: uuid(),
+    validUntil: "2026-09-30",
+    lines: [
+      {
+        itemId,
+        description: "Tobera nueva",
+        quantity: "2",
+        unitPrice: "70000",
+        discount: "0",
+        condition: "NEW",
+      },
+      {
+        itemId: serviceId,
+        assignedMemberId: mechanic.id,
+        description: "Calibración en banco",
+        quantity: "3",
+        unitPrice: "175000",
+        discount: "25000",
+        condition: "NEW",
+      },
+    ],
+  });
+  const stored = await db().quote.findUniqueOrThrow({
+    where: { id: quote.id },
+    include: { lines: true },
+  });
+  const part = stored.lines.find((line) => line.kind === "PART")!;
+  const labor = stored.lines.find((line) => line.kind === "SERVICE")!;
+  expect(part.estimatedUnitCost?.toString()).toBe("42000");
+  expect(part.assignedMemberId).toBeNull();
+  expect(labor.estimatedUnitCost).toBeNull();
+  expect(labor.assignedMemberId).toBe(mechanic.id);
+  expect(labor.quantity.toString()).toBe("3");
+  expect(labor.unitPrice.toString()).toBe("175000");
+  const row = (await page("quotes")).rows.find((record) => record.id === quote.id)!;
+  expect(row.lines?.find((line) => line.kind === "SERVICE")?.assignedMember).toBe(
+    "Prueba comercio",
   );
 });
 it("applies 300k advance plus 200k payment and reversal without duplicate money", async () => {

@@ -2,7 +2,12 @@
 import { useState } from "react";
 import { useControlCommand } from "./hooks";
 import { useFormSheet } from "@/components/form-sheet";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -32,6 +37,21 @@ export function PurchaseEditor({
     draft.change();
     setLines((rows) =>
       rows.map((r, n) => (n === i ? { ...r, [key]: value } : r)),
+    );
+  };
+  const selectItem = (index: number, itemId: string) => {
+    const item = data.items.find((candidate) => candidate.id === itemId);
+    draft.change();
+    setLines((rows) =>
+      rows.map((row, position) =>
+        position === index
+          ? {
+              ...row,
+              itemId,
+              unitCost: item?.purchasePrice ?? row.unitCost,
+            }
+          : row,
+      ),
     );
   };
   return (
@@ -122,7 +142,7 @@ export function PurchaseEditor({
               <Choice
                 id={`purchase-item-${i}`}
                 value={l.itemId}
-                onChange={(v) => change(i, "itemId", v)}
+                onChange={(v) => selectItem(i, v)}
                 options={[
                   { id: "", label: "Seleccionar repuesto" },
                   ...data.items
@@ -146,7 +166,7 @@ export function PurchaseEditor({
               </Field>
               <Field>
                 <FieldLabel htmlFor={`purchase-cost-${i}`}>
-                  Costo unitario (COP)
+                  Precio de compra unitario (COP)
                 </FieldLabel>
                 <Input
                   id={`purchase-cost-${i}`}
@@ -154,6 +174,10 @@ export function PurchaseEditor({
                   value={l.unitCost}
                   onChange={(e) => change(i, "unitCost", e.target.value)}
                 />
+                <FieldDescription>
+                  Se precarga desde el catálogo. Ajusta el valor si este proveedor
+                  ofreció otro precio.
+                </FieldDescription>
               </Field>
             </div>
             <Choice

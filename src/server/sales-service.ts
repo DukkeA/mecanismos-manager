@@ -93,6 +93,7 @@ export async function issueSale(actor: Actor, raw: unknown) {
           description: l.description,
           reference: l.reference,
           kind: l.kind,
+          assignedMemberId: l.assignedMemberId,
           quantity: l.quantity.toString(),
           unitPrice: l.unitPrice.toFixed(2),
           discount: l.discount.toFixed(2),
@@ -162,6 +163,7 @@ export async function issueSale(actor: Actor, raw: unknown) {
                 : line.kind === "SERVICE"
                   ? "0"
                   : null,
+          assignedMemberId: line.assignedMemberId,
         },
       });
     }

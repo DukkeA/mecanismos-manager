@@ -895,7 +895,27 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                     </>
                   ))}
 
-                <OrderPlanningFields members={operations.members} />
+                <OrderPlanningFields
+                  key={receivingQuote?.id ?? "new-order"}
+                  members={operations.members}
+                  initialResponsibleId={
+                    receivingQuote?.lines?.find(
+                      (line) => line.kind === "SERVICE" && line.assignedMemberId,
+                    )?.assignedMemberId ?? ""
+                  }
+                  initialTasks={
+                    receivingQuote?.lines
+                      ?.filter((line) => line.kind === "SERVICE")
+                      .map((line) => ({
+                        id: `quote-line-${line.id}`,
+                        title: line.description,
+                        memberId: line.assignedMemberId ?? "",
+                        minutes: String(
+                          Math.max(1, Math.round(Number(line.quantity) * 60)),
+                        ),
+                      })) ?? []
+                  }
+                />
                 {!demo && <CategoryField />}
                 <Field>
                   <FieldLabel htmlFor="kind">Tipo de recepción</FieldLabel>

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import Decimal from "decimal.js";
 import { catalogLabelKey } from "../src/domain/catalog-label";
 import { db } from "../src/server/db";
 import { once } from "../src/server/commands";
@@ -232,6 +233,8 @@ try {
                   : "Juego de reparación para caja Aisin",
             kind: "PART",
             businessCategoryId: sample.categoryId,
+            purchasePrice: sample.material,
+            salePrice: new Decimal(sample.material).mul("1.35").toFixed(2),
             notes: "Referencia de prueba para comparar costos de reparaciones.",
           },
         });

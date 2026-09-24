@@ -17,8 +17,10 @@ try {
    await client.query('INSERT INTO workshop."AuditEvent" (id,"actorId",action,"entityId",details) SELECT $1,$2,\'TASK_NOTE_ADDED\',id,$4::jsonb FROM workshop."Task" WHERE id=$3 ON CONFLICT(id) DO NOTHING',[id(`detail-audit-${i}`),actor.rows[0].id,taskId,JSON.stringify({noteId:id(`detail-note-${i}`)})]);
   }
  }
- for(let i=0;i<18;i++)await client.query('UPDATE workshop."CatalogItem" SET reference=$1, notes=$2 WHERE id=$3 AND reference=\'\' AND notes=\'\'',[`REF-PRUEBA-${String(i+1).padStart(3,'0')}`,'Referencia de prueba. Confirmar aplicación y número grabado en la pieza antes de pedir al proveedor.',id('item'+i)]);
+ const prices=[8500,65000,285000,185000,420000,95000,680000,340000,115000,42000,520000,390000,280000,95000,28500,18000,310000,750000];
+ for(let i=0;i<18;i++)await client.query('UPDATE workshop."CatalogItem" SET reference=CASE WHEN reference=\'\' THEN $1 ELSE reference END, notes=CASE WHEN notes=\'\' THEN $2 ELSE notes END, "purchasePrice"=COALESCE("purchasePrice",$3), "salePrice"=COALESCE("salePrice",round($3*1.45/1000)*1000) WHERE id=$4',[`REF-PRUEBA-${String(i+1).padStart(3,'0')}`,'Referencia de prueba. Confirmar aplicación y número grabado en la pieza antes de pedir al proveedor.',prices[i],id('item'+i)]);
  const scopes=['Lectura de códigos, revisión visual y reporte de diagnóstico.','Medición de caudal y retorno en banco. Entrega de resultados por inyector.','Desarme, inspección y reparación según diagnóstico aprobado.','Desarme e inspección de discos, sellos y cuerpo de válvulas.','Montaje y verificación de tolerancias según especificación del motor.'];
- for(let i=0;i<scopes.length;i++)await client.query('UPDATE workshop."CatalogItem" SET notes=$1 WHERE id=$2 AND notes=\'\'',[scopes[i],id('service'+i)]);
+ const serviceRates=[120000,150000,180000,220000,200000];
+ for(let i=0;i<scopes.length;i++)await client.query('UPDATE workshop."CatalogItem" SET notes=CASE WHEN notes=\'\' THEN $1 ELSE notes END, unit=\'hora\', "salePrice"=COALESCE("salePrice",$2) WHERE id=$3',[scopes[i],serviceRates[i],id('service'+i)]);
  await client.query('COMMIT');console.log('Descripciones, referencias y observaciones de prueba añadidas; inventario y caja conservados.');
 } catch(e){await client.query('ROLLBACK');throw e;}finally{await client.end();}

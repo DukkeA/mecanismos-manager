@@ -298,6 +298,8 @@ try {
         kind: "PART",
         serialized: true,
         unit: "unidad",
+        purchasePrice: "2200000",
+        salePrice: "3500000",
         notes:
           "Unidad propia identificada por serie; su costo se consulta en Unidades propias.",
       },

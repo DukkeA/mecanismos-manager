@@ -4,7 +4,7 @@ import Decimal from "decimal.js";
 import { once, type Actor } from "./commands";
 import { requirePermission } from "@/domain/permissions";
 import { DomainError } from "@/domain/errors";
-import { quantity, money, positiveMoney } from "@/domain/commercial";
+import { quantity, positiveMoney } from "@/domain/commercial";
 import { day, postStock, postMoney } from "./commercial-ledger";
 const reason = z.string().trim().min(5).max(2000);
 const condition = z.enum(["NEW", "USED", "REBUILT"]);
@@ -21,7 +21,12 @@ export async function createPurchase(actor: Actor, raw: unknown) {
       note: reason,
       lines: z
         .array(
-          z.object({ itemId: z.uuid(), quantity, unitCost: money, condition }),
+          z.object({
+            itemId: z.uuid(),
+            quantity,
+            unitCost: positiveMoney,
+            condition,
+          }),
         )
         .min(1)
         .max(100),
@@ -46,6 +51,10 @@ export async function createPurchase(actor: Actor, raw: unknown) {
           "La compra por cantidad solo admite repuestos sin serie.",
         );
       lines.push({ ...l, description: item.name });
+      await tx.catalogItem.update({
+        where: { id: item.id },
+        data: { purchasePrice: l.unitCost },
+      });
     }
     const purchase = await tx.purchase.create({
       data: {
