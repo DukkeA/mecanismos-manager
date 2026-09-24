@@ -356,7 +356,7 @@ export async function transitionOrder(actor: Actor, raw: unknown) {
         "CLOSED",
         "CANCELLED",
       ]),
-      reason: z.string().trim().min(3).max(1000),
+      reason: z.string().trim().max(1000).optional().default(""),
     })
     .parse(raw);
   return once(actor, input.requestId, "ORDER_TRANSITION", input, async (tx) => {
@@ -418,7 +418,11 @@ export async function transitionOrder(actor: Actor, raw: unknown) {
         actorId: actor.id,
         entityId: order.id,
         action: "ORDER_TRANSITION",
-        details: { from: order.status, to: input.status, reason: input.reason },
+        details: {
+          from: order.status,
+          to: input.status,
+          reason: input.reason || null,
+        },
       },
     });
     return { id: order.id };

@@ -2,9 +2,12 @@
 import { ClipboardList as EmptyClipboardList } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { TaskActions, TaskDetail } from "./task-detail";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FormSheet } from "@/components/form-sheet";
 import { DataTable } from "@/components/data-table";
+import {
+  WorkshopKanban,
+  type KanbanColumnDefinition,
+} from "@/components/workshop-kanban";
 import { OperationForm, type Dialog } from "@/components/operation-form";
 import { TaskBadge, TaskStatusDropdown, states } from "./task-status";
 import { Button } from "@/components/ui/button";
@@ -30,42 +33,18 @@ import {
 } from "@/components/workshop-controls";
 import type { OperationsView } from "@/domain/operations-view";
 import type { Role } from "@/domain/permissions";
-import {
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  pointerWithin,
-  rectIntersection,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type KeyboardCoordinateGetter,
-} from "@dnd-kit/core";
-import { Clock3, GripVertical, LayoutGrid, List, Plus } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { Clock3, LayoutGrid, List, Plus, UserRound } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useOrders } from "../orders/hooks";
 import { useTeam } from "../team/hooks";
 import { useTaskMutation, useTasks } from "./hooks";
 
 type Task = OperationsView["tasks"][number];
-const keyboardCoordinates: KeyboardCoordinateGetter = (event, { context }) => {
-  if (!["ArrowLeft", "ArrowRight"].includes(event.code)) return;
-  const columns = Object.keys(states);
-  const current = String(
-    context.over?.id ?? context.active?.data.current?.status,
-  );
-  const next =
-    columns.indexOf(current) + (event.code === "ArrowRight" ? 1 : -1);
-  const target = context.droppableRects.get(columns[next]);
-  if (target) {
-    event.preventDefault();
-    return { x: target.left + 12, y: target.top + 50 };
-  }
-};
+const taskColumns = Object.entries(states).map(([id, label]) => ({
+  id,
+  label,
+})) as KanbanColumnDefinition[];
 export function TasksPanel({
   role,
   openOrder,
@@ -73,7 +52,6 @@ export function TasksPanel({
   role: Role;
   openOrder: (id: string) => void;
 }) {
-  const reducedMotion = useReducedMotion();
   const [archiveView, setArchiveView] = useQueryState("archive", "active");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data: tasks = [] } = useTasks(
@@ -89,16 +67,10 @@ export function TasksPanel({
     [to, setTo] = useQueryState("to"),
     [layout, setLayout] = useQueryState("layout", "list");
   const [dialog, setDialog] = useState<Dialog | null>(null),
-    [active, setActive] = useState<Task | null>(null),
     [optimistic, setOptimistic] = useState<{
       id: string;
       status: string;
     } | null>(null);
-  const busy = useRef(false);
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: keyboardCoordinates }),
-  );
   const names = (t: Task) =>
     t.members
       .map((id) => members.find((m) => m.id === id)?.name ?? "Sin nombre")
@@ -248,21 +220,15 @@ export function TasksPanel({
     />
   );
   const selected = tasks.find((t) => t.id === selectedId);
-  async function drop({ active, over }: DragEndEvent) {
-    setActive(null);
-    if (!over || busy.current || !Object.keys(states).includes(String(over.id)))
-      return;
-    const task = tasks.find((t) => t.id === active.id);
-    if (!task || locked(task) || task.status === over.id) return;
-    busy.current = true;
-    setOptimistic({ id: task.id, status: String(over.id) });
+  async function moveTask(task: Task, status: string) {
+    setOptimistic({ id: task.id, status });
     try {
       await mutation.mutateAsync({
         kind: "task-status",
-        input: { taskId: task.id, status: String(over.id) },
+        input: { taskId: task.id, status },
       });
       toast.success(
-        `Tarea ${states[String(over.id) as keyof typeof states].toLowerCase()}.`,
+        `Tarea ${states[status as keyof typeof states].toLowerCase()}.`,
       );
     } catch (error) {
       toast.error(
@@ -272,7 +238,6 @@ export function TasksPanel({
       );
     } finally {
       setOptimistic(null);
-      busy.current = false;
     }
   }
   return (
@@ -456,86 +421,51 @@ export function TasksPanel({
         ></DataTable>
       </TabsContent>
       <TabsContent value="kanban">
-        <p className="kanban-help">
-          Arrastra desde el asa para cambiar de estado. Con teclado: espacio,
-          flechas y espacio para soltar.
-        </p>
-        <DndContext
+        <WorkshopKanban
           id="workshop-tasks"
-          sensors={sensors}
-          collisionDetection={(args) => {
-            const collisions = pointerWithin(args);
-            return collisions.length ? collisions : rectIntersection(args);
-          }}
-          onDragStart={(event) =>
-            setActive(tasks.find((t) => t.id === event.active.id) ?? null)
-          }
-          onDragEnd={drop}
-          onDragCancel={() => setActive(null)}
-          accessibility={{
-            screenReaderInstructions: {
-              draggable:
-                "Pulsa espacio para levantar la tarea, flechas izquierda o derecha para cambiar de columna, espacio para soltar y Escape para cancelar.",
-            },
-            announcements: {
-              onDragStart: ({ active }) =>
-                `Tarea ${tasks.find((t) => t.id === active.id)?.title} seleccionada.`,
-              onDragOver: ({ over }) =>
-                over
-                  ? `Columna ${states[String(over.id) as keyof typeof states]}.`
-                  : undefined,
-              onDragEnd: ({ over }) =>
-                over
-                  ? `Soltada en ${states[String(over.id) as keyof typeof states]}. Guardando cambio.`
-                  : "Movimiento cancelado.",
-              onDragCancel: () => "Movimiento cancelado.",
-            },
-          }}
-        >
-          <div className="kanban-board">
-            {Object.entries(states).map(([state, label]) => (
-              <TaskColumn
-                key={state}
-                state={state}
-                label={label}
-                count={filtered.filter((t) => t.status === state).length}
-              >
-                {filtered
-                  .filter((t) => t.status === state)
-                  .map((t) => (
-                    <TaskCard
-                      key={t.id}
-                      task={t}
-                      names={names(t)}
-                      order={orders.find((o) => o.id === t.orderId)}
-                      disabled={
-                        !!t.deletedAt || locked(t) || mutation.isPending
-                      }
-                      actions={actions(t)}
-                      onOpen={() => setSelectedId(t.id)}
-                      openOrder={openOrder}
-                    />
-                  ))}
-                {!filtered.some((t) => t.status === state) && (
-                  <DataEmpty
-                    icon={EmptyClipboardList}
-                    compact
-                    title="Sin tareas"
-                    description="Las tareas en este estado aparecerán aquí."
-                  />
-                )}
-              </TaskColumn>
-            ))}
-          </div>
-          <DragOverlay dropAnimation={reducedMotion ? null : undefined}>
-            {active && (
-              <div className="task-drag-preview">
-                <TaskBadge status={active.status} />
-                <strong>{active.title}</strong>
-              </div>
-            )}
-          </DragOverlay>
-        </DndContext>
+          ariaLabel="Tareas por estado"
+          columns={taskColumns}
+          items={filtered}
+          getItemId={(task) => task.id}
+          getItemLabel={(task) => `Tarea ${task.title}`}
+          getItemState={(task) => task.status}
+          canDrag={(task) => !task.deletedAt && !locked(task)}
+          onMove={moveTask}
+          disabled={mutation.isPending}
+          renderColumnTitle={(column, count) => (
+            <>
+              <TaskBadge status={column.id} />
+              <span className="workshop-kanban-count">{count}</span>
+            </>
+          )}
+          renderCard={(task, { dragHandle }) => (
+            <TaskKanbanCard
+              task={task}
+              names={names(task)}
+              order={orders.find((order) => order.id === task.orderId)}
+              dragHandle={dragHandle}
+              actions={actions(task)}
+              onOpen={() => setSelectedId(task.id)}
+              openOrder={openOrder}
+            />
+          )}
+          renderOverlay={(task) => (
+            <TaskKanbanCard
+              task={task}
+              names={names(task)}
+              order={orders.find((order) => order.id === task.orderId)}
+              preview
+            />
+          )}
+          renderEmpty={() => (
+            <DataEmpty
+              icon={EmptyClipboardList}
+              compact
+              title="Sin tareas"
+              description="Las tareas en este estado aparecerán aquí."
+            />
+          )}
+        />
       </TabsContent>
       <TaskDetail
         task={selected}
@@ -582,88 +512,54 @@ export function TasksPanel({
     </Tabs>
   );
 }
-function TaskColumn({
-  state,
-  label,
-  count,
-  children,
-}: {
-  state: string;
-  label: string;
-  count: number;
-  children: ReactNode;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: state });
-  return (
-    <section
-      ref={setNodeRef}
-      data-task-state={state}
-      data-over={isOver}
-      className="kanban-column"
-      aria-label={label}
-    >
-      <h3>
-        <TaskBadge status={state} />
-        <span>{count}</span>
-      </h3>
-      {children}
-    </section>
-  );
-}
-function TaskCard({
+function TaskKanbanCard({
   task,
   names,
   order,
-  disabled,
+  dragHandle,
   actions,
   onOpen,
   openOrder,
+  preview = false,
 }: {
   task: Task;
   names: string;
   order?: { id: string; number: number; reference: string };
-  disabled: boolean;
-  actions: ReactNode;
-  onOpen: () => void;
-  openOrder: (id: string) => void;
+  dragHandle?: ReactNode;
+  actions?: ReactNode;
+  onOpen?: () => void;
+  openOrder?: (id: string) => void;
+  preview?: boolean;
 }) {
-  const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
-    id: task.id,
-    data: { status: task.status },
-    disabled,
-  });
   return (
-    <article
-      ref={setNodeRef}
-      className="kanban-task"
-      data-task-state={task.status}
-      data-dragging={isDragging}
-    >
-      <div className="kanban-card-heading">
-        <Button variant="link" onClick={onOpen}>
-          {task.title}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          {...attributes}
-          {...listeners}
-          disabled={disabled}
-          aria-label={`Mover tarea: ${task.title}`}
-          className="drag-handle"
-        >
-          <GripVertical />
-        </Button>
+    <article className="workshop-kanban-card task-kanban-card">
+      <div className="workshop-kanban-card-heading">
+        <div className="min-w-0">
+          <span className="workshop-kanban-eyebrow">
+            {order ? `OT-${String(order.number).padStart(4, "0")}` : "General"}
+          </span>
+          {preview || !onOpen ? (
+            <strong>{task.title}</strong>
+          ) : (
+            <Button variant="link" onClick={onOpen}>
+              {task.title}
+            </Button>
+          )}
+        </div>
+        {dragHandle}
       </div>
-      <p>{names}</p>
-      {order ? (
+      <p className="workshop-kanban-assignee">
+        <UserRound aria-hidden="true" />
+        {names || "Sin responsables"}
+      </p>
+      {order && !preview && openOrder ? (
         <Button variant="link" onClick={() => openOrder(order.id)}>
           OT-{order.number} · {order.reference}
         </Button>
       ) : (
-        <small>Tarea general</small>
+        <small>{order ? order.reference : "Tarea general"}</small>
       )}
-      <div className="kanban-card-footer">
+      <div className="workshop-kanban-card-footer task-kanban-footer">
         <span>
           <Clock3 aria-hidden="true" />
           {task.dueAt ? dateLabel(task.dueAt) : "Sin fecha límite"}

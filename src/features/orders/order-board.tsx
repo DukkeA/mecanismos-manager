@@ -1,19 +1,19 @@
 "use client";
-import { useState } from "react";
+
+import { useState, type ReactNode } from "react";
 import {
-  DndContext,
-  useDraggable,
-  useDroppable,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { GripVertical, ClipboardList } from "lucide-react";
+  CalendarDays,
+  ClipboardList,
+  Clock3,
+  UserRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { orderTransitions } from "@/domain/order-lifecycle";
 import { statusLabels, type OrderView } from "@/domain/workshop-view";
-import { useOrderTransition } from "./hooks";
+import {
+  WorkshopKanban,
+  type KanbanColumnDefinition,
+} from "@/components/workshop-kanban";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,115 +25,67 @@ import {
 } from "@/components/ui/card";
 import { DataEmpty } from "@/components/data-empty";
 import { dateLabel } from "@/components/workshop-controls";
-import { FormSheet } from "@/components/form-sheet";
-import {
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import { OperationForm } from "@/components/operation-form";
+import { useOrderTransition } from "./hooks";
+
+const columns = Object.entries(statusLabels).map(([id, label]) => ({
+  id,
+  label,
+})) as KanbanColumnDefinition[];
 
 function OrderCard({
   order,
   open,
-  editable,
+  dragHandle,
+  preview = false,
 }: {
   order: OrderView;
-  open: () => void;
-  editable: boolean;
+  open?: () => void;
+  dragHandle?: ReactNode;
+  preview?: boolean;
 }) {
-  const drag = useDraggable({
-    id: order.id,
-    disabled: !editable || !orderTransitions[order.status]?.length,
-  });
+  const minutes = order.tasks.reduce((sum, task) => sum + task.minutes, 0);
   return (
-    <Card
-      ref={drag.setNodeRef}
-      className="gap-3"
-      style={{ opacity: drag.isDragging ? 0.45 : 1 }}
-    >
+    <Card size="sm" className="workshop-kanban-card">
       <CardHeader className="flex flex-row items-start justify-between gap-2">
-        <CardTitle>
-          <Button variant="link" onClick={open}>
-            OT-{order.number}
-          </Button>
-        </CardTitle>
-        {editable && !!orderTransitions[order.status]?.length && (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Mover orden ${order.number}`}
-            {...drag.listeners}
-            {...drag.attributes}
-            className="touch-none"
-          >
-            <GripVertical />
-          </Button>
-        )}
+        <div className="min-w-0">
+          <span className="workshop-kanban-eyebrow">
+            OT-{String(order.number).padStart(4, "0")}
+          </span>
+          <CardTitle>
+            {preview || !open ? (
+              order.title
+            ) : (
+              <Button variant="link" onClick={open}>
+                {order.title}
+              </Button>
+            )}
+          </CardTitle>
+        </div>
+        {dragHandle}
       </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        <strong>{order.title}</strong>
-        <span className="text-sm text-muted-foreground">
-          {order.customer} · {order.reference}
-        </span>
-        <Badge variant="secondary" data-status={order.status}>
-          {statusLabels[order.status]}
-        </Badge>
-        <p className="text-sm">{order.nextStep}</p>
+      <CardContent className="workshop-kanban-card-content">
+        <p>{order.customer}</p>
+        <span>{order.reference}</span>
+        <p className="workshop-kanban-next-step">{order.nextStep}</p>
       </CardContent>
-      <CardFooter className="mt-auto flex-col items-start gap-1 text-sm text-muted-foreground">
-        <span>{order.responsible}</span>
-        <span>Entrega: {dateLabel(order.dueAt)}</span>
-        <span>
-          {order.tasks.reduce((sum, t) => sum + t.minutes, 0)} min registrados
+      <CardFooter className="workshop-kanban-card-footer">
+        <span title="Responsable">
+          <UserRound aria-hidden="true" />
+          {order.responsible || "Sin asignar"}
+        </span>
+        <span title="Entrega prevista">
+          <CalendarDays aria-hidden="true" />
+          {order.dueAt ? dateLabel(order.dueAt) : "Sin fecha"}
+        </span>
+        <span title="Tiempo registrado">
+          <Clock3 aria-hidden="true" />
+          {minutes ? `${minutes} min` : "Sin tiempo"}
         </span>
       </CardFooter>
     </Card>
   );
 }
-function Column({
-  status,
-  orders,
-  openOrder,
-  editable,
-}: {
-  status: string;
-  orders: OrderView[];
-  openOrder: (id: string) => void;
-  editable: boolean;
-}) {
-  const drop = useDroppable({ id: status, disabled: !editable });
-  return (
-    <section
-      ref={drop.setNodeRef}
-      aria-label={statusLabels[status]}
-      className="flex min-w-72 flex-1 flex-col gap-3 rounded-xl bg-muted/50 p-3"
-      style={{ outline: drop.isOver ? "2px solid var(--primary)" : undefined }}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{statusLabels[status]}</h3>
-        <Badge variant="outline">{orders.length}</Badge>
-      </div>
-      {orders.map((o) => (
-        <OrderCard
-          key={o.id}
-          order={o}
-          open={() => openOrder(o.id)}
-          editable={editable}
-        />
-      ))}
-      {!orders.length && (
-        <DataEmpty
-          compact
-          icon={ClipboardList}
-          title="Sin órdenes"
-          description="Las órdenes en este estado aparecerán aquí."
-        />
-      )}
-    </section>
-  );
-}
+
 export function OrderBoard({
   orders,
   openOrder,
@@ -144,88 +96,86 @@ export function OrderBoard({
   editable: boolean;
 }) {
   const command = useOrderTransition();
-  const [move, setMove] = useState<{ order: OrderView; status: string } | null>(
-    null,
+  const [optimistic, setOptimistic] = useState<{
+    id: string;
+    status: string;
+  } | null>(null);
+  const visibleOrders = orders.map((order) =>
+    optimistic?.id === order.id
+      ? { ...order, status: optimistic.status }
+      : order,
   );
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor),
-  );
+
+  async function moveOrder(order: OrderView, status: string) {
+    setOptimistic({ id: order.id, status });
+    try {
+      await command.mutateAsync({
+        kind: "order-status",
+        input: {
+          requestId: crypto.randomUUID(),
+          orderId: order.id,
+          version: order.version ?? 0,
+          status,
+        },
+      });
+      toast.success(
+        `OT-${String(order.number).padStart(4, "0")} movida a ${statusLabels[status].toLowerCase()}.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se pudo mover la orden. Conserva su estado anterior.",
+      );
+    } finally {
+      setOptimistic(null);
+    }
+  }
+
   return (
-    <>
-      <DndContext
-        sensors={sensors}
-        onDragEnd={({ active, over }) => {
-          const order = orders.find((o) => o.id === active.id),
-            status = String(over?.id ?? "");
-          if (!order || !over || order.status === status) return;
-          if (!orderTransitions[order.status]?.includes(status)) {
-            toast.error(
-              "Ese cambio de estado no está permitido. Abre la orden para ver el siguiente paso.",
-            );
-            return;
-          }
-          setMove({ order, status });
-        }}
-      >
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {Object.keys(statusLabels).map((status) => (
-            <Column
-              key={status}
-              status={status}
-              orders={orders.filter((o) => o.status === status)}
-              openOrder={openOrder}
-              editable={editable}
-            />
-          ))}
-        </div>
-      </DndContext>
-      <FormSheet
-        open={!!move}
-        onOpenChange={(open) => {
-          if (!open) setMove(null);
-        }}
-      >
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Cambiar estado de OT-{move?.order.number}</SheetTitle>
-            <SheetDescription>
-              {move &&
-                `${statusLabels[move.order.status]} → ${statusLabels[move.status]}`}
-            </SheetDescription>
-          </SheetHeader>
-          {move && (
-            <OperationForm
-              key={`${move.order.id}-${move.status}`}
-              dialog={{
-                kind: "order-status",
-                title: "Cambiar estado",
-                submitLabel: "Confirmar cambio",
-                fields: [
-                  {
-                    key: "reason",
-                    label: "Motivo del cambio",
-                    type: "textarea",
-                  },
-                ],
-              }}
-              submit={async (input) => {
-                await command.mutateAsync({
-                  kind: "order-status",
-                  input: {
-                    ...input,
-                    orderId: move.order.id,
-                    version: move.order.version ?? 0,
-                    status: move.status,
-                  },
-                });
-                setMove(null);
-                toast.success("Estado actualizado.");
-              }}
-            />
-          )}
-        </SheetContent>
-      </FormSheet>
-    </>
+    <WorkshopKanban
+      id="workshop-orders"
+      ariaLabel="Órdenes por estado"
+      columns={columns}
+      items={visibleOrders}
+      getItemId={(order) => order.id}
+      getItemLabel={(order) =>
+        `Orden ${String(order.number).padStart(4, "0")}`
+      }
+      getItemState={(order) => order.status}
+      canDrag={(order) =>
+        editable && !!orderTransitions[order.status]?.length
+      }
+      canMove={(order, status) =>
+        orderTransitions[order.status]?.includes(status) ?? false
+      }
+      onMove={moveOrder}
+      disabled={command.isPending}
+      help="Arrastra una orden a uno de los estados habilitados. El cambio se guarda al soltar."
+      renderColumnTitle={(column, count) => (
+        <>
+          <Badge variant="secondary" data-status={column.id}>
+            {column.label}
+          </Badge>
+          <span className="workshop-kanban-count">{count}</span>
+        </>
+      )}
+      renderCard={(order, { dragHandle }) => (
+        <OrderCard
+          order={order}
+          open={() => openOrder(order.id)}
+          dragHandle={dragHandle}
+        />
+      )}
+      renderOverlay={(order) => <OrderCard order={order} preview />}
+      renderEmpty={() => (
+        <DataEmpty
+          compact
+          icon={ClipboardList}
+          title="Sin órdenes"
+          description="Las órdenes en este estado aparecerán aquí."
+        />
+      )}
+    />
   );
 }
