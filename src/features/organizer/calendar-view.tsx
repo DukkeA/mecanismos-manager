@@ -116,7 +116,7 @@ export function CalendarView({
             Hoy
           </Button>
         </div>
-        <Tabs className="workspace-tabs" value={view} onValueChange={setView}>
+        <Tabs value={view} onValueChange={setView}>
           <TabsList aria-label="Vista del calendario">
             <TabsTrigger value="month">Mes</TabsTrigger>
             <TabsTrigger value="week">Semana</TabsTrigger>

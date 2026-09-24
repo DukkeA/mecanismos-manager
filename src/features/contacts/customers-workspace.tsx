@@ -15,7 +15,7 @@ export function CustomersWorkspace(
       ? "assets"
       : "contacts";
   return (
-    <div className="workspace-tabs flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
       {!props.demo && (
         <Tabs
           value={tab}

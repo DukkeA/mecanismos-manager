@@ -27,7 +27,7 @@ export function InventoryWorkspace(
       : (params.get("inventoryTab") ?? "stock");
   const tab = sections.some(([id]) => id === requested) ? requested : "stock";
   return (
-    <div className="workspace-tabs flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
       <Tabs
         value={tab}
         onValueChange={(value) => {

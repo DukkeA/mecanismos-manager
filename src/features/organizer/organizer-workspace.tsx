@@ -142,7 +142,6 @@ export function OrganizerWorkspace({
       </div>
       {!calendar && (
         <Tabs
-          className="workspace-tabs"
           value={scope}
           onValueChange={(value) => {
             setScope(value);

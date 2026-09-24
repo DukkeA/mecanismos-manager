@@ -1087,10 +1087,7 @@ export function OperationsPanel({
             setTo("");
           }}
         >
-          <TabsList
-            className="inventory-tabs"
-            aria-label="Consulta de repuestos"
-          >
+          <TabsList aria-label="Consulta de repuestos">
             <TabsTrigger value="own">Inventario propio</TabsTrigger>
             <TabsTrigger value="suppliers">Inventario proveedores</TabsTrigger>
             <TabsTrigger value="catalog">Catálogo</TabsTrigger>
