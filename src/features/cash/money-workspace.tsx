@@ -49,12 +49,9 @@ export function MoneyWorkspace({
     window.history.pushState(null, "", `?${next}`);
   }
   return (
-    <div className="workspace-tabs flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
       <Tabs value={tab} onValueChange={(value) => change(value)}>
-        <TabsList
-          className="h-auto flex-wrap justify-start"
-          aria-label="Dinero del taller"
-        >
+        <TabsList aria-label="Dinero del taller">
           {tabs.map(([id, label]) => (
             <TabsTrigger key={id} value={id}>
               {label}

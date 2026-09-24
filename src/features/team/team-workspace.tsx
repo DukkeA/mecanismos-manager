@@ -54,7 +54,7 @@ export function TeamWorkspace(props: ComponentProps<typeof OperationsPanel>) {
   const params = useSearchParams();
   const tab = params.get("teamTab") ?? "people";
   return (
-    <div className="workspace-tabs flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
       <Tabs
         value={tab}
         onValueChange={(value) =>
@@ -137,7 +137,7 @@ function TeamCosts(props: ComponentProps<typeof OperationsPanel>) {
     window.history.pushState(null, "", `?${q}`);
   }
   return (
-    <div className="workspace-tabs flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
       {overview.isPending ? (
         <Skeleton className="h-28" />
       ) : overview.isError ? (

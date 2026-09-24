@@ -676,7 +676,7 @@ export function ControlPanel({
               });
           }}
         >
-          <TabsList className="h-auto flex-wrap" aria-label="Secciones">
+          <TabsList aria-label="Secciones">
             {resources.map((r) => (
               <TabsTrigger key={r} value={r}>
                 {names[r]}
