@@ -15,13 +15,22 @@ import type { OperationsView } from "@/domain/operations-view";
 
 export function OrderPlanningFields({
   members,
+  initialResponsibleId = "",
+  initialTasks = [],
 }: {
   members: OperationsView["members"];
+  initialResponsibleId?: string;
+  initialTasks?: {
+    id: string;
+    title: string;
+    memberId: string;
+    minutes: string;
+  }[];
 }) {
-  const [responsible, setResponsible] = useState("");
+  const [responsible, setResponsible] = useState(initialResponsibleId);
   const [tasks, setTasks] = useState<
     { id: string; title: string; memberId: string; minutes: string }[]
-  >([]);
+  >(initialTasks);
   const options = members
     .filter((m) => m.active)
     .map((m) => ({ id: m.id, label: m.name }));

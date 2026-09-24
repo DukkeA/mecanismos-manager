@@ -64,14 +64,20 @@ export function applyDemoOperation(
       const currentId = text("id") || id;
       if (data.items.some((i) => i.code === text("code") && i.id !== currentId))
         throw new Error("Esa referencia ya existe.");
+      const currentItem = data.items.find((item) => item.id === currentId);
       const value = {
         id: currentId,
+        businessCategoryId: text("businessCategoryId") || null,
+        businessCategory: currentItem?.businessCategory,
         code: text("code"),
         name: text("name"),
         brand: text("brand"),
         kind: text("kind"),
         unit: text("unit"),
         reference: text("reference"),
+        purchasePrice:
+          text("kind") === "SERVICE" ? null : text("purchasePrice") || null,
+        salePrice: text("salePrice") || null,
         notes: text("notes"),
       };
       const index = data.items.findIndex((i) => i.id === currentId);
@@ -244,6 +250,10 @@ export function applyDemoOperation(
       balance.materialCost = new Decimal(balance.materialCost)
         .plus(value)
         .toFixed(2);
+      if (text("kind") === "RECEIPT" && cost.gt(0)) {
+        const item = data.items.find((entry) => entry.id === balance.itemId);
+        if (item) item.purchasePrice = cost.toFixed(2);
+      }
       data.movements.unshift({
         id,
         itemId: balance.itemId,

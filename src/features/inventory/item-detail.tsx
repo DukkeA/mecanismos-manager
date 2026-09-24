@@ -73,7 +73,7 @@ export function ItemDetail({
               {!service && (
                 <>
                   <div>
-                    <dt>Referencia del fabricante</dt>
+                    <dt>Referencia</dt>
                     <dd>{item.reference || "Sin referencia registrada"}</dd>
                   </div>
                   <div>
@@ -84,8 +84,32 @@ export function ItemDetail({
                     <dt>Unidad</dt>
                     <dd>{item.unit}</dd>
                   </div>
+                  <div>
+                    <dt>Precio de compra</dt>
+                    <dd>
+                      {item.purchasePrice
+                        ? new Intl.NumberFormat("es-CO", {
+                            style: "currency",
+                            currency: "COP",
+                            maximumFractionDigits: 0,
+                          }).format(Number(item.purchasePrice))
+                        : "Sin definir"}
+                    </dd>
+                  </div>
                 </>
               )}
+              <div>
+                <dt>{service ? "Tarifa sugerida" : "Precio de venta"}</dt>
+                <dd>
+                  {item.salePrice
+                    ? new Intl.NumberFormat("es-CO", {
+                        style: "currency",
+                        currency: "COP",
+                        maximumFractionDigits: 0,
+                      }).format(Number(item.salePrice))
+                    : "Sin definir"}
+                </dd>
+              </div>
             </dl>
             <section className="detail-section">
               <h3>

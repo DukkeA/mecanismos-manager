@@ -14,11 +14,11 @@ export const quantity = z
   .refine((v) => new Decimal(v).gt(0));
 export const documentLine = z.object({
   itemId: z.uuid(),
+  assignedMemberId: z.uuid().optional(),
   description: z.string().trim().min(2).max(250),
   quantity,
   unitPrice: money,
   discount: money.default("0"),
-  estimatedUnitCost: money.optional(),
   condition: z.enum(["NEW", "USED", "REBUILT"]).default("NEW"),
 });
 export const documentInput = z.object({
@@ -46,6 +46,8 @@ export type CommercialLine = {
   businessCategory?: { name: string } | null;
   id: string;
   itemId: string;
+  assignedMemberId?: string | null;
+  assignedMember?: string | null;
   description: string;
   reference: string;
   kind: "PART" | "SERVICE";

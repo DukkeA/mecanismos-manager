@@ -38,6 +38,20 @@ export async function snapshotLines(tx: Tx, lines: DocumentLineInput[]) {
     const item = await tx.catalogItem.findUniqueOrThrow({
       where: { id: line.itemId },
     });
+    if (item.kind === "SERVICE" && line.assignedMemberId) {
+      const member = await tx.member.findFirst({
+        where: {
+          id: line.assignedMemberId,
+          active: true,
+          role: "MECHANIC",
+        },
+        select: { id: true },
+      });
+      if (!member)
+        throw new DomainError(
+          "Selecciona un mecánico activo para la mano de obra.",
+        );
+    }
     let total: string;
     try {
       total = lineTotal(line);
@@ -50,6 +64,10 @@ export async function snapshotLines(tx: Tx, lines: DocumentLineInput[]) {
       kind: item.kind,
       reference: item.reference,
       businessCategoryId: item.businessCategoryId,
+      assignedMemberId:
+        item.kind === "SERVICE" ? (line.assignedMemberId ?? null) : null,
+      estimatedUnitCost:
+        item.kind === "PART" ? (item.purchasePrice?.toFixed(2) ?? null) : null,
     });
   }
   return result;

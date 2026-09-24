@@ -290,6 +290,8 @@ export async function getOperations(
       kind: i.kind,
       unit: i.unit,
       reference: i.reference,
+      purchasePrice: i.purchasePrice?.toFixed(2) ?? null,
+      salePrice: i.salePrice?.toFixed(2) ?? null,
       notes: i.notes,
     })),
     suppliers: suppliers.map((s) => ({

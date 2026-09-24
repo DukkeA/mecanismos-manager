@@ -44,8 +44,9 @@ try {
   for(let i=0;i<people.length;i++)await insert('Member',{id:id('member'+i),name:people[i][0],role:people[i][1],email:`persona${i+1}@taller.example.invalid`,active:i!==15});
   for(let i=0;i<customers.length;i++)await insert('Customer',{id:id('customer'+i),name:customers[i],document:`FICT-${String(i+1).padStart(4,'0')}`,phone:i===8?null:`+57 601 555 ${String(100+i).padStart(4,'0')}`,email:i===8?null:`cliente${i+1}@example.invalid`});
   for(let i=0;i<suppliers.length;i++)await insert('Supplier',{id:id('supplier'+i),name:suppliers[i],phone:`+57 601 555 ${String(100+i).padStart(4,'0')}`});
-  for(let i=0;i<parts.length;i++)await insert('CatalogItem',{id:id('item'+i),code:parts[i][0],name:parts[i][1],kind:'PART',unit:parts[i][2],brand:i===17?'Recuperado en taller':null});
-  for(const [i,name] of ['Diagnóstico de sistema de inyección','Prueba de inyectores en banco','Reparación de bomba de inyección','Reparación de transmisión automática','Armado de motor diésel'].entries())await insert('CatalogItem',{id:id('service'+i),code:`SRV-${i+1}`,name,kind:'SERVICE',unit:'servicio'});
+  for(let i=0;i<parts.length;i++)await insert('CatalogItem',{id:id('item'+i),code:parts[i][0],name:parts[i][1],kind:'PART',unit:parts[i][2],brand:i===17?'Recuperado en taller':null,purchasePrice:parts[i][3],salePrice:new Decimal(parts[i][3]).mul(1.45).toNearest(1000).toFixed(0)});
+  const serviceRates=[120000,150000,180000,220000,200000];
+  for(const [i,name] of ['Diagnóstico de sistema de inyección','Prueba de inyectores en banco','Reparación de bomba de inyección','Reparación de transmisión automática','Armado de motor diésel'].entries())await insert('CatalogItem',{id:id('service'+i),code:`SRV-${i+1}`,name,kind:'SERVICE',unit:'hora',salePrice:serviceRates[i]});
   for(let i=0;i<24;i++){
    const j=jobs[i%12],own=i%12===5,closed=j[3]==='CLOSED',customerId=own?null:id('customer'+i%12),received=date(-i-1);
    await insert('Asset',{id:id('asset'+i),kind:j[1],description:j[0],plate:j[1]==='VEHICLE'?`TST${101+i}`:null,serial:j[1]==='COMPONENT'?`${j[2]}-${i+1}`:null,customerId});

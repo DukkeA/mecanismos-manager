@@ -1,15 +1,21 @@
 "use client";
 import { useState } from "react";
 import Decimal from "decimal.js";
-import { Plus, Trash2 } from "lucide-react";
+import { Package, Plus, Trash2, Wrench } from "lucide-react";
 import { useCommercialCommand, useCommercialPage } from "./hooks";
 import { CustomerPicker } from "@/features/contacts/customer-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFormSheet } from "@/components/form-sheet";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Choice, DateField } from "@/components/workshop-controls";
@@ -21,6 +27,8 @@ import {
 } from "@/domain/commercial";
 import type { OperationsView } from "@/domain/operations-view";
 import type { OrderView } from "@/domain/workshop-view";
+
+type EditorLine = DocumentLineInput & { kind: "PART" | "SERVICE" };
 
 export function DocumentEditor({
   mode,
@@ -57,7 +65,8 @@ export function DocumentEditor({
     new URLSearchParams({ resource: "payments", customerId }),
     mode === "sale" && !!customerId,
   );
-  const emptyLine: DocumentLineInput = {
+  const emptyLine: EditorLine = {
+    kind: "PART",
     itemId: "",
     description: "",
     quantity: "1",
@@ -65,10 +74,16 @@ export function DocumentEditor({
     discount: "0",
     condition: "NEW",
   };
-  const [lines, setLines] = useState<DocumentLineInput[]>(
-    source?.lines?.map((l) => ({
-      ...l,
-      estimatedUnitCost: l.estimatedUnitCost ?? undefined,
+  const [lines, setLines] = useState<EditorLine[]>(
+    source?.lines?.map((line) => ({
+      kind: line.kind,
+      itemId: line.itemId,
+      assignedMemberId: line.assignedMemberId ?? undefined,
+      description: line.description,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      discount: line.discount,
+      condition: line.condition,
     })) ?? [{ ...emptyLine }],
   );
   const sum = lines.reduce((s, l) => {
@@ -90,7 +105,7 @@ export function DocumentEditor({
       /* Validated on submit. */
     }
   }
-  function update(index: number, patch: Partial<DocumentLineInput>) {
+  function update(index: number, patch: Partial<EditorLine>) {
     draft.change();
     setLines((rows) =>
       rows.map((r, i) => (i === index ? { ...r, ...patch } : r)),
@@ -121,7 +136,7 @@ export function DocumentEditor({
               orderId: orderId || undefined,
               title,
               terms,
-              lines,
+              lines: lines.map(({ kind: _kind, ...line }) => line),
               ...(mode === "quote"
                 ? {
                     previousId: source?.id,
@@ -270,8 +285,43 @@ export function DocumentEditor({
               )}
             </div>
             <Field>
+              <FieldLabel>Tipo de línea</FieldLabel>
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                spacing={0}
+                value={line.kind}
+                disabled={fromQuote}
+                onValueChange={(value) => {
+                  if (!value || value === line.kind) return;
+                  update(index, {
+                    kind: value as EditorLine["kind"],
+                    itemId: "",
+                    assignedMemberId: undefined,
+                    description: "",
+                    quantity: "1",
+                    unitPrice: "0",
+                    discount: "0",
+                    condition: "NEW",
+                  });
+                }}
+              >
+                <ToggleGroupItem value="PART" aria-label="Venta de repuesto">
+                  <Package data-icon="inline-start" />
+                  Repuesto
+                </ToggleGroupItem>
+                <ToggleGroupItem value="SERVICE" aria-label="Mano de obra">
+                  <Wrench data-icon="inline-start" />
+                  Mano de obra
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <FieldDescription>
+                Una cotización puede combinar repuestos y horas de trabajo.
+              </FieldDescription>
+            </Field>
+            <Field>
               <FieldLabel htmlFor={`line-item-${index}`}>
-                Repuesto o servicio
+                {line.kind === "SERVICE" ? "Servicio" : "Repuesto"}
               </FieldLabel>
               <Choice
                 id={`line-item-${index}`}
@@ -279,16 +329,31 @@ export function DocumentEditor({
                 value={line.itemId}
                 onChange={(id) => {
                   const item = data.items.find((i) => i.id === id);
-                  update(index, { itemId: id, description: item?.name ?? "" });
+                  update(index, {
+                    itemId: id,
+                    description: item?.name ?? "",
+                    unitPrice: item?.salePrice ?? "0",
+                    assignedMemberId:
+                      item?.kind === "SERVICE"
+                        ? line.assignedMemberId
+                        : undefined,
+                  });
                 }}
                 options={[
                   { id: "", label: "Seleccionar" },
-                  ...data.items.map((i) => ({
+                  ...data.items
+                    .filter((item) => item.kind === line.kind)
+                    .map((i) => ({
                     id: i.id,
-                    label: `${i.kind === "SERVICE" ? "Servicio" : "Repuesto"} · ${i.name}${i.reference ? ` · ${i.reference}` : ""}`,
+                    label: `${i.name}${i.reference ? ` · ${i.reference}` : ""}`,
                   })),
                 ]}
               />
+              <FieldDescription>
+                {line.kind === "SERVICE"
+                  ? "La tarifa sugerida se precarga y sigue siendo editable."
+                  : "El precio de venta sugerido se precarga y sigue siendo editable."}
+              </FieldDescription>
             </Field>
             <p className="text-sm text-muted-foreground">
               Categoría:{" "}
@@ -323,7 +388,13 @@ export function DocumentEditor({
               ).map(([key, label]) => (
                 <Field key={key}>
                   <FieldLabel htmlFor={`line-${key}-${index}`}>
-                    {label}
+                    {key === "quantity" && line.kind === "SERVICE"
+                      ? "Horas estimadas"
+                      : key === "unitPrice" && line.kind === "SERVICE"
+                        ? "Tarifa por hora (COP)"
+                        : key === "unitPrice"
+                          ? "Precio de venta unitario (COP)"
+                          : label}
                   </FieldLabel>
                   <Input
                     id={`line-${key}-${index}`}
@@ -336,25 +407,37 @@ export function DocumentEditor({
                 </Field>
               ))}
             </div>
-            {mode === "quote" && (
+            {line.kind === "SERVICE" && (
               <Field>
-                <FieldLabel htmlFor={`line-cost-${index}`}>
-                  Costo previsto por unidad (COP)
+                <FieldLabel htmlFor={`line-member-${index}`}>
+                  Responsable tentativo
                 </FieldLabel>
-                <Input
-                  id={`line-cost-${index}`}
-                  inputMode="decimal"
-                  placeholder="Sin estimar"
-                  value={line.estimatedUnitCost ?? ""}
-                  onChange={(e) =>
+                <Choice
+                  id={`line-member-${index}`}
+                  disabled={fromQuote}
+                  value={line.assignedMemberId ?? ""}
+                  onChange={(assignedMemberId) =>
                     update(index, {
-                      estimatedUnitCost: e.target.value || undefined,
+                      assignedMemberId: assignedMemberId || undefined,
                     })
                   }
+                  options={[
+                    { id: "", label: "Asignar después" },
+                    ...data.members
+                      .filter(
+                        (member) =>
+                          member.active && member.role === "MECHANIC",
+                      )
+                      .map((member) => ({ id: member.id, label: member.name })),
+                  ]}
                 />
+                <FieldDescription>
+                  Si el cliente aprueba la cotización, esta asignación se
+                  propondrá al crear la orden y sus tareas.
+                </FieldDescription>
               </Field>
             )}
-            {data.items.find((i) => i.id === line.itemId)?.kind === "PART" && (
+            {line.kind === "PART" && (
               <Field>
                 <FieldLabel htmlFor={`line-condition-${index}`}>
                   Condición

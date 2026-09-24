@@ -14,6 +14,10 @@ const quantity = z
   .regex(/^\d{1,10}(\.\d{1,3})?$/)
   .refine((v) => new Decimal(v).gt(0), "La cantidad debe ser positiva.");
 const money = z.string().regex(/^\d{1,12}(\.\d{1,2})?$/);
+const optionalPrice = z
+  .union([money, z.literal(""), z.null()])
+  .optional()
+  .transform((value) => (value === "" || value === undefined ? null : value));
 export async function saveItem(actor: Actor, raw: unknown) {
   requirePermission(actor.role, "inventory:write");
   const input = z
@@ -26,10 +30,15 @@ export async function saveItem(actor: Actor, raw: unknown) {
       kind: z.enum(["PART", "SERVICE"]),
       unit: z.string().trim().min(1).max(30).default("servicio"),
       reference: z.string().trim().max(200).default(""),
+      purchasePrice: optionalPrice,
+      salePrice: optionalPrice,
       notes: z.string().trim().max(5000).default(""),
     })
     .parse(raw);
-  if (input.kind === "SERVICE") input.name = cleanCatalogLabel(input.name);
+  if (input.kind === "SERVICE") {
+    input.name = cleanCatalogLabel(input.name);
+    input.purchasePrice = null;
+  }
   return serializable(async (tx) => {
     if (input.kind === "SERVICE") {
       const duplicate = await tx.$queryRaw<{ id: string; name: string }[]>`
@@ -69,6 +78,8 @@ export async function saveItem(actor: Actor, raw: unknown) {
         details: {
           code: item.code,
           reference: item.reference,
+          purchasePrice: item.purchasePrice?.toFixed(2) ?? null,
+          salePrice: item.salePrice?.toFixed(2) ?? null,
           kind: item.kind,
           businessCategoryId: item.businessCategoryId,
         },
@@ -253,6 +264,12 @@ export async function moveStock(actor: Actor, raw: unknown) {
         materialCost: value.plus(signedValue).toFixed(2),
       },
     });
+    if (input.kind === "RECEIPT" && new Decimal(input.unitCost).gt(0)) {
+      await tx.catalogItem.update({
+        where: { id: item.id },
+        data: { purchasePrice: input.unitCost },
+      });
+    }
     await tx.auditEvent.create({
       data: {
         actorId: actor.id,
@@ -263,6 +280,8 @@ export async function moveStock(actor: Actor, raw: unknown) {
           costKnown: incoming ? true : balance.costKnown,
           quantity: signedQty.toString(),
           kind: input.kind,
+          purchasePriceUpdated:
+            input.kind === "RECEIPT" && new Decimal(input.unitCost).gt(0),
         },
       },
     });
