@@ -32,7 +32,15 @@ const names: Record<string, string> = {
   EXTERNAL: "Causa externa",
   UNDETERMINED: "Sin determinar",
 };
-export function ManagementReport({ from, to }: { from?: string; to?: string }) {
+export function ManagementReport({
+  from,
+  to,
+  includeProducts = true,
+}: {
+  from?: string;
+  to?: string;
+  includeProducts?: boolean;
+}) {
   const query = useManagementReport(from, to);
   if (query.isError) return <p role="alert">{query.error.message}</p>;
   if (!query.data)
@@ -45,12 +53,13 @@ export function ManagementReport({ from, to }: { from?: string; to?: string }) {
       className="space-y-5 border-b pb-5"
       aria-label="Resultados y garantías"
     >
-      <ProductResults from={from} to={to} />
+      {includeProducts && <ProductResults from={from} to={to} />}
       <div>
         <h3 className="font-semibold">Ventas que regresan por garantía</h3>
         <p className="text-sm text-muted-foreground">
-          Ventas emitidas en las fechas seleccionadas y garantías aceptadas
-          hasta hoy. Una venta cuenta una vez aunque tenga varios casos.
+          Ventas emitidas en las fechas seleccionadas y sus garantías hasta hoy.
+          El costo ya está descontado en el resultado de cada negocio. Una venta
+          cuenta una vez aunque tenga varios casos.
         </p>
       </div>
       <Table>
@@ -103,7 +112,7 @@ export function ManagementReport({ from, to }: { from?: string; to?: string }) {
       </Table>
       {causes.length > 0 && (
         <p className="text-sm">
-          Causas registradas:{" "}
+          Causas de las garantías aceptadas:{" "}
           {causes
             .map((c) => `${names[c.cause] ?? c.cause}: ${c.cases}`)
             .join(" · ")}

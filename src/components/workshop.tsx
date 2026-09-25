@@ -17,6 +17,11 @@ import { CustomersWorkspace } from "@/features/contacts/customers-workspace";
 import { FormSheet } from "./form-sheet";
 import { ObservationHistory } from "@/features/orders/observation-history";
 import { OrderAgreement } from "@/features/commerce/order-agreement";
+import {
+  ProfitabilityDetail,
+  ProfitabilityWorkspace,
+} from "@/features/profitability/profitability";
+import { OrderExpense } from "@/features/cash/order-expense";
 import { Attachments } from "@/features/control/attachments";
 import { ControlPanel } from "@/features/control/control-panel";
 import { AssetSelector } from "@/features/control/asset-selector";
@@ -164,6 +169,10 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
   );
 
   const params = useSearchParams();
+  const requestedOrder = params.get("orderId");
+  useEffect(() => {
+    if (requestedOrder) setSelectedId(requestedOrder);
+  }, [requestedOrder]);
   const allowed = sections.filter((s) =>
     sectionAvailable(s.label, actor.role, !!demo),
   );
@@ -520,7 +529,15 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 openOrder={setSelectedId}
               />
             )
-          ) : ["Compras", "Garantías", "Rentabilidad"].includes(section) ? (
+          ) : section === "Rentabilidad" ? (
+            <ProfitabilityWorkspace
+              data={operations}
+              orders={orders}
+              locations={locations}
+              role={actor.role}
+              openOrder={setSelectedId}
+            />
+          ) : ["Compras", "Garantías"].includes(section) ? (
             <ControlPanel
               key={section}
               data={operations}
@@ -532,11 +549,9 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   ? ["purchases"]
                   : section === "Garantías"
                     ? ["warranties"]
-                    : section === "Rentabilidad"
-                      ? ["margins"]
-                      : actor.role === "ADMIN"
-                        ? ["closures", "recurring", "coverage", "audit"]
-                        : ["closures", "recurring"]
+                    : actor.role === "ADMIN"
+                      ? ["closures", "recurring", "coverage", "audit"]
+                      : ["closures", "recurring"]
               }
             />
           ) : (
@@ -616,7 +631,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               <Separator />
               {!demo && (
                 <ControlPanel
-                  key={selected.id}
+                  key={`controls-${selected.id}`}
                   data={operations}
                   orders={orders}
                   locations={locations}
@@ -633,6 +648,15 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 <OrderAgreement
                   key={`agreement-${selected.id}`}
                   order={selected}
+                />
+              )}
+              {!demo && actor.role === "ADMIN" && (
+                <ProfitabilityDetail orderId={selected.id} />
+              )}
+              {!demo && actor.role !== "MECHANIC" && (
+                <OrderExpense
+                  key={`expense-${selected.id}`}
+                  orderId={selected.id}
                 />
               )}
               {!demo && (
@@ -675,10 +699,11 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 </Alert>
               )}
 
-              {!["CLOSED", "CANCELLED"].includes(selected.status) &&
+              {(actor.role === "ADMIN" ||
+                !["CLOSED", "CANCELLED"].includes(selected.status)) &&
                 selected.tasks.length > 0 && (
                   <TimeForm
-                    key={selected.id}
+                    key={`time-${selected.id}`}
                     members={operations.members}
                     role={actor.role}
                     tasks={selected.tasks.filter(
@@ -723,7 +748,10 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   </form>
                 )}
                 {!demo ? (
-                  <ObservationHistory key={selected.id} orderId={selected.id} />
+                  <ObservationHistory
+                    key={`notes-${selected.id}`}
+                    orderId={selected.id}
+                  />
                 ) : selected.notes.length ? (
                   <ol className="observation-list">
                     {selected.notes.map((note) => (
@@ -900,7 +928,8 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   members={operations.members}
                   initialResponsibleId={
                     receivingQuote?.lines?.find(
-                      (line) => line.kind === "SERVICE" && line.assignedMemberId,
+                      (line) =>
+                        line.kind === "SERVICE" && line.assignedMemberId,
                     )?.assignedMemberId ?? ""
                   }
                   initialTasks={

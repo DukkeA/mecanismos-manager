@@ -168,6 +168,11 @@ export function PurchaseEditor({
                 <FieldLabel htmlFor={`purchase-cost-${i}`}>
                   Precio de compra unitario (COP)
                 </FieldLabel>
+                <p className="text-xs text-muted-foreground">
+                  Incluye el transporte e importación que corresponda a cada
+                  unidad. Ese costo se recupera al vender o usar el repuesto; no
+                  lo registres también como gasto corriente.
+                </p>
                 <Input
                   id={`purchase-cost-${i}`}
                   inputMode="decimal"
@@ -175,8 +180,8 @@ export function PurchaseEditor({
                   onChange={(e) => change(i, "unitCost", e.target.value)}
                 />
                 <FieldDescription>
-                  Se precarga desde el catálogo. Ajusta el valor si este proveedor
-                  ofreció otro precio.
+                  Se precarga desde el catálogo. Ajusta el valor si este
+                  proveedor ofreció otro precio.
                 </FieldDescription>
               </Field>
             </div>

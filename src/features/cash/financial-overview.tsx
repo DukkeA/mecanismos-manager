@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useCash } from "./hooks";
+import { MonthlyProfitability } from "@/features/profitability/profitability";
 import { cashSummary, cop, todayInBogota } from "./summary";
 
 export function FinancialOverview({
@@ -95,6 +96,7 @@ export function FinancialOverview({
           Consultando pagos del personal…
         </p>
       )}
+      {role === "ADMIN" && <MonthlyProfitability period={period} compact />}
       {data.payrollError && (
         <Alert variant="destructive">
           <AlertTitle>

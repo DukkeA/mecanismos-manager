@@ -4,7 +4,6 @@ import { TablePagination } from "@/components/workshop-controls";
 import { SearchX as EmptySearchX } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { RecordStamp } from "@/features/activity/activity-ui";
-import { ManagementReport } from "./management-report";
 import { Attachments } from "./attachments";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -157,6 +156,14 @@ const fieldNames: Record<string, string> = {
   revenue: "Venta neta (COP)",
   material: "Materiales (COP)",
   labor: "Mano de obra (COP)",
+  expenses: "Gastos directos (COP)",
+  warrantyCost: "Garantías asumidas (COP)",
+  warrantyPending: "Garantías pendientes de completar",
+  missingTasks: "Tareas sin tiempo registrado",
+  unconsumedParts: "Repuestos por registrar",
+  estimatedExpenses: "Gastos por confirmar",
+  balance: "Pendiente de cobro (COP)",
+  collected: "Cobros aplicados (COP)",
   minutes: "Minutos registrados",
   missingMinutes: "Minutos sin tarifa",
   missingMaterials: "Hay materiales sin valorar",
@@ -688,11 +695,11 @@ export function ControlPanel({
 
       {resource === "margins" && (
         <p className="text-sm text-muted-foreground">
-          Venta neta menos materiales y mano de obra registrada. El margen de
-          una orden abierta es provisional. Las órdenes sin venta muestran sus
-          costos en el detalle. No incluye arriendos ni otros gastos generales.
-          Configura los salarios en Equipo. Las horas sin costo laboral impiden
-          calcular el margen completo.
+          Venta neta menos materiales, mano de obra, gastos directos y
+          garantías. El margen de una orden abierta es provisional. Las órdenes
+          sin venta muestran sus costos en el detalle. No incluye arriendos ni
+          otros gastos generales. Configura los salarios en Equipo. Las horas
+          sin costo laboral impiden calcular el margen completo.
         </p>
       )}
       {!orderId && (
@@ -787,12 +794,6 @@ export function ControlPanel({
             ? "Registrar prueba"
             : "Registrar recepción / entrega"}
         </Button>
-      )}
-      {resource === "margins" && (
-        <ManagementReport
-          from={params.get("from") ?? undefined}
-          to={params.get("to") ?? undefined}
-        />
       )}
       {query.isError && (
         <Alert variant="destructive">

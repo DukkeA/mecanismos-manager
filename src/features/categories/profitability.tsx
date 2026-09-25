@@ -54,9 +54,9 @@ export function CategoryProfitability({
       <div>
         <h3 className="font-semibold">Margen por categoría</h3>
         <p className="text-sm text-muted-foreground">
-          Ventas netas menos materiales y mano de obra. Las reparaciones se
-          agrupan por la categoría del trabajo; el mostrador, por la del
-          repuesto.
+          Ventas netas menos materiales, mano de obra, gastos directos y
+          garantías. Las reparaciones se agrupan por la categoría del trabajo;
+          el mostrador, por la del repuesto.
         </p>
       </div>
       {complete.length > 0 && (
