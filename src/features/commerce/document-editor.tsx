@@ -219,6 +219,15 @@ export function DocumentEditor({
           />
         </Field>
         {mode === "sale" && (
+          <p className="text-sm text-muted-foreground">
+            {!orderId && lines.some((line) => line.kind === "SERVICE")
+              ? "Al guardar se creará el trabajo y sus tareas. Registra allí el tiempo real; las horas cobradas no sustituyen las trabajadas."
+              : orderId
+                ? "Los repuestos de esta venta se descontarán del inventario solo si aún no se registraron como usados en el trabajo."
+                : "Los repuestos se descuentan del inventario al guardar la venta."}
+          </p>
+        )}
+        {mode === "sale" && (
           <Field>
             <FieldLabel htmlFor="document-location">Sede de salida</FieldLabel>
             <Choice
@@ -344,9 +353,9 @@ export function DocumentEditor({
                   ...data.items
                     .filter((item) => item.kind === line.kind)
                     .map((i) => ({
-                    id: i.id,
-                    label: `${i.name}${i.reference ? ` · ${i.reference}` : ""}`,
-                  })),
+                      id: i.id,
+                      label: `${i.name}${i.reference ? ` · ${i.reference}` : ""}`,
+                    })),
                 ]}
               />
               <FieldDescription>
@@ -425,8 +434,7 @@ export function DocumentEditor({
                     { id: "", label: "Asignar después" },
                     ...data.members
                       .filter(
-                        (member) =>
-                          member.active && member.role === "MECHANIC",
+                        (member) => member.active && member.role === "MECHANIC",
                       )
                       .map((member) => ({ id: member.id, label: member.name })),
                   ]}

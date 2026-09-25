@@ -6,6 +6,7 @@ import { DataEmpty } from "@/components/data-empty";
 import { useCategories } from "@/features/categories/hooks";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { Attachments } from "@/features/control/attachments";
+import { ProfitabilityDetail } from "@/features/profitability/profitability";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -282,6 +283,81 @@ export function CommercePanel({
         });
     }
     if (resource === "sales" && row.status === "ISSUED") {
+      if (row.orderId && onOpenOrder)
+        list.unshift({
+          label: "Abrir trabajo y costos",
+          run: () => {
+            setSelected(null);
+            onOpenOrder(row.orderId!);
+          },
+        });
+      if (!row.orderId && row.lines?.some((l) => l.kind === "SERVICE"))
+        list.push({
+          label: "Conectar trabajo",
+          run: () =>
+            form({
+              kind: "sale-work",
+              title: "Conectar el trabajo de esta venta",
+              submitLabel: "Conectar trabajo",
+              description:
+                "Elige la orden existente o deja el campo vacío para crearla con sus tareas. Conservaremos los repuestos que esta venta ya descontó.",
+              extra: { saleId: row.id },
+              fields: [
+                {
+                  key: "orderId",
+                  label: "Orden existente (opcional)",
+                  type: "select",
+                  optional: true,
+                  options: orders
+                    .filter(
+                      (o) =>
+                        o.customerId === row.customerId &&
+                        o.purpose === "CUSTOMER_REPAIR" &&
+                        o.status !== "CANCELLED",
+                    )
+                    .map((o) => ({
+                      id: o.id,
+                      label: `OT-${o.number} · ${o.title}`,
+                    })),
+                },
+                {
+                  key: "note",
+                  label: "Trabajo realizado / motivo de la vinculación",
+                  type: "textarea",
+                },
+                {
+                  key: "memberId",
+                  label: "Quién hizo los servicios sin responsable (opcional)",
+                  type: "select",
+                  optional: true,
+                  options: data.members.map((m) => ({
+                    id: m.id,
+                    label: m.name,
+                  })),
+                },
+              ],
+            }),
+        });
+      if (row.orderId)
+        list.push({
+          label: "Completar repuestos usados",
+          run: () =>
+            form({
+              kind: "sale-parts",
+              title: "Confirmar repuestos usados",
+              description:
+                "Descuenta del inventario únicamente los repuestos facturados que aún no estén registrados en el trabajo. Los consumos existentes se conservan. Úsalo si estos repuestos realmente se instalaron.",
+              submitLabel: "Registrar los consumos faltantes",
+              extra: { saleId: row.id },
+              fields: [
+                {
+                  key: "note",
+                  label: "Motivo de la revisión",
+                  type: "textarea",
+                },
+              ],
+            }),
+        });
       if (Number(row.balance) > 0)
         list.push({ label: "Cobrar", run: () => payment(row) });
       if (role === "ADMIN") {
@@ -742,6 +818,11 @@ export function CommercePanel({
           </SheetHeader>
           {selected && (
             <div className="sheet-body flex flex-col gap-5">
+              {role === "ADMIN" &&
+                resource === "sales" &&
+                selected.status === "ISSUED" && (
+                  <ProfitabilityDetail saleId={selected.id} />
+                )}
               <div className="flex flex-wrap gap-2">
                 {actions(selected).map((a, index) => (
                   <Button
@@ -818,8 +899,7 @@ export function CommercePanel({
                             {l.kind === "SERVICE"
                               ? l.assignedMember || "Responsable por asignar"
                               : l.reference || "Sin referencia"}{" "}
-                            ·{" "}
-                            {l.businessCategory?.name ?? "Sin categoría"}
+                            · {l.businessCategory?.name ?? "Sin categoría"}
                           </div>
                         </TableCell>
                         <TableCell>{l.quantity}</TableCell>

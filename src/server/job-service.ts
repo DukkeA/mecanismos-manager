@@ -1,4 +1,6 @@
 import "server-only";
+import { Prisma } from "@/generated/prisma/client";
+import { orderCostSource } from "./profitability-source";
 import { z } from "zod";
 import Decimal from "decimal.js";
 import { once, type Actor, type Tx } from "./commands";
@@ -57,48 +59,27 @@ export async function saveLaborRate(actor: Actor, raw: unknown) {
   });
 }
 export async function orderCost(tx: Tx, orderId: string) {
-  const moves = await tx.stockMovement.findMany({ where: { orderId } }),
-    times = await tx.timeEntry.findMany({ where: { task: { orderId } } });
-  const material = moves.reduce(
-    (s, m) => s.minus(m.materialAmount.toString()),
-    new Decimal(0),
-  );
-  let labor = new Decimal(0),
-    missingMinutes = 0;
-  for (const time of times) {
-    const rate = await tx.laborRate.findFirst({
-      where: { memberId: time.memberId, effectiveOn: { lte: time.workedOn } },
-      orderBy: { effectiveOn: "desc" },
-    });
-    if (!rate) missingMinutes += time.minutes;
-    else
-      labor = labor.plus(
-        new Decimal(rate.hourlyCost.toString()).mul(time.minutes).div(60),
-      );
-  }
-  const extra = await tx.overtimeEntry.aggregate({
-    where: {
-      taskId: {
-        in: (
-          await tx.task.findMany({ where: { orderId }, select: { id: true } })
-        ).map((t) => t.id),
-      },
-      voidedAt: null,
-    },
-    _sum: { pay: true, employerCost: true },
-  });
-  labor = labor
-    .plus(extra._sum.pay?.toString() ?? 0)
-    .plus(extra._sum.employerCost?.toString() ?? 0);
+  const [cost] = await tx.$queryRaw<
+    Array<{
+      material: string;
+      labor: string;
+      expenses: string;
+      missingMinutes: number;
+      missingMaterials: boolean;
+      missingTasks: number;
+      estimatedExpenses: number;
+    }>
+  >(Prisma.sql`SELECT material::text,labor::text,expenses::text,"missingMinutes","missingMaterials","missingTasks","estimatedExpenses"
+    FROM (${orderCostSource}) c WHERE c.id=${orderId}::uuid`);
+  if (!cost) throw new DomainError("La orden no existe.");
   return {
-    material: material.toDecimalPlaces(2),
-    labor: labor.toDecimalPlaces(2),
-    missingMinutes,
-    missingMaterials: moves.some(
-      (m) => !m.costKnown && m.quantity.isNegative(),
-    ),
+    ...cost,
+    material: new Decimal(cost.material),
+    labor: new Decimal(cost.labor),
+    expenses: new Decimal(cost.expenses),
   };
 }
+
 export async function openWarranty(actor: Actor, raw: unknown) {
   requirePermission(actor.role, "orders:write");
   const input = z
@@ -455,6 +436,10 @@ export async function finishUnit(actor: Actor, raw: unknown) {
       throw new DomainError(
         "Faltan costos de materiales para cerrar la valoración.",
       );
+    if (cost.missingTasks || cost.estimatedExpenses)
+      throw new DomainError(
+        "Registra el tiempo de las tareas y confirma los gastos del trabajo antes de valorar la unidad.",
+      );
     if (cost.missingMinutes)
       throw new DomainError(
         "Faltan tarifas de mano de obra para calcular el costo.",
@@ -463,7 +448,12 @@ export async function finishUnit(actor: Actor, raw: unknown) {
       where: { id: unit.id },
       data: {
         status: "AVAILABLE",
-        rebuildCost: cost.material.plus(cost.labor).toFixed(2),
+        rebuildCost: cost.material
+          .plus(cost.labor)
+          .plus(cost.expenses)
+          .toFixed(2),
+        rebuildLaborCost: cost.labor.toFixed(2),
+        rebuildExpenseCost: cost.expenses.toFixed(2),
       },
     });
     await tx.auditEvent.create({
@@ -471,7 +461,9 @@ export async function finishUnit(actor: Actor, raw: unknown) {
         actorId: actor.id,
         entityId: unit.id,
         action: "UNIT_FINISHED",
-        details: { cost: cost.material.plus(cost.labor).toFixed(2) },
+        details: {
+          cost: cost.material.plus(cost.labor).plus(cost.expenses).toFixed(2),
+        },
       },
     });
     return { id: unit.id };
@@ -530,6 +522,8 @@ export async function sellUnit(actor: Actor, raw: unknown) {
             unitPrice: input.price,
             discount: "0",
             total: input.price,
+            laborCost: unit.rebuildLaborCost,
+            expenseCost: unit.rebuildExpenseCost,
             materialCost: new Decimal(unit.coreCost.toString())
               .plus(unit.rebuildCost!.toString())
               .toFixed(2),

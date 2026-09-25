@@ -36,6 +36,7 @@ import type { Role } from "@/domain/permissions";
 import Decimal from "decimal.js";
 import { ArrowLeftRight, Plus, ReceiptText, Undo2, Wallet } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { FinancialOverview } from "./financial-overview";
 import { useCash, useCashMutation } from "./hooks";
@@ -56,6 +57,7 @@ export function CashPanel({
   const { data: customers = [] } = useWorkshopQuery(
     (s) => s.operations.customers,
   );
+  const { data: expenseOrders = [] } = useWorkshopQuery((s) => s.orders);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [history, setHistory] = useState<string | null>(null);
   const [sortTable] = useQueryState("table");
@@ -71,6 +73,17 @@ export function CashPanel({
     [min, setMin] = useQueryState("min"),
     [max, setMax] = useQueryState("max");
   const tab = fixedTab ?? queryTab;
+  const orderField = {
+    key: "orderId",
+    label: "Trabajo al que pertenece (opcional)",
+    type: "select" as const,
+    optional: true,
+    hint: "Déjalo vacío para gastos generales. Para repuestos de inventario usa Compras.",
+    options: expenseOrders.map((o) => ({
+      id: o.id,
+      label: `OT-${o.number} · ${o.title}`,
+    })),
+  };
   const [reviewLegacy, setReviewLegacy] = useState(false);
   if (!cash) return null;
   const accountOptions = [...cash.accounts]
@@ -171,6 +184,7 @@ export function CashPanel({
       { key: "occurredOn", label: "Fecha del movimiento", type: "date" },
       { key: "reference", label: "Comprobante / referencia", optional: true },
       { key: "note", label: "Concepto", type: "textarea" },
+      orderField,
     ],
   };
   const correct = (o: OperationsView["obligations"][number]) =>
@@ -251,9 +265,10 @@ export function CashPanel({
     submitLabel: "Registrar gasto",
     description:
       "Quedará pendiente de pago. El dinero se descontará de una cuenta cuando registres un abono.",
-    extra: { period },
+    extra: { period, category: "OTHER" },
     fields: [
       { key: "title", label: "Concepto" },
+      orderField,
       {
         key: "category",
         label: "Categoría",
@@ -723,6 +738,14 @@ export function CashPanel({
                       {o.title}
                       {o.estimated ? " · Estimado" : ""}
                     </strong>
+                    {o.orderId && (
+                      <Link
+                        className="block text-sm underline"
+                        href={`?view=Órdenes&orderId=${o.orderId}`}
+                      >
+                        Ver trabajo asociado
+                      </Link>
+                    )}
                     <div>
                       <RecordStamp id={o.id} />
                     </div>
@@ -806,6 +829,14 @@ export function CashPanel({
                     </Badge>
                   </header>
                   <RecordStamp id={o.id} />
+                  {o.orderId && (
+                    <Link
+                      className="text-sm underline"
+                      href={`?view=Órdenes&orderId=${o.orderId}`}
+                    >
+                      Ver trabajo asociado
+                    </Link>
+                  )}
                   <small>Vence {dateLabel(o.dueOn)}</small>
                   <dl>
                     <div>

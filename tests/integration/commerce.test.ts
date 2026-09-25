@@ -119,6 +119,11 @@ afterAll(async () => {
   await db().catalogItem.deleteMany({
     where: { id: { in: [itemId, serviceId] } },
   });
+  await db().taskAssignment.deleteMany({
+    where: { task: { order: { locationId } } },
+  });
+  await db().task.deleteMany({ where: { order: { locationId } } });
+  await db().workOrder.deleteMany({ where: { locationId } });
   await db().location.delete({ where: { id: locationId } });
   await db().moneyAccount.delete({ where: { id: accountId } });
   await db().customer.delete({ where: { id: customerId } });
@@ -129,6 +134,43 @@ afterAll(async () => {
   );
   await db().member.deleteMany({ where: { id: { in: ids } } });
   await db().$disconnect();
+});
+it("rolls back automatic work and stock when a mixed checkout fails", async () => {
+  const before = await db().workOrder.count({ where: { locationId } });
+  const requestId = uuid();
+  await expect(
+    issueSale(admin, {
+      ...base(),
+      requestId,
+      payment: { accountId, amount: "100" },
+      lines: [
+        ...base().lines,
+        {
+          itemId,
+          description: "Repuesto sin existencias",
+          quantity: "999",
+          unitPrice: "100",
+          discount: "0",
+          condition: "NEW",
+        },
+      ],
+    }),
+  ).rejects.toThrow("existencias");
+  expect(await db().workOrder.count({ where: { locationId } })).toBe(before);
+  expect(await db().sale.count({ where: { customerId } })).toBe(0);
+  expect(await db().commandReceipt.count({ where: { id: requestId } })).toBe(0);
+  expect(
+    (
+      await db().moneyAccount.findUniqueOrThrow({ where: { id: accountId } })
+    ).balance.toString(),
+  ).toBe("0");
+  expect(
+    (
+      await db().stockBalance.findFirstOrThrow({
+        where: { itemId, locationId },
+      })
+    ).quantity.toString(),
+  ).toBe("10");
 });
 it("retains revisions and uses approved prices despite a changed catalog or submitted price", async () => {
   const first = await saveQuote(office, {
@@ -209,10 +251,12 @@ it("snapshots catalog cost and keeps the quoted labor assignment and selling rat
   expect(labor.assignedMemberId).toBe(mechanic.id);
   expect(labor.quantity.toString()).toBe("3");
   expect(labor.unitPrice.toString()).toBe("175000");
-  const row = (await page("quotes")).rows.find((record) => record.id === quote.id)!;
-  expect(row.lines?.find((line) => line.kind === "SERVICE")?.assignedMember).toBe(
-    "Prueba comercio",
-  );
+  const row = (await page("quotes")).rows.find(
+    (record) => record.id === quote.id,
+  )!;
+  expect(
+    row.lines?.find((line) => line.kind === "SERVICE")?.assignedMember,
+  ).toBe("Prueba comercio");
 });
 it("applies 300k advance plus 200k payment and reversal without duplicate money", async () => {
   const sale = await issueSale(office, base());

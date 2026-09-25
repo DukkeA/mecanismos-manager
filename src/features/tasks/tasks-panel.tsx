@@ -39,6 +39,9 @@ import { toast } from "sonner";
 import { useOrders } from "../orders/hooks";
 import { useTeam } from "../team/hooks";
 import { useTaskMutation, useTasks } from "./hooks";
+import { useOrderCommand } from "../orders/hooks";
+import { useWorkshopScope } from "../workshop/query";
+import { todayInBogota } from "../cash/summary";
 
 type Task = OperationsView["tasks"][number];
 const taskColumns = Object.entries(states).map(([id, label]) => ({
@@ -52,6 +55,8 @@ export function TasksPanel({
   role: Role;
   openOrder: (id: string) => void;
 }) {
+  const timeMutation = useOrderCommand();
+  const { actorId } = useWorkshopScope();
   const [archiveView, setArchiveView] = useQueryState("archive", "active");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data: tasks = [] } = useTasks(
@@ -478,6 +483,60 @@ export function TasksPanel({
         locked={selected ? locked(selected) : true}
         onClose={() => setSelectedId(null)}
         actions={selected ? actions(selected, true) : null}
+        timeForm={
+          selected &&
+          !selected.deletedAt &&
+          (!locked(selected) || role === "ADMIN") ? (
+            <OperationForm
+              key={`${selected.id}-${selected.timeEntries?.length ?? 0}`}
+              dialog={{
+                kind: "time",
+                title: "Tiempo dedicado",
+                submitLabel: "Guardar tiempo",
+                extra: {
+                  taskId: selected.id,
+                  workedOn: todayInBogota(),
+                  memberId: role === "MECHANIC" ? actorId : selected.members[0],
+                },
+                fields: [
+                  ...(role === "MECHANIC"
+                    ? []
+                    : [
+                        {
+                          key: "memberId",
+                          label: "Quién hizo el trabajo",
+                          type: "select" as const,
+                          options: members
+                            .filter((m) => selected.members.includes(m.id))
+                            .map((m) => ({ id: m.id, label: m.name })),
+                        },
+                      ]),
+                  {
+                    key: "minutes",
+                    label: "Minutos trabajados",
+                    type: "quantity",
+                    hint: "Ejemplo: una hora y media son 90 minutos. Registra solo el tiempo que falta.",
+                  },
+                  { key: "workedOn", label: "Día trabajado", type: "date" },
+                  { key: "note", label: "Qué se hizo", type: "textarea" },
+                ],
+              }}
+              submit={async ({ requestId, ...input }) => {
+                await timeMutation.mutateAsync({
+                  kind: "time",
+                  input: {
+                    ...input,
+                    minutes: Number(input.minutes),
+                    idempotencyKey: requestId,
+                  },
+                });
+                toast.success(
+                  "Tiempo guardado. Los costos del trabajo se actualizaron.",
+                );
+              }}
+            />
+          ) : null
+        }
         onNote={async (input) => {
           await mutation.mutateAsync({ kind: "task-note", input });
           toast.success("Observación guardada.");

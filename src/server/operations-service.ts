@@ -410,7 +410,9 @@ export async function transitionOrder(actor: Actor, raw: unknown) {
       data: {
         status: input.status,
         version: { increment: 1 },
-        closedAt: input.status === "CLOSED" ? new Date() : null,
+        closedAt: ["CLOSED", "CANCELLED"].includes(input.status)
+          ? new Date()
+          : null,
       },
     });
     await tx.auditEvent.create({

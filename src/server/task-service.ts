@@ -4,6 +4,7 @@ import { once, setActor, type Actor } from "./commands";
 import { requirePermission } from "@/domain/permissions";
 import { z } from "zod";
 import { serializable } from "./commands";
+import { assertExpenseOrder } from "./expense-order";
 import {
   canContributeToTask,
   AccessDenied,
@@ -32,6 +33,7 @@ export async function recordTaskTime(
       select: {
         id: true,
         deletedAt: true,
+        orderId: true,
         order: { select: { status: true } },
         assignments: { select: { memberId: true } },
       },
@@ -67,8 +69,15 @@ export async function recordTaskTime(
         throw new Error("La solicitud ya existe con otros datos.");
       return { id: existing.id };
     }
-    if (task.order && ["CLOSED", "CANCELLED"].includes(task.order.status))
-      throw new Error("La orden está cerrada.");
+    if (
+      task.order &&
+      ["CLOSED", "CANCELLED"].includes(task.order.status) &&
+      actor.role !== "ADMIN"
+    )
+      throw new DomainError(
+        "La orden está cerrada. Un administrador puede completar su tiempo histórico.",
+      );
+    await assertExpenseOrder(tx, task.orderId);
     const workedOn = new Date(`${input.workedOn}T00:00:00.000Z`);
     const [regular, extra] = await Promise.all([
       tx.timeEntry.aggregate({
@@ -99,7 +108,13 @@ export async function recordTaskTime(
         actorId: actor.id,
         action: "TASK_TIME_RECORDED",
         entityId: entry.id,
-        details: { taskId: input.taskId, memberId, minutes: input.minutes },
+        details: {
+          taskId: input.taskId,
+          memberId,
+          minutes: input.minutes,
+          historical:
+            !!task.order && ["CLOSED", "CANCELLED"].includes(task.order.status),
+        },
       },
     });
     return { id: entry.id };

@@ -13,6 +13,7 @@ import {
 } from "./commercial-ledger";
 import { allocate, paymentState } from "./payment-service";
 import { snapshotLines, validateCustomerOrder } from "./quote-service";
+import { completeSaleConsumption } from "./sale-work";
 
 export async function issueSale(actor: Actor, raw: unknown) {
   requirePermission(actor.role, "finance:write");
@@ -104,13 +105,60 @@ export async function issueSale(actor: Actor, raw: unknown) {
     const total = lines.reduce((s, l) => s.plus(l.total), new Decimal(0));
     if (!total.gt(0))
       throw new DomainError("La venta debe tener un valor mayor que cero.");
+    let orderId = input.orderId;
+    if (orderId) {
+      const warranty = await tx.warrantyCase.findUnique({
+        where: { repairOrderId: orderId },
+      });
+      if (warranty && warranty.decision !== "REJECTED")
+        throw new DomainError(
+          "Una garantía aceptada no genera un nuevo cobro. Si no aplica garantía, registra primero el diagnóstico y el rechazo.",
+        );
+    } else if (lines.some((line) => line.kind === "SERVICE")) {
+      const order = await tx.workOrder.create({
+        data: {
+          customerId: input.customerId,
+          locationId: input.locationId,
+          purpose: "CUSTOMER_REPAIR",
+          status: "IN_PROGRESS",
+          title: quote?.title ?? input.title,
+          receivedAt: day(input.issuedOn),
+          reportedProblem: "Trabajo creado al registrar la venta de servicios.",
+          businessCategoryId: lines.find((l) => l.kind === "SERVICE")
+            ?.businessCategoryId,
+          tasks: {
+            create: lines
+              .filter((l) => l.kind === "SERVICE")
+              .map((l) => ({
+                title: l.description,
+                ...(l.assignedMemberId
+                  ? {
+                      assignments: { create: { memberId: l.assignedMemberId } },
+                    }
+                  : {}),
+              })),
+          },
+        },
+      });
+      orderId = order.id;
+      if (quote)
+        await tx.quote.update({ where: { id: quote.id }, data: { orderId } });
+      await tx.auditEvent.create({
+        data: {
+          actorId: actor.id,
+          entityId: orderId,
+          action: "ORDER_FROM_SALE",
+          details: { requestId: input.requestId, quoteId: quote?.id ?? null },
+        },
+      });
+    }
     const sale = await tx.sale.create({
       data: {
         customerId: input.customerId,
-        orderId: input.orderId,
+        orderId,
         quoteId: input.quoteId,
         locationId: input.locationId,
-        kind: input.orderId ? "REPAIR" : "COUNTER",
+        kind: orderId ? "REPAIR" : "COUNTER",
         title: quote?.title ?? input.title,
         terms: quote?.terms ?? input.terms,
         total: total.toFixed(2),
@@ -120,14 +168,24 @@ export async function issueSale(actor: Actor, raw: unknown) {
         actorId: actor.id,
       },
     });
-    const orderCategory = input.orderId
-      ? (await tx.workOrder.findUniqueOrThrow({ where: { id: input.orderId } }))
+    const orderCategory = orderId
+      ? (await tx.workOrder.findUniqueOrThrow({ where: { id: orderId } }))
           .businessCategoryId
       : undefined;
+    if (orderId)
+      await completeSaleConsumption(
+        tx,
+        actor,
+        orderId,
+        input.locationId,
+        sale.number,
+        lines,
+        input.issuedOn,
+      );
     for (const line of lines) {
       // Repair parts are consumed against the work order; invoicing must not consume twice.
       const movement =
-        !input.orderId && line.kind === "PART"
+        !orderId && line.kind === "PART"
           ? await postStock(tx, actor, {
               itemId: line.itemId,
               locationId: input.locationId,
@@ -141,9 +199,7 @@ export async function issueSale(actor: Actor, raw: unknown) {
         data: {
           saleId: sale.id,
           itemId: line.itemId,
-          businessCategoryId: input.orderId
-            ? orderCategory
-            : line.businessCategoryId,
+          businessCategoryId: orderId ? orderCategory : line.businessCategoryId,
           description: line.description,
           reference: line.reference,
           kind: line.kind,

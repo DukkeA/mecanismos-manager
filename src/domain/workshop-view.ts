@@ -4,6 +4,7 @@ export type OrderView = {
   businessCategoryId?: string | null;
   businessCategory?: string;
   id: string;
+  purpose?: string;
   number: number;
   title: string;
   reference: string;

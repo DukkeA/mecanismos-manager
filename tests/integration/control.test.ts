@@ -651,6 +651,35 @@ it("tracks a rebuilt unit through sale and full return without fractional or dup
     orderId: own.id,
     coreCost: "150000",
   });
+  await expect(
+    finishUnit(admin, { requestId: uuid(), unitId: unit.id }),
+  ).rejects.toThrow("tiempo");
+  const inspection = await db().task.create({
+    data: {
+      orderId: own.id,
+      title: "Inspección sin costo laboral remunerado",
+      status: "DONE",
+    },
+  });
+  await db().laborRate.create({
+    data: {
+      memberId: office.id,
+      effectiveOn: new Date("2026-09-10"),
+      hourlyCost: 0,
+      note: reason,
+      actorId: admin.id,
+    },
+  });
+  await db().timeEntry.create({
+    data: {
+      taskId: inspection.id,
+      memberId: office.id,
+      minutes: 15,
+      workedOn: new Date("2026-09-11"),
+      note: reason,
+      idempotencyKey: uuid(),
+    },
+  });
   await finishUnit(admin, { requestId: uuid(), unitId: unit.id });
   const input = {
     requestId: uuid(),

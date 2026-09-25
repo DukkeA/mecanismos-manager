@@ -20,6 +20,7 @@ export async function postStock(
     kind: string;
     reason: string;
     orderId?: string;
+    occurredOn?: string;
     materialAmount?: string;
     costKnown?: boolean;
   },
@@ -73,6 +74,7 @@ export async function postStock(
       kind: input.kind,
       reason: input.reason,
       orderId: input.orderId,
+      occurredOn: input.occurredOn ? day(input.occurredOn) : undefined,
       actorId: actor.id,
     },
   });

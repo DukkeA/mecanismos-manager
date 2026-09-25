@@ -168,6 +168,8 @@ model Asset {
 }
 
 model WorkOrder {
+  expenses           Obligation[]
+  cashExpenses       CashEntry[]
   organizerEntries   OrganizerEntry[]
   responsibleId      String?           @db.Uuid
   responsible        Member?           @relation("OrderResponsible", fields: [responsibleId], references: [id])
@@ -378,6 +380,7 @@ model CommandReceipt {
 }
 
 model StockMovement {
+  occurredOn DateTime? @db.Date
   costKnown  Boolean         @default(true)
   saleLine   SaleLine?
   returnLine SaleReturnLine?
@@ -419,6 +422,8 @@ model MoneyAccount {
 }
 
 model Obligation {
+  orderId      String?     @db.Uuid
+  order        WorkOrder?  @relation(fields: [orderId], references: [id], onDelete: Restrict)
   salaryPeriod String?     @unique @db.VarChar(7)
   recurringId  String?     @db.Uuid
   estimated    Boolean     @default(false)
@@ -433,6 +438,7 @@ model Obligation {
 
   @@unique([recurringId, period])
   @@index([period, category])
+  @@index([orderId])
   @@schema("workshop")
 }
 
@@ -481,6 +487,8 @@ model AdminNotification {
 }
 
 model CashEntry {
+  orderId      String?      @db.Uuid
+  order        WorkOrder?   @relation(fields: [orderId], references: [id], onDelete: Restrict)
   customerPayment CustomerPayment?
 
   transferId   String?      @db.Uuid
@@ -506,6 +514,7 @@ model CashEntry {
   @@unique([transferId, kind, direction])
   @@index([accountId, occurredOn])
   @@index([obligationId])
+  @@index([orderId])
   @@index([actorId])
   @@schema("workshop")
 }
@@ -624,6 +633,9 @@ model Sale {
 }
 
 model SaleLine {
+  // UNIT: immutable split of materialCost (which retains the complete unit cost).
+  laborCost        Decimal?         @db.Decimal(18, 2)
+  expenseCost      Decimal?         @db.Decimal(18, 2)
   businessCategoryId String?           @db.Uuid
   businessCategory   BusinessCategory? @relation(fields: [businessCategoryId], references: [id], onDelete: Restrict)
 
@@ -962,6 +974,8 @@ model InventoryCount {
 }
 
 model SerializedUnit {
+  rebuildLaborCost   Decimal? @db.Decimal(18, 2)
+  rebuildExpenseCost Decimal? @db.Decimal(18, 2)
   id          String   @id @default(uuid()) @db.Uuid
   itemId      String   @db.Uuid
   locationId  String   @db.Uuid

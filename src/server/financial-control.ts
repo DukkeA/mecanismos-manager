@@ -6,6 +6,7 @@ import { requirePermission } from "@/domain/permissions";
 import { DomainError } from "@/domain/errors";
 import { money, positiveMoney } from "@/domain/commercial";
 import { day } from "./commercial-ledger";
+import { assertExpenseOrder } from "./expense-order";
 const period = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
   note = z.string().trim().min(5).max(3000);
 export async function assertOpenCash(
@@ -299,6 +300,7 @@ export async function correctObligation(actor: Actor, raw: unknown) {
         );
       if (o.category === "PAYROLL")
         requirePermission(actor.role, "payroll:read");
+      await assertExpenseOrder(tx, o.orderId);
       const paid = o.entries.reduce(
         (s, e) =>
           s.plus(

@@ -98,6 +98,7 @@ export async function getOrders(
     const asset = order.assets[0]?.asset;
     return {
       id: order.id,
+      purpose: order.purpose,
       number: order.number,
       businessCategoryId: order.businessCategoryId,
       businessCategoryLocked:

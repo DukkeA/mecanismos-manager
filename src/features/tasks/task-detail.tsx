@@ -175,6 +175,7 @@ export function TaskDetail({
   onClose,
   actions,
   onNote,
+  timeForm,
 }: {
   task: Task | undefined;
   names: string;
@@ -183,6 +184,7 @@ export function TaskDetail({
   onClose: () => void;
   actions: React.ReactNode;
   onNote: (input: Record<string, unknown>) => Promise<void>;
+  timeForm?: React.ReactNode;
 }) {
   return (
     <FormSheet
@@ -267,6 +269,7 @@ export function TaskDetail({
                 </section>
                 <section className="detail-section">
                   <h3>Registro de tiempo</h3>
+                  {timeForm}
                   {task.timeEntries?.length ? (
                     <ul className="detail-list">
                       {task.timeEntries.map((e) => (
@@ -276,7 +279,8 @@ export function TaskDetail({
                             {e.overtime
                               ? " · Horas extra"
                               : " · Tiempo ordinario"}
-                            utos · {e.author}
+                            {" · "}
+                            {e.author}
                           </strong>
                           <p>{e.note}</p>
                           <small>{dateLabel(e.workedOn)}</small>

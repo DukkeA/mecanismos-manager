@@ -129,7 +129,7 @@ export async function getOperations(
         ...t.timeEntries.map((e) => ({
           id: e.id,
           minutes: e.minutes,
-          workedOn: e.workedOn.toISOString(),
+          workedOn: e.workedOn.toISOString().slice(0, 10),
           note: e.note,
           author: e.member.name,
         })),
@@ -138,7 +138,7 @@ export async function getOperations(
           .map((e) => ({
             id: e.id,
             minutes: e.minutes,
-            workedOn: e.workedOn.toISOString(),
+            workedOn: e.workedOn.toISOString().slice(0, 10),
             note: e.note,
             author: author(e.memberId),
             overtime: true,
@@ -236,6 +236,7 @@ export async function getOperations(
       balance: a.balance.toFixed(2),
     })),
     obligations: obligations.map((o) => ({
+      orderId: o.orderId,
       salaryPeriod: o.salaryPeriod,
       estimated: o.estimated,
       id: o.id,
@@ -257,6 +258,7 @@ export async function getOperations(
       dueOn: o.dueOn.toISOString().slice(0, 10),
     })),
     cashEntries: cash.map((e) => ({
+      orderId: e.orderId,
       transferId: e.transferId,
       id: e.id,
       accountId: e.accountId,

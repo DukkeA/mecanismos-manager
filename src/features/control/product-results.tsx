@@ -237,9 +237,10 @@ export function ProductResults({ from, to }: { from?: string; to?: string }) {
       )}
       <p className="text-sm text-muted-foreground">
         En mostrador se descuenta el costo del repuesto. En órdenes cerradas, el
-        costo total de materiales y mano de obra se reparte según el valor
-        original de cada línea: es una atribución estimada. El margen no
-        descuenta gastos generales ni garantías posteriores.
+        costo de materiales, mano de obra, gastos directos y garantías se
+        reparte según el valor original de cada línea: es una atribución
+        estimada. Las garantías de mostrador se distribuyen entre sus líneas;
+        los gastos generales se descuentan en el resultado mensual del taller.
       </p>
     </section>
   );
