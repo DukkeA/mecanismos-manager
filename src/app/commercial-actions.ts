@@ -12,10 +12,16 @@ import { reverseCash } from "@/server/cash-service";
 import { DomainError } from "@/domain/errors";
 import { AccessDenied } from "@/domain/permissions";
 import { ZodError } from "zod";
+import {
+  connectSaleWork,
+  completeRepairParts,
+} from "@/server/profitability-service";
 const commands = {
   quote: saveQuote,
   "quote-decision": decideQuote,
   sale: issueSale,
+  "sale-work": connectSaleWork,
+  "sale-parts": completeRepairParts,
   "sale-return": returnSale,
   "sale-void": voidSale,
   payment: receivePayment,

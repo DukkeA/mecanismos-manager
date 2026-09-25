@@ -9,6 +9,7 @@ import { once, type Actor } from "./commands";
 import { requirePermission } from "@/domain/permissions";
 import { accountNames } from "@/domain/accounts";
 import { cashKinds } from "@/domain/cash";
+import { assertExpenseOrder } from "./expense-order";
 
 const money = z.string().regex(/^\d{1,12}(\.\d{1,2})?$/);
 const positiveMoney = money.refine((v) => new Decimal(v).gt(0));
@@ -47,6 +48,7 @@ export async function createObligation(actor: Actor, raw: unknown) {
   const input = z
     .object({
       requestId: z.uuid(),
+      orderId: z.uuid().optional(),
       title: z.string().trim().min(3).max(200),
       category: z.enum(["RENT", "UTILITIES", "PAYROLL", "OTHER"]),
       period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
@@ -62,6 +64,11 @@ export async function createObligation(actor: Actor, raw: unknown) {
     "OBLIGATION_CREATED",
     input,
     async (tx) => {
+      await assertExpenseOrder(tx, input.orderId);
+      if (input.orderId && input.category !== "OTHER")
+        throw new DomainError(
+          "Los gastos de un trabajo se registran como Otros gastos; la nómina y los gastos generales se calculan por separado.",
+        );
       await tx.monthCoverage.updateMany({
         where: { period: input.period },
         data: { confirmed: false },
@@ -69,6 +76,7 @@ export async function createObligation(actor: Actor, raw: unknown) {
       const obligation = await tx.obligation.create({
         data: {
           title: input.title,
+          orderId: input.orderId,
           category: input.category,
           period: input.period,
           amount: input.amount,
@@ -95,6 +103,7 @@ export async function recordCash(actor: Actor, raw: unknown) {
       requestId: z.uuid(),
       accountId: z.uuid(),
       obligationId: z.uuid().optional(),
+      orderId: z.uuid().optional(),
       kind: z.enum(
         Object.keys(cashKinds) as [
           keyof typeof cashKinds,
@@ -119,6 +128,14 @@ export async function recordCash(actor: Actor, raw: unknown) {
   )
     throw new DomainError("Esta operación requiere administración.");
   return once(actor, input.requestId, "CASH_RECORDED", input, async (tx) => {
+    if (
+      input.orderId &&
+      (input.kind !== "EXPENSE_PAYMENT" || input.obligationId)
+    )
+      throw new DomainError(
+        "Vincula el trabajo al gasto original. Solo un gasto directo sin obligación admite una orden aquí.",
+      );
+    await assertExpenseOrder(tx, input.orderId);
     await assertOpenCash(tx, input.accountId, input.occurredOn);
     const direction = cashKinds[input.kind].direction;
     const amount = new Decimal(input.amount);
@@ -165,6 +182,7 @@ export async function recordCash(actor: Actor, raw: unknown) {
       data: {
         accountId: input.accountId,
         obligationId: input.obligationId,
+        orderId: input.orderId,
         kind: input.kind,
         direction,
         amount: input.amount,
@@ -224,6 +242,7 @@ export async function reverseCash(actor: Actor, raw: unknown) {
       );
     if (original.transferId)
       return reverseTransfer(tx, actor, original.transferId, input);
+    await assertExpenseOrder(tx, original.orderId);
     const payment = await tx.customerPayment.findUnique({
       where: { entryId: original.id },
       include: {
@@ -256,6 +275,7 @@ export async function reverseCash(actor: Actor, raw: unknown) {
       data: {
         accountId: account.id,
         obligationId: original.obligationId,
+        orderId: original.orderId,
         direction,
         amount: original.amount,
         kind: "REVERSAL",
