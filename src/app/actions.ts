@@ -21,9 +21,17 @@ export async function addObservation(orderId: string, body: string) {
           id: input.orderId,
           ...(actor.role === "MECHANIC"
             ? {
-                tasks: {
-                  some: { assignments: { some: { memberId: actor.id } } },
-                },
+                OR: [
+                  { responsibleId: actor.id },
+                  {
+                    tasks: {
+                      some: {
+                        deletedAt: null,
+                        assignments: { some: { memberId: actor.id } },
+                      },
+                    },
+                  },
+                ],
               }
             : {}),
         },

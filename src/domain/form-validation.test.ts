@@ -1,6 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { validateForm } from "./form-validation";
+import { validateForm, zodErrorMessage } from "./form-validation";
+import { z } from "zod";
 describe("validation before writing workshop data", () => {
+  it("explains nested server validation in Spanish with the line number", () => {
+    const result = z
+      .object({ lines: z.array(z.object({ quantity: z.string().min(1) })) })
+      .safeParse({ lines: [{ quantity: "" }] });
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(zodErrorMessage(result.error)).toContain(
+        "Línea 1 · Cantidad: El valor mínimo es 1 caracteres.",
+      );
+  });
   it("rejects ambiguous monetary formatting without changing its meaning", () => {
     expect(
       validateForm([{ key: "amount", label: "Valor", type: "money" }], {
@@ -56,5 +67,26 @@ describe("validation before writing workshop data", () => {
     expect(
       validateForm([{ key: "period", label: "Mes" }], { period: "2026-13" }),
     ).toHaveProperty("period");
+  });
+  it("uses real dates and time boundaries and keeps optional notes optional", () => {
+    expect(
+      validateForm([{ key: "date", label: "Fecha", type: "date" }], {
+        date: "2026-02-30",
+      }),
+    ).toHaveProperty("date");
+    expect(
+      validateForm([{ key: "time", label: "Hora", type: "time" }], {
+        time: "24:00",
+      }),
+    ).toHaveProperty("time");
+    expect(
+      validateForm(
+        [
+          { key: "time", label: "Hora", type: "time" },
+          { key: "reason", label: "Detalles", optional: true },
+        ],
+        { time: "23:59", reason: "" },
+      ),
+    ).toEqual({});
   });
 });

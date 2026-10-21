@@ -22,7 +22,7 @@ import {
 } from "./ui/field";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { Choice, DateField } from "./workshop-controls";
+import { Choice, DateField, TimeField } from "./workshop-controls";
 export type Option = { id: string; label: string };
 export type Dialog = {
   kind: string;
@@ -48,6 +48,15 @@ export function OperationForm({
     useIsMutating({ mutationKey: ["category-command"] }) > 0;
   const [error, setError] = useState("");
   const [requestId] = useState(() => crypto.randomUUID());
+  const describedBy = (field: FormField) =>
+    [
+      field.hint || field.type === "money" || field.type === "quantity"
+        ? `${formId}-${field.key}-help`
+        : "",
+      fieldErrors[field.key] ? `${formId}-${field.key}-error` : "",
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   return (
     <form
@@ -91,8 +100,23 @@ export function OperationForm({
           draft.saved();
         } catch (e) {
           setError(e instanceof Error ? e.message : "No se pudo guardar.");
-          if (e && typeof e === "object" && "fields" in e) {
-            const fields = e.fields as Record<string, string>;
+          if (
+            e &&
+            typeof e === "object" &&
+            "fields" in e &&
+            e.fields &&
+            typeof e.fields === "object"
+          ) {
+            const fields = Object.fromEntries(
+              Object.entries(e.fields as Record<string, string>).map(
+                ([key, message]) => [
+                  dialog.fields.some((field) => field.key === key)
+                    ? key
+                    : key.split(".").at(-1)!,
+                  message,
+                ],
+              ),
+            );
             setFieldErrors(fields);
             document
               .getElementById(`${formId}-${Object.keys(fields)[0]}`)
@@ -166,7 +190,7 @@ export function OperationForm({
                   defaultValue={dialog.extra?.[field.key]}
                   invalid={!!fieldErrors[field.key]}
                   disabled={pending}
-                  describedBy={`${formId}-${field.key}-help ${formId}-${field.key}-error`}
+                  describedBy={describedBy(field)}
                 />
               ) : field.type === "select" ? (
                 <Choice
@@ -174,7 +198,7 @@ export function OperationForm({
                   name={field.key}
                   required={!field.optional}
                   aria-invalid={!!fieldErrors[field.key]}
-                  aria-describedby={`${formId}-${field.key}-help ${formId}-${field.key}-error`}
+                  aria-describedby={describedBy(field)}
                   defaultValue={String(
                     dialog.extra?.[field.key] ??
                       (field.optional ? "" : (field.options?.[0]?.id ?? "")),
@@ -193,8 +217,18 @@ export function OperationForm({
                   label={field.label}
                   required={!field.optional}
                   aria-invalid={!!fieldErrors[field.key]}
-                  aria-describedby={`${formId}-${field.key}-help ${formId}-${field.key}-error`}
+                  aria-describedby={describedBy(field)}
                   defaultValue={String(dialog.extra?.[field.key] ?? "")}
+                />
+              ) : field.type === "time" ? (
+                <TimeField
+                  id={`${formId}-${field.key}`}
+                  name={field.key}
+                  label={field.label}
+                  required={!field.optional}
+                  defaultValue={String(dialog.extra?.[field.key] ?? "")}
+                  aria-invalid={!!fieldErrors[field.key]}
+                  aria-describedby={describedBy(field)}
                 />
               ) : field.type === "textarea" ? (
                 <Textarea
@@ -202,8 +236,9 @@ export function OperationForm({
                   name={field.key}
                   required={!field.optional}
                   aria-invalid={!!fieldErrors[field.key]}
-                  aria-describedby={`${formId}-${field.key}-help ${formId}-${field.key}-error`}
-                  maxLength={1000}
+                  aria-describedby={describedBy(field)}
+                  minLength={field.minLength}
+                  maxLength={field.maxLength ?? 5000}
                   defaultValue={String(dialog.extra?.[field.key] ?? "")}
                 />
               ) : (
@@ -222,8 +257,9 @@ export function OperationForm({
                   }
                   required={!field.optional}
                   aria-invalid={!!fieldErrors[field.key]}
-                  aria-describedby={`${formId}-${field.key}-help ${formId}-${field.key}-error`}
-                  maxLength={200}
+                  aria-describedby={describedBy(field)}
+                  minLength={field.minLength}
+                  maxLength={field.maxLength ?? 200}
                   defaultValue={String(dialog.extra?.[field.key] ?? "")}
                 />
               )}{" "}
@@ -244,7 +280,7 @@ export function OperationForm({
           ),
         )}
         {error && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" role="alert">
             <AlertTitle>No se pudo guardar</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>

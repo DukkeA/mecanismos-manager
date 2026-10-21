@@ -14,6 +14,7 @@ export function InventoryWorkspace(
     ["stock", "Repuestos"],
     ...(!props.demo
       ? [
+          ["purchases", "Entradas por proveedor"],
           ["reservations", "Reservas"],
           ["transfers", "Traslados"],
           ...(props.role === "ADMIN" ? [["counts", "Conteos"]] : []),

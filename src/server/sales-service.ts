@@ -20,6 +20,7 @@ export async function issueSale(actor: Actor, raw: unknown) {
   const input = documentInput
     .extend({
       quoteId: z.uuid().optional(),
+      kind: z.enum(["COUNTER", "REPAIR"]).optional(),
       locationId: z.uuid(),
       issuedOn: z.iso.date(),
       dueOn: z.iso.date(),
@@ -103,6 +104,13 @@ export async function issueSale(actor: Actor, raw: unknown) {
         }))
       : await snapshotLines(tx, input.lines);
     const total = lines.reduce((s, l) => s.plus(l.total), new Decimal(0));
+    if (
+      input.kind === "COUNTER" &&
+      lines.some((line) => line.kind === "SERVICE")
+    )
+      throw new DomainError(
+        "Una venta de mostrador solo admite repuestos. Registra la mano de obra en una orden de reparación.",
+      );
     if (!total.gt(0))
       throw new DomainError("La venta debe tener un valor mayor que cero.");
     let orderId = input.orderId;

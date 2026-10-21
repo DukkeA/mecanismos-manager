@@ -1,5 +1,8 @@
 "use server";
 import { transferCash } from "@/server/cash-transfers";
+import { createQuickPurchase } from "@/server/quick-purchase-service";
+import { zodFieldErrors } from "@/domain/form-validation";
+import { AccessDenied } from "@/domain/permissions";
 import { deleteContact } from "@/server/contact-service";
 import { editTask, archiveTask, addTaskNote } from "@/server/task-service";
 import { revalidatePath } from "next/cache";
@@ -7,6 +10,7 @@ import { requireMember } from "@/server/auth";
 import {
   saveCustomer,
   saveMember,
+  setOrderCoordinator,
   assignTask,
   changeTaskStatus,
   transitionOrder,
@@ -37,6 +41,9 @@ export async function executeOperation(
   try {
     const actor = await requireMember();
     switch (kind) {
+      case "quick-purchase":
+        await createQuickPurchase(actor, input);
+        break;
       case "account":
         await createAccount(actor, input);
         break;
@@ -84,6 +91,9 @@ export async function executeOperation(
       case "order-status":
         await transitionOrder(actor, input);
         break;
+      case "order-coordinator":
+        await setOrderCoordinator(actor, input);
+        break;
       case "item":
         await saveItem(actor, input);
         break;
@@ -109,22 +119,29 @@ export async function executeOperation(
       return {
         ok: false,
         error: "Revisa los campos señalados.",
-        fields: Object.fromEntries(
-          error.issues
-            .filter((i) => i.path.length)
-            .map((i) => [
-              String(i.path[0]),
-              i.code === "too_small"
-                ? "El valor está vacío o es demasiado corto."
-                : i.code === "too_big"
-                  ? "El valor supera el tamaño permitido."
-                  : "Revisa el formato o selecciona una opción válida.",
-            ]),
-        ),
+        fields: zodFieldErrors(error),
       };
     // Database internals and connection strings must never be returned to the browser.
-    if (error instanceof DomainError)
+    if (error instanceof DomainError || error instanceof AccessDenied)
       return { ok: false, error: error.message };
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "P2002"
+    )
+      return {
+        ok: false,
+        error:
+          "Ya existe un registro con ese código o correo. Revisa los datos.",
+        ...(kind === "item"
+          ? {
+              fields: {
+                code: "Este código ya existe. Usa otro o edita el repuesto existente.",
+              },
+            }
+          : {}),
+      };
     return {
       ok: false,
       error:

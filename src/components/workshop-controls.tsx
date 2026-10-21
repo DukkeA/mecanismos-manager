@@ -1,5 +1,5 @@
 "use client";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Pagination,
@@ -20,6 +20,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 export { inDates, matches } from "@/domain/list-query";
 export { DateField, DateRangePicker, MonthField } from "./date-picker";
+export { TimeField } from "./time-picker";
 
 export function useQueryState(key: string, fallback = "") {
   const params = useSearchParams();
@@ -59,6 +60,7 @@ export function Choice({
   onChange,
   required = false,
   disabled = false,
+  validation,
   ...aria
 }: {
   id?: string;
@@ -70,10 +72,12 @@ export function Choice({
   onChange?: (value: string) => void;
   required?: boolean;
   disabled?: boolean;
+  validation?: { value: string; type: "time"; required: boolean };
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
 }) {
   const draft = useFormSheet();
+  const [local, setLocal] = useState(defaultValue ?? options[0]?.id ?? "");
   return (
     <Select
       name={name}
@@ -87,13 +91,22 @@ export function Choice({
         // Radix may emit an empty native-select value while registering new options.
         // The explicit empty choice uses __none, so that transient value is never a user choice.
         if (!v) return;
+        setLocal(v === "__none" ? "" : v);
         draft.change();
         onChange?.(v === "__none" ? "" : v);
       }}
       required={required}
       disabled={disabled}
     >
-      <SelectTrigger {...aria} id={id} aria-label={label} className="w-full">
+      <SelectTrigger
+        {...aria}
+        id={id}
+        aria-label={label}
+        aria-required={required || validation?.required}
+        data-validation-value={validation?.value ?? value ?? local}
+        data-validation-type={validation?.type}
+        className="w-full"
+      >
         <SelectValue placeholder="Seleccionar" />
       </SelectTrigger>
       <SelectContent>
@@ -191,6 +204,7 @@ export function TablePagination({
             <span
               className="tabular-nums"
               aria-label={`Página ${current} de ${pages}`}
+              role="group"
             >
               {current} / {pages}
             </span>

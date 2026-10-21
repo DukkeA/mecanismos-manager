@@ -1,5 +1,7 @@
 export type OrderView = {
   responsibleId?: string | null;
+  coordinator?: string;
+  memberIds?: string[];
   businessCategoryLocked?: boolean;
   businessCategoryId?: string | null;
   businessCategory?: string;

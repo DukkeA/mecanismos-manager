@@ -1,4 +1,5 @@
 "use client";
+import { ValidatedForm } from "@/components/validated-form";
 import { SortButton } from "@/components/sortable-head";
 import { TablePagination } from "@/components/workshop-controls";
 import { SearchX as EmptySearchX, Wallet as EmptyWallet } from "lucide-react";
@@ -652,7 +653,7 @@ function PayForm({
     new Decimal(amounts[r.memberId]).gt(r.remaining!),
   );
   return (
-    <form
+    <ValidatedForm
       className="sheet-body operation-form"
       onChangeCapture={() => sheet.change()}
       onSubmit={async (e) => {
@@ -756,8 +757,7 @@ function PayForm({
               inputMode="decimal"
               value={amounts[r.memberId]}
               onChange={(e) => {
-                if (/^\d*(\.\d{0,2})?$/.test(e.target.value))
-                  setAmounts({ ...amounts, [r.memberId]: e.target.value });
+                setAmounts({ ...amounts, [r.memberId]: e.target.value });
               }}
               placeholder="0"
             />
@@ -799,7 +799,7 @@ function PayForm({
             ? "Confirmar asignación"
             : `Confirmar ${chosen.length === 1 ? "pago" : `${chosen.length} pagos`}`}
       </Button>
-    </form>
+    </ValidatedForm>
   );
 }
 function ReverseForm({
@@ -815,7 +815,7 @@ function ReverseForm({
     [date, setDate] = useState(todayInBogota()),
     [reason, setReason] = useState("");
   return (
-    <form
+    <ValidatedForm
       className="sheet-body operation-form"
       onChangeCapture={() => sheet.change()}
       onSubmit={async (e) => {
@@ -866,6 +866,6 @@ function ReverseForm({
       <Button variant="destructive" disabled={command.isPending}>
         Confirmar reversión
       </Button>
-    </form>
+    </ValidatedForm>
   );
 }

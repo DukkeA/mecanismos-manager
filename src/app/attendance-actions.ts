@@ -1,4 +1,5 @@
 "use server";
+import { zodErrorMessage, zodFieldErrors } from "@/domain/form-validation";
 import { saveWorkshopSettings } from "@/server/workshop-settings";
 import { requireMember } from "@/server/auth";
 import {
@@ -29,11 +30,12 @@ export async function attendanceCommand(
   } catch (e) {
     return {
       ok: false as const,
+      fields: e instanceof ZodError ? zodFieldErrors(e) : undefined,
       error:
         e instanceof DomainError || e instanceof AccessDenied
           ? e.message
           : e instanceof ZodError
-            ? "Revisa los campos del formulario."
+            ? zodErrorMessage(e)
             : "No se pudo registrar el cambio.",
     };
   }

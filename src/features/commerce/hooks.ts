@@ -36,7 +36,8 @@ export function useCommercialCommand() {
     }) => {
       assertConnected();
       const result = await commercialCommand(kind, input);
-      if (!result.ok) throw new Error(result.error);
+      if (!result.ok)
+        throw Object.assign(new Error(result.error), { fields: result.fields });
       return result;
     },
     onSuccess: async () => {

@@ -28,9 +28,10 @@ export function OrderPlanningFields({
   }[];
 }) {
   const [responsible, setResponsible] = useState(initialResponsibleId);
-  const [tasks, setTasks] = useState<
-    { id: string; title: string; memberId: string; minutes: string }[]
-  >(initialTasks);
+  const [tasks, setTasks] =
+    useState<
+      { id: string; title: string; memberId: string; minutes: string }[]
+    >(initialTasks);
   const options = members
     .filter((m) => m.active)
     .map((m) => ({ id: m.id, label: m.name }));
@@ -41,10 +42,10 @@ export function OrderPlanningFields({
   }
   return (
     <FieldSet>
-      <FieldLegend>Responsable y tareas</FieldLegend>
+      <FieldLegend>Equipo de la orden</FieldLegend>
       <Field>
         <FieldLabel htmlFor="order-responsible">
-          Responsable de la orden
+          Coordinador de la orden (opcional)
         </FieldLabel>
         <Choice
           id="order-responsible"
@@ -54,7 +55,8 @@ export function OrderPlanningFields({
           options={[{ id: "", label: "Sin asignar todavía" }, ...options]}
         />
         <FieldDescription>
-          La orden aparecerá entre sus asignaciones al ingresar.
+          Da seguimiento a la orden. Los mecánicos se asignan por tarea y
+          también ven la orden entre sus trabajos.
         </FieldDescription>
       </Field>
       <input

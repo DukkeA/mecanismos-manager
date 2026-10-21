@@ -1,6 +1,9 @@
 "use client";
+import { TimeField } from "@/components/time-picker";
+import { ValidatedForm } from "@/components/validated-form";
 import { useState } from "react";
 import Decimal from "decimal.js";
+import { money } from "@/domain/commercial";
 import { Plus, Trash2 } from "lucide-react";
 import { useFormSheet } from "@/components/form-sheet";
 import { Choice, DateField, MonthField } from "@/components/workshop-controls";
@@ -109,7 +112,7 @@ export function BenefitForm({
   const isPlan = ["advance", "advance-plan"].includes(d.kind);
   const target = d.kind === "advance-plan" ? d.advance!.balance : amount;
   const total = plan.reduce(
-    (s, p) => s.plus(/^\d+(\.\d{0,2})?$/.test(p.amount) ? p.amount : 0),
+    (s, p) => s.plus(money.safeParse(p.amount).success ? p.amount : 0),
     new Decimal(0),
   );
   let preview: {
@@ -169,7 +172,7 @@ export function BenefitForm({
       rows.map((r, i) => (i === index ? { ...r, [key]: value } : r)),
     );
   return (
-    <form
+    <ValidatedForm
       className="sheet-body operation-form"
       onSubmit={async (e) => {
         e.preventDefault();
@@ -297,21 +300,21 @@ export function BenefitForm({
               <div className="grid grid-cols-2 gap-4">
                 <Field>
                   <FieldLabel htmlFor="leave-start">Hora inicial</FieldLabel>
-                  <Input
+                  <TimeField
                     id="leave-start"
-                    type="time"
+                    label="Hora inicial"
                     value={start}
-                    onChange={(e) => setStart(e.target.value)}
+                    onChange={setStart}
                     required
                   />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="leave-end">Hora final</FieldLabel>
-                  <Input
+                  <TimeField
                     id="leave-end"
-                    type="time"
+                    label="Hora final"
                     value={end}
-                    onChange={(e) => setEnd(e.target.value)}
+                    onChange={setEnd}
                     required
                   />
                 </Field>
@@ -492,14 +495,12 @@ export function BenefitForm({
                 {cop(total.toFixed(2))} de {cop(target || "0")}
               </span>
             </div>
-            {target &&
-              /^\d+(\.\d{0,2})?$/.test(target) &&
-              !total.eq(target) && (
-                <p className="text-sm text-destructive">
-                  Faltan por distribuir{" "}
-                  {cop(new Decimal(target).minus(total).toFixed(2))}.
-                </p>
-              )}
+            {target && money.safeParse(target).success && !total.eq(target) && (
+              <p className="text-sm text-destructive">
+                Faltan por distribuir{" "}
+                {cop(new Decimal(target).minus(total).toFixed(2))}.
+              </p>
+            )}
           </fieldset>
         )}
         {d.kind === "advance-deduction" && (
@@ -549,7 +550,7 @@ export function BenefitForm({
             command.isPending ||
             (isPlan &&
               (!target ||
-                !/^\d+(\.\d{0,2})?$/.test(target) ||
+                !money.safeParse(target).success ||
                 !total.eq(target)))
           }
         >
@@ -560,6 +561,6 @@ export function BenefitForm({
               : benefitTitles[d.kind]}
         </Button>
       </div>
-    </form>
+    </ValidatedForm>
   );
 }

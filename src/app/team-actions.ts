@@ -1,4 +1,5 @@
 "use server";
+import { zodErrorMessage, zodFieldErrors } from "@/domain/form-validation";
 import { requireMember } from "@/server/auth";
 import {
   saveCompensation,
@@ -47,11 +48,12 @@ export async function teamCommand(kind: keyof typeof actions, input: unknown) {
   } catch (e) {
     return {
       ok: false as const,
+      fields: e instanceof ZodError ? zodFieldErrors(e) : undefined,
       error:
         e instanceof DomainError || e instanceof AccessDenied
           ? e.message
           : e instanceof ZodError
-            ? "Revisa los campos del formulario."
+            ? zodErrorMessage(e)
             : "No se pudo guardar el cambio.",
     };
   }

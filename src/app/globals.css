@@ -63,7 +63,7 @@
     --muted-foreground: oklch(0.556 0 0);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
+    --destructive: oklch(0.55 0.225 27.325);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
@@ -575,4 +575,18 @@ textarea.form-control{min-height:96px;padding:10px 12px}
 }
 @media(prefers-reduced-motion:reduce) {
   .workshop-kanban-item,.workshop-kanban-card,.workshop-kanban-lane { transition:none!important; }
+}
+/* Related fields share their label, control and feedback rows, even when labels wrap. */
+@media (min-width: 640px) {
+form .grid:has(> [data-slot="field"]) > [data-slot="field"][data-orientation="vertical"] {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 4;
+  align-content: start;
+  align-items: start;
+}
+form .grid > [data-slot="field"][data-orientation="vertical"] > [data-slot="field-label"] { grid-row: 1; align-self: end; }
+form .grid > [data-slot="field"][data-orientation="vertical"] > :not([data-slot="field-label"]):not([data-slot="field-description"]):not([data-slot="field-error"]):not(input[type="hidden"]) { grid-row: 2; }
+form .grid > [data-slot="field"][data-orientation="vertical"] > [data-slot="field-description"] { grid-row: 3; }
+form .grid > [data-slot="field"][data-orientation="vertical"] > [data-slot="field-error"] { grid-row: 4; }
 }

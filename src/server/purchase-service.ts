@@ -18,7 +18,7 @@ export async function createPurchase(actor: Actor, raw: unknown) {
       orderedOn: z.iso.date(),
       dueOn: z.iso.date(),
       reference: z.string().trim().max(200).default(""),
-      note: reason,
+      note: z.string().trim().max(2000).default(""),
       lines: z
         .array(
           z.object({

@@ -1,4 +1,5 @@
 "use client";
+import { ValidatedForm } from "@/components/validated-form";
 import { useState } from "react";
 import { useControlCommand } from "./hooks";
 import { useFormSheet } from "@/components/form-sheet";
@@ -55,7 +56,7 @@ export function PurchaseEditor({
     );
   };
   return (
-    <form
+    <ValidatedForm
       className="sheet-body operation-form"
       onSubmit={async (e) => {
         e.preventDefault();
@@ -141,6 +142,7 @@ export function PurchaseEditor({
               <FieldLabel htmlFor={`purchase-item-${i}`}>Repuesto</FieldLabel>
               <Choice
                 id={`purchase-item-${i}`}
+                required
                 value={l.itemId}
                 onChange={(v) => selectItem(i, v)}
                 options={[
@@ -168,11 +170,11 @@ export function PurchaseEditor({
                 <FieldLabel htmlFor={`purchase-cost-${i}`}>
                   Precio de compra unitario (COP)
                 </FieldLabel>
-                <p className="text-xs text-muted-foreground">
+                <FieldDescription>
                   Incluye el transporte e importación que corresponda a cada
                   unidad. Ese costo se recupera al vender o usar el repuesto; no
                   lo registres también como gasto corriente.
-                </p>
+                </FieldDescription>
                 <Input
                   id={`purchase-cost-${i}`}
                   inputMode="decimal"
@@ -215,13 +217,7 @@ export function PurchaseEditor({
           <FieldLabel htmlFor="purchase-note">
             Condiciones y observaciones
           </FieldLabel>
-          <Textarea
-            id="purchase-note"
-            name="note"
-            required
-            minLength={5}
-            maxLength={2000}
-          />
+          <Textarea id="purchase-note" name="note" maxLength={2000} />
         </Field>
       </FieldGroup>
       <div className="flex justify-between border-t pt-4">
@@ -253,6 +249,6 @@ export function PurchaseEditor({
           {command.isPending ? "Guardando…" : "Guardar pedido"}
         </Button>
       </div>
-    </form>
+    </ValidatedForm>
   );
 }

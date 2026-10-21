@@ -113,7 +113,7 @@ export async function recordCash(actor: Actor, raw: unknown) {
       amount: positiveMoney,
       counterparty: z.string().trim().min(2).max(200),
       reference: z.string().trim().max(200),
-      note: z.string().trim().min(3).max(1000),
+      note: z.string().trim().max(1000).default(""),
       occurredOn: z.iso.date(),
     })
     .parse(raw);

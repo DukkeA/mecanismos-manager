@@ -1,6 +1,9 @@
 "use client";
+import { ValidatedForm } from "@/components/validated-form";
 import { useState } from "react";
 import Decimal from "decimal.js";
+import { z } from "zod";
+import { zodErrorMessage } from "@/domain/form-validation";
 import { Package, Plus, Trash2, Wrench } from "lucide-react";
 import { useCommercialCommand, useCommercialPage } from "./hooks";
 import { CustomerPicker } from "@/features/contacts/customer-picker";
@@ -22,6 +25,8 @@ import { Choice, DateField } from "@/components/workshop-controls";
 import { cop, todayInBogota } from "@/features/cash/summary";
 import {
   lineTotal,
+  documentLine,
+  positiveMoney,
   type CommercialRow,
   type DocumentLineInput,
 } from "@/domain/commercial";
@@ -58,6 +63,10 @@ export function DocumentEditor({
   const [title, setTitle] = useState(source?.title ?? context?.title ?? ""),
     [terms, setTerms] = useState(source?.terms ?? "");
   const fromQuote = mode === "sale" && !!source;
+  const counterSale =
+    mode === "sale" &&
+    !orderId &&
+    !source?.lines?.some((line) => line.kind === "SERVICE");
   const [paymentMode, setPaymentMode] = useState("full");
   const [applyCredit, setApplyCredit] = useState(false);
   const [partialAmount, setPartialAmount] = useState("");
@@ -112,7 +121,7 @@ export function DocumentEditor({
     );
   }
   return (
-    <form
+    <ValidatedForm
       className="sheet-body operation-form"
       onSubmit={async (event) => {
         event.preventDefault();
@@ -120,10 +129,30 @@ export function DocumentEditor({
         setError("");
         const form = new FormData(event.currentTarget);
         try {
+          z.array(
+            documentLine.refine(
+              (line) => {
+                try {
+                  return new Decimal(line.quantity)
+                    .mul(line.unitPrice)
+                    .toDecimalPlaces(2)
+                    .gte(line.discount);
+                } catch {
+                  return true;
+                }
+              },
+              {
+                path: ["discount"],
+                message: "El descuento supera el valor de la línea.",
+              },
+            ),
+          )
+            .min(1)
+            .parse(lines);
           if (
             mode === "sale" &&
             paymentMode === "partial" &&
-            (!/^\d+(\.\d{1,2})?$/.test(partialAmount) || collected.lte(0))
+            !positiveMoney.safeParse(partialAmount).success
           )
             throw new Error("Escribe el valor del abono.");
           if (mode === "sale" && collected.gt(afterCredit))
@@ -144,6 +173,7 @@ export function DocumentEditor({
                   }
                 : {
                     quoteId: source?.id,
+                    kind: counterSale ? "COUNTER" : "REPAIR",
                     locationId: String(form.get("locationId")),
                     issuedOn: String(form.get("issuedOn")),
                     dueOn: String(form.get("dueOn")),
@@ -165,7 +195,13 @@ export function DocumentEditor({
           onSaved(result.id);
         } catch (e) {
           if (mode === "sale" && applyCredit) void credit.refetch();
-          setError(e instanceof Error ? e.message : "No se pudo guardar.");
+          setError(
+            e instanceof z.ZodError
+              ? zodErrorMessage(e)
+              : e instanceof Error
+                ? e.message
+                : "No se pudo guardar.",
+          );
         }
       }}
     >
@@ -187,12 +223,24 @@ export function DocumentEditor({
             disabled={!!source || !!context}
             label="Orden de trabajo"
             value={orderId}
-            onChange={setOrderId}
+            onChange={(id) => {
+              setOrderId(id);
+              if (mode === "sale" && !id)
+                setLines((previous) =>
+                  previous.filter((line) => line.kind === "PART").length
+                    ? previous.filter((line) => line.kind === "PART")
+                    : [{ ...emptyLine }],
+                );
+            }}
             options={[
               {
                 id: "",
                 label:
-                  mode === "sale" ? "Venta de mostrador" : "Sin orden todavía",
+                  mode === "sale"
+                    ? source?.lines?.some((line) => line.kind === "SERVICE")
+                      ? "Crear reparación de la cotización"
+                      : "Venta de mostrador"
+                    : "Sin orden todavía",
               },
               ...orders
                 .filter(
@@ -243,6 +291,7 @@ export function DocumentEditor({
               <FieldLabel htmlFor="document-issued">Fecha de venta</FieldLabel>
               <DateField
                 id="document-issued"
+                label="Fecha de venta"
                 name="issuedOn"
                 defaultValue={todayInBogota()}
                 required
@@ -255,6 +304,7 @@ export function DocumentEditor({
             </FieldLabel>
             <DateField
               id="document-due"
+              label={mode === "quote" ? "Válida hasta" : "Vencimiento"}
               name="dueOn"
               defaultValue={
                 mode === "quote"
@@ -293,47 +343,50 @@ export function DocumentEditor({
                 </Button>
               )}
             </div>
-            <Field>
-              <FieldLabel>Tipo de línea</FieldLabel>
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                spacing={0}
-                value={line.kind}
-                disabled={fromQuote}
-                onValueChange={(value) => {
-                  if (!value || value === line.kind) return;
-                  update(index, {
-                    kind: value as EditorLine["kind"],
-                    itemId: "",
-                    assignedMemberId: undefined,
-                    description: "",
-                    quantity: "1",
-                    unitPrice: "0",
-                    discount: "0",
-                    condition: "NEW",
-                  });
-                }}
-              >
-                <ToggleGroupItem value="PART" aria-label="Venta de repuesto">
-                  <Package data-icon="inline-start" />
-                  Repuesto
-                </ToggleGroupItem>
-                <ToggleGroupItem value="SERVICE" aria-label="Mano de obra">
-                  <Wrench data-icon="inline-start" />
-                  Mano de obra
-                </ToggleGroupItem>
-              </ToggleGroup>
-              <FieldDescription>
-                Una cotización puede combinar repuestos y horas de trabajo.
-              </FieldDescription>
-            </Field>
+            {!counterSale && (
+              <Field>
+                <FieldLabel>Tipo de línea</FieldLabel>
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  spacing={0}
+                  value={line.kind}
+                  disabled={fromQuote}
+                  onValueChange={(value) => {
+                    if (!value || value === line.kind) return;
+                    update(index, {
+                      kind: value as EditorLine["kind"],
+                      itemId: "",
+                      assignedMemberId: undefined,
+                      description: "",
+                      quantity: "1",
+                      unitPrice: "0",
+                      discount: "0",
+                      condition: "NEW",
+                    });
+                  }}
+                >
+                  <ToggleGroupItem value="PART" aria-label="Venta de repuesto">
+                    <Package data-icon="inline-start" />
+                    Repuesto
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="SERVICE" aria-label="Mano de obra">
+                    <Wrench data-icon="inline-start" />
+                    Mano de obra
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                <FieldDescription>
+                  Una cotización puede combinar repuestos y horas de trabajo.
+                </FieldDescription>
+              </Field>
+            )}
             <Field>
               <FieldLabel htmlFor={`line-item-${index}`}>
                 {line.kind === "SERVICE" ? "Servicio" : "Repuesto"}
               </FieldLabel>
               <Choice
                 id={`line-item-${index}`}
+                required
                 disabled={fromQuote}
                 value={line.itemId}
                 onChange={(id) => {
@@ -402,7 +455,7 @@ export function DocumentEditor({
                       : key === "unitPrice" && line.kind === "SERVICE"
                         ? "Tarifa por hora (COP)"
                         : key === "unitPrice"
-                          ? "Precio de venta unitario (COP)"
+                          ? "Precio unitario (COP)"
                           : label}
                   </FieldLabel>
                   <Input
@@ -642,6 +695,6 @@ export function DocumentEditor({
                 : "Guardar venta"}
         </Button>
       </div>
-    </form>
+    </ValidatedForm>
   );
 }

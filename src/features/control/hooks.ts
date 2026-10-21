@@ -36,7 +36,7 @@ export function useControlCommand() {
     }) => {
       assertConnected();
       const r = await controlCommand(kind, input);
-      if (!r.ok) throw new Error(r.error);
+      if (!r.ok) throw Object.assign(new Error(r.error), { fields: r.fields });
       return r;
     },
     onSuccess: async () => {

@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "./db";
 import type { Role } from "@/domain/permissions";
 import type { OrderView } from "@/domain/workshop-view";
+import { orderTeam } from "@/domain/order-team";
 
 export async function getOrders(
   actor: { id: string; role: Role },
@@ -96,6 +97,12 @@ export async function getOrders(
   );
   return orders.map((order) => {
     const asset = order.assets[0]?.asset;
+    const team = orderTeam(
+      order.responsibleId && order.responsible
+        ? { id: order.responsibleId, name: order.responsible.name }
+        : null,
+      order.tasks,
+    );
     return {
       id: order.id,
       purpose: order.purpose,
@@ -118,14 +125,9 @@ export async function getOrders(
               : "Componente suelto",
       status: order.status,
       responsibleId: order.responsibleId,
-      responsible:
-        order.responsible?.name ??
-        ([
-          ...new Set(
-            order.tasks.flatMap((t) => t.assignments.map((a) => a.member.name)),
-          ),
-        ].join(", ") ||
-          "Sin asignar"),
+      coordinator: order.responsible?.name,
+      memberIds: team.memberIds,
+      responsible: team.label,
       nextStep:
         order.tasks.find((t) => t.status !== "DONE")?.title ??
         (order.status === "CLOSED"

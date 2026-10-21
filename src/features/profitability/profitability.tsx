@@ -1,4 +1,5 @@
 "use client";
+import { MonthField } from "@/components/date-picker";
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, CircleAlert } from "lucide-react";
@@ -401,14 +402,10 @@ export function ProfitabilityWorkspace({
         </p>
         <label className="grid gap-1 text-sm">
           Mes del resultado
-          <Input
-            type="month"
-            aria-label="Mes del resultado"
+          <MonthField
+            label="Mes del resultado"
             value={period}
-            onChange={(e) => {
-              if (/^\d{4}-(0[1-9]|1[0-2])$/.test(e.target.value))
-                setPeriod(e.target.value);
-            }}
+            onChange={setPeriod}
           />
         </label>
       </div>

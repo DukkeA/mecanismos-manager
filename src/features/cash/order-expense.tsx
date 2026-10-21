@@ -22,8 +22,8 @@ export function OrderExpense({ orderId }: { orderId: string }) {
         <>
           <p className="text-sm text-muted-foreground">
             Por ejemplo, un trabajo externo o transporte. Quedará en Dinero →
-            Por pagar. Los repuestos de inventario se registran en Compras y
-            Consumos.
+            Por pagar. Añade los repuestos utilizados en Repuestos y mano de
+            obra.
           </p>
           <OperationForm
             dialog={{

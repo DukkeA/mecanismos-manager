@@ -1,4 +1,5 @@
 "use client";
+import { ValidatedForm } from "@/components/validated-form";
 import { useState } from "react";
 import { useFormSheet } from "@/components/form-sheet";
 import { Choice, DateField } from "@/components/workshop-controls";
@@ -70,7 +71,7 @@ export function OvertimeForm({
         )),
   );
   return (
-    <form
+    <ValidatedForm
       className="sheet-body operation-form"
       onSubmit={async (event) => {
         event.preventDefault();
@@ -295,6 +296,6 @@ export function OvertimeForm({
           {command.isPending ? "Guardando…" : "Registrar bono"}
         </Button>
       </div>
-    </form>
+    </ValidatedForm>
   );
 }

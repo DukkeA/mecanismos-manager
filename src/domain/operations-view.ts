@@ -90,6 +90,7 @@ export type OperationsView = {
     materialCost: string;
   }[];
   movements: {
+    orderId?: string | null;
     id: string;
     itemId: string;
     locationId: string;

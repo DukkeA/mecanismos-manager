@@ -51,6 +51,7 @@ afterAll(async () => {
   await db().commandReceipt.deleteMany({ where: { actorId: { in: ids } } });
   await db().taskAssignment.deleteMany({ where: { taskId } });
   await db().task.deleteMany({ where: { id: taskId } });
+  await db().stockBalance.deleteMany({ where: { itemId: { in: itemIds } } });
   await db().catalogItem.deleteMany({ where: { id: { in: itemIds } } });
   await cleanupActivity(
     (await db().member.findMany({ where: { id: { in: ids } } })).map(
@@ -164,7 +165,7 @@ it("keeps part references and service scope, and rejects stocking a service", as
   itemIds.push(part.id);
   const service = await saveItem(office, {
     code: randomUUID(),
-    name: "Escaneo de motor",
+    name: `Escaneo de motor ${randomUUID()}`,
     kind: "SERVICE",
     notes: "Lectura y entrega de códigos.",
   });

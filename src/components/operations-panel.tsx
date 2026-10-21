@@ -252,7 +252,7 @@ export function OperationsPanel({
   const itemForm: Dialog = {
     kind: "item",
     title: "Nuevo repuesto",
-    extra: { kind: "PART", unit: "unidad" },
+    extra: { kind: "PART", unit: "unidad", initialQuantity: "0" },
     fields: [
       { key: "code", label: "Código interno" },
       categoryField,
@@ -260,6 +260,25 @@ export function OperationsPanel({
       { key: "name", label: "Nombre del repuesto" },
       { key: "brand", label: "Marca", optional: true },
       { key: "unit", label: "Unidad de medida", hint: "Unidad, litro, kit…" },
+      {
+        key: "initialQuantity",
+        label: "Cantidad disponible inicial",
+        type: "quantity",
+        allowZero: true,
+        hint: "Unidades que entran ahora al inventario. Puedes empezar con 0.",
+      },
+      {
+        key: "locationId",
+        label: "Sede del inventario inicial",
+        type: "select",
+        options: locationOptions,
+      },
+      {
+        key: "condition",
+        label: "Condición inicial",
+        type: "select",
+        options: conditions,
+      },
       {
         key: "purchasePrice",
         label: "Precio de compra (COP)",
@@ -472,6 +491,30 @@ export function OperationsPanel({
       };
     }
     await run(kind, input);
+    if (kind === "item" && !input.id) {
+      const query = new URLSearchParams(window.location.search);
+      for (const key of [...query.keys()])
+        if (
+          [
+            "status",
+            "businessCategoryId",
+            "brand",
+            "location",
+            "from",
+            "to",
+            "min",
+            "max",
+            "table",
+            "orderBy",
+            "direction",
+          ].includes(key) ||
+          key.startsWith("page-")
+        )
+          query.delete(key);
+      query.set("q", String(input.code).trim());
+      if (input.kind === "PART") query.set("tab", "own");
+      window.history.replaceState(null, "", `?${query}`);
+    }
     setNotice(
       demo
         ? "Cambio aplicado a la demostración; se pierde al recargar."
@@ -495,6 +538,15 @@ export function OperationsPanel({
                       ? "Editar servicio"
                       : "Editar repuesto",
                   extra: { ...item },
+                  fields: (item.kind === "SERVICE"
+                    ? serviceForm
+                    : itemForm
+                  ).fields.filter(
+                    (field) =>
+                      !["initialQuantity", "locationId", "condition"].includes(
+                        field.key,
+                      ),
+                  ),
                 }),
             },
           ]
@@ -559,23 +611,23 @@ export function OperationsPanel({
           </Button>
         )}
         {role !== "MECHANIC" && (
-            <Button onClick={() => setDialog(primary())}>
-              <Plus data-icon="inline-start" />
-              {section === "Caja"
-                ? "Registrar dinero"
-                : section === "Tareas"
-                  ? "Asignar tarea"
-                  : section === "Equipo"
-                    ? "Añadir empleado"
-                    : section === "Clientes"
-                      ? "Nuevo cliente"
-                      : section === "Proveedores"
-                        ? "Nuevo proveedor"
-                        : section === "Servicios"
-                          ? "Nuevo servicio"
-                          : "Nuevo repuesto"}
-            </Button>
-          )}
+          <Button onClick={() => setDialog(primary())}>
+            <Plus data-icon="inline-start" />
+            {section === "Caja"
+              ? "Registrar dinero"
+              : section === "Tareas"
+                ? "Asignar tarea"
+                : section === "Equipo"
+                  ? "Añadir empleado"
+                  : section === "Clientes"
+                    ? "Nuevo cliente"
+                    : section === "Proveedores"
+                      ? "Nuevo proveedor"
+                      : section === "Servicios"
+                        ? "Nuevo servicio"
+                        : "Nuevo repuesto"}
+          </Button>
+        )}
       </div>
 
       {notice && (
@@ -858,17 +910,21 @@ export function OperationsPanel({
                   <RowActions
                     name={m.name}
                     actions={[
-                      {
-                        label: "Editar",
-                        run: () =>
-                          onCompensation
-                            ? onCompensation(m)
-                            : setDialog({
-                                ...memberForm,
-                                title: "Editar empleado",
-                                extra: m,
-                              }),
-                      },
+                      ...(role === "ADMIN" || m.role !== "ADMIN"
+                        ? [
+                            {
+                              label: "Editar",
+                              run: () =>
+                                onCompensation
+                                  ? onCompensation(m)
+                                  : setDialog({
+                                      ...memberForm,
+                                      title: "Editar empleado",
+                                      extra: m,
+                                    }),
+                            },
+                          ]
+                        : []),
                       ...(role === "ADMIN"
                         ? [
                             {
@@ -1106,11 +1162,16 @@ export function OperationsPanel({
                 variant="outline"
                 onClick={() => {
                   if (!itemOptions.length) setDialog(itemForm);
-                  else if (!locations.length) setNotice("Configura una sede antes de registrar existencias.");
+                  else if (!locations.length)
+                    setNotice(
+                      "Configura una sede antes de registrar existencias.",
+                    );
                   else setDialog(stockForm);
                 }}
               >
-                {itemOptions.length ? "Registrar movimiento" : "Crear primer repuesto"}
+                {itemOptions.length
+                  ? "Registrar movimiento"
+                  : "Crear primer repuesto"}
               </Button>
             </div>
             <DataTable
@@ -1128,7 +1189,9 @@ export function OperationsPanel({
               empty="No hay existencias registradas."
               renderRow={(row) => {
                 const b = row as OperationsView["balances"][number];
-                const item = source.items.find((candidate) => candidate.id === b.itemId);
+                const item = source.items.find(
+                  (candidate) => candidate.id === b.itemId,
+                );
                 return (
                   <TableRow key={`${b.itemId}-${b.locationId}-${b.condition}`}>
                     <TableCell>
@@ -1157,9 +1220,7 @@ export function OperationsPanel({
                         : "Sin definir"}
                     </TableCell>
                     <TableCell>
-                      {item?.salePrice
-                        ? money(item.salePrice)
-                        : "Sin definir"}
+                      {item?.salePrice ? money(item.salePrice) : "Sin definir"}
                     </TableCell>
                     <TableCell>
                       <RowActions
