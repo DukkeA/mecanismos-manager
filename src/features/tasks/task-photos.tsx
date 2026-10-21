@@ -1,4 +1,5 @@
 "use client";
+import { ValidatedForm } from "@/components/validated-form";
 import { Camera as EmptyCamera } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { useRef, useState } from "react";
@@ -95,7 +96,7 @@ export function TaskPhotos({
         !task.deletedAt &&
         !demo &&
         (task.photos?.length ?? 0) < 12 && (
-          <form
+          <ValidatedForm
             onChange={() => {
               draft.change();
               requestId.current = null;
@@ -159,7 +160,7 @@ export function TaskPhotos({
                 {mutation.isPending ? "Guardando foto…" : "Adjuntar foto"}
               </Button>
             </FieldGroup>
-          </form>
+          </ValidatedForm>
         )}
       {demo && (
         <p>Las fotos se pueden adjuntar al entrar con una cuenta del taller.</p>

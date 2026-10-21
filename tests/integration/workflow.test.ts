@@ -307,12 +307,12 @@ it("receives an approved quotation and links every revision without creating a s
   const customerId = await customer();
   const first = await saveQuote(actor, {
     ...saleInput(customerId),
-    validUntil: "2026-09-30",
+    validUntil: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
   });
   const quote = await saveQuote(actor, {
     ...saleInput(customerId),
     previousId: first.id,
-    validUntil: "2026-09-30",
+    validUntil: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
   });
   await expect(
     receiveOrder(actor, { ...reception(customerId), quoteId: quote.id }),
@@ -352,7 +352,7 @@ it("supports reception before quotation, then approval and a credit sale for the
   const quote = await saveQuote(actor, {
     ...saleInput(customerId),
     orderId: order.id,
-    validUntil: "2026-09-30",
+    validUntil: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
   });
   await decideQuote(actor, {
     requestId: uuid(),

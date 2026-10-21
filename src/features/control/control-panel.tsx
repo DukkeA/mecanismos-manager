@@ -5,7 +5,7 @@ import { SearchX as EmptySearchX } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { RecordStamp } from "@/features/activity/activity-ui";
 import { Attachments } from "./attachments";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, MoreVertical, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -651,6 +651,7 @@ export function ControlPanel({
       });
     return a;
   }
+  const panelId = useId();
   const canCreate = !["assets", "margins", "audit", "rates"].includes(resource),
     page = query.data?.page ?? 1;
   const showAmount = ![
@@ -685,7 +686,12 @@ export function ControlPanel({
         >
           <TabsList aria-label="Secciones">
             {resources.map((r) => (
-              <TabsTrigger key={r} value={r}>
+              <TabsTrigger
+                key={r}
+                value={r}
+                id={`${panelId}-${r}`}
+                aria-controls={panelId}
+              >
                 {names[r]}
               </TabsTrigger>
             ))}
@@ -693,274 +699,290 @@ export function ControlPanel({
         </Tabs>
       )}
 
-      {resource === "margins" && (
-        <p className="text-sm text-muted-foreground">
-          Venta neta menos materiales, mano de obra, gastos directos y
-          garantías. El margen de una orden abierta es provisional. Las órdenes
-          sin venta muestran sus costos en el detalle. No incluye arriendos ni
-          otros gastos generales. Configura los salarios en Equipo. Las horas
-          sin costo laboral impiden calcular el margen completo.
-        </p>
-      )}
-      {!orderId && (
-        <div
-          className="commercial-filters"
-          role="search"
-          aria-label="Filtros de registros"
-        >
-          <label>
-            Buscar
-            <Input
-              className="min-w-44 flex-1"
-              aria-label={`Buscar en ${names[resource]}`}
-              placeholder="Buscar por nombre o referencia"
-              value={params.get("q") ?? ""}
-              onChange={(e) => update({ q: e.target.value })}
-            />
-          </label>
-          {resourceStatuses[resource] && (
+      <div
+        id={panelId}
+        role={resources.length > 1 ? "tabpanel" : undefined}
+        aria-labelledby={
+          resources.length > 1 ? `${panelId}-${resource}` : undefined
+        }
+        className="flex flex-col gap-4"
+      >
+        {resource === "margins" && (
+          <p className="text-sm text-muted-foreground">
+            Venta neta menos materiales, mano de obra, gastos directos y
+            garantías. El margen de una orden abierta es provisional. Las
+            órdenes sin venta muestran sus costos en el detalle. No incluye
+            arriendos ni otros gastos generales. Configura los salarios en
+            Equipo. Las horas sin costo laboral impiden calcular el margen
+            completo.
+          </p>
+        )}
+        {!orderId && (
+          <div
+            className="commercial-filters"
+            role="search"
+            aria-label="Filtros de registros"
+          >
             <label>
-              {resource === "assets" ? "Tipo" : "Estado"}
-              <Choice
-                label={resource === "assets" ? "Tipo" : "Estado"}
-                value={params.get("status") ?? ""}
-                onChange={(status) => update({ status })}
-                options={[
-                  {
-                    id: "",
-                    label:
-                      resource === "assets"
-                        ? "Vehículos y componentes"
-                        : "Todos los estados",
-                  },
-                  ...resourceStatuses[resource]!.map((value) => ({
-                    id: value,
-                    label: statusNames[value],
-                  })),
-                ]}
+              Buscar
+              <Input
+                className="min-w-44 flex-1"
+                aria-label={`Buscar en ${names[resource]}`}
+                placeholder="Buscar por nombre o referencia"
+                value={params.get("q") ?? ""}
+                onChange={(e) => update({ q: e.target.value })}
               />
             </label>
-          )}
-          <label className="commercial-date-filter">
-            Fechas
-            <DateRangePicker
-              from={params.get("from") ?? ""}
-              to={params.get("to") ?? ""}
-              onChange={(from, to) => update({ from, to })}
-            />
-          </label>
-          {(params.get("q") ||
-            params.get("from") ||
-            params.get("to") ||
-            params.get("status")) && (
-            <Button
-              variant="ghost"
-              onClick={() => update({ q: "", from: "", to: "", status: "" })}
-            >
-              Limpiar
-            </Button>
-          )}
-          {canCreate && (
-            <Button onClick={create}>
-              <Plus />
-              {resource === "coverage"
-                ? "Generar mes"
-                : resource === "counts"
-                  ? "Importar conteo"
-                  : resource === "transfers"
-                    ? "Nuevo traslado"
-                    : resource === "reservations"
-                      ? "Nueva reserva"
-                      : (createNames[resource] ?? "Añadir registro")}
-            </Button>
-          )}
-          {role === "ADMIN" && (
-            <Button
-              variant="outline"
-              onClick={() =>
-                window.open(`/api/export?${qp}`, "_blank", "noopener")
-              }
-            >
-              <Download />
-              Exportar
-            </Button>
-          )}
-        </div>
-      )}
-      {orderId && canCreate && (
-        <Button className="self-start" variant="outline" onClick={create}>
-          <Plus />
-          {resource === "checks"
-            ? "Registrar prueba"
-            : "Registrar recepción / entrega"}
-        </Button>
-      )}
-      {query.isError && (
-        <Alert variant="destructive">
-          <AlertTitle>{query.error.message}</AlertTitle>
-          <Button variant="outline" onClick={() => query.refetch()}>
-            Reintentar
+            {resourceStatuses[resource] && (
+              <label>
+                {resource === "assets" ? "Tipo" : "Estado"}
+                <Choice
+                  label={resource === "assets" ? "Tipo" : "Estado"}
+                  value={params.get("status") ?? ""}
+                  onChange={(status) => update({ status })}
+                  options={[
+                    {
+                      id: "",
+                      label:
+                        resource === "assets"
+                          ? "Vehículos y componentes"
+                          : "Todos los estados",
+                    },
+                    ...resourceStatuses[resource]!.map((value) => ({
+                      id: value,
+                      label: statusNames[value],
+                    })),
+                  ]}
+                />
+              </label>
+            )}
+            <label className="commercial-date-filter">
+              Fechas
+              <DateRangePicker
+                from={params.get("from") ?? ""}
+                to={params.get("to") ?? ""}
+                onChange={(from, to) => update({ from, to })}
+              />
+            </label>
+            {(params.get("q") ||
+              params.get("from") ||
+              params.get("to") ||
+              params.get("status")) && (
+              <Button
+                variant="ghost"
+                onClick={() => update({ q: "", from: "", to: "", status: "" })}
+              >
+                Limpiar
+              </Button>
+            )}
+            {canCreate && (
+              <Button onClick={create}>
+                <Plus />
+                {resource === "coverage"
+                  ? "Generar mes"
+                  : resource === "counts"
+                    ? "Importar conteo"
+                    : resource === "transfers"
+                      ? "Nuevo traslado"
+                      : resource === "reservations"
+                        ? "Nueva reserva"
+                        : (createNames[resource] ?? "Añadir registro")}
+              </Button>
+            )}
+            {role === "ADMIN" && (
+              <Button
+                variant="outline"
+                onClick={() =>
+                  window.open(`/api/export?${qp}`, "_blank", "noopener")
+                }
+              >
+                <Download />
+                Exportar
+              </Button>
+            )}
+          </div>
+        )}
+        {orderId && canCreate && (
+          <Button className="self-start" variant="outline" onClick={create}>
+            <Plus />
+            {resource === "checks"
+              ? "Registrar prueba"
+              : "Registrar recepción / entrega"}
           </Button>
-        </Alert>
-      )}
-      {query.isPending ? (
-        <Skeleton className="h-40" />
-      ) : query.isError ? null : (
-        <div className="data-panel">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {[
-                  ["title", "Registro"],
-                  ["date", resource === "assets" ? "Último ingreso" : "Fecha"],
-                  ["", resource === "assets" ? "Tipo" : "Estado"],
-                  [
-                    "amount",
-                    units
-                      ? "Cantidad"
-                      : resource === "margins"
-                        ? "Margen (COP)"
-                        : resource === "closures"
-                          ? "Diferencia (COP)"
-                          : resource === "purchases"
-                            ? "Saldo por pagar (COP)"
-                            : "Importe (COP)",
-                  ],
-                ]
-                  .filter(([key]) => key !== "amount" || showAmount)
-                  .map(([key, label]) => (
-                    <TableHead
-                      key={label}
-                      aria-sort={
-                        key && params.get("orderBy") === key
-                          ? params.get("direction") === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : undefined
-                      }
-                    >
-                      {key && !orderId ? (
-                        <SortButton
-                          active={params.get("orderBy") === key}
-                          direction={params.get("direction")}
-                          onClick={() =>
-                            update({
-                              orderBy: key,
-                              direction:
-                                params.get("orderBy") === key &&
-                                params.get("direction") === "asc"
-                                  ? "desc"
-                                  : "asc",
-                            })
-                          }
-                        >
-                          {label}
-                        </SortButton>
-                      ) : (
-                        label
-                      )}
-                    </TableHead>
-                  ))}
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {query.data?.rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>
-                    <Button variant="link" onClick={() => setSelected(row)}>
-                      {row.title}
-                    </Button>
-                    {["closures", "recurring"].includes(resource) && (
-                      <div>
-                        <RecordStamp id={row.id} />
-                      </div>
-                    )}
-                    <p className="max-w-80 truncate text-xs text-muted-foreground">
-                      {row.subtitle}
-                    </p>
-                  </TableCell>
-                  <TableCell>{dateLabel(row.date)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        ["PASS", "CONFIRMED", "AVAILABLE", "ACCEPTED"].includes(
-                          row.status ?? "",
-                        )
-                          ? "default"
-                          : "secondary"
-                      }
-                    >
-                      {statusNames[row.status ?? ""] ?? row.status}
-                    </Badge>
-                  </TableCell>
-                  {showAmount && (
-                    <TableCell
-                      className={
-                        Number(row.amount) < 0
-                          ? "text-destructive tabular-nums"
-                          : "tabular-nums"
-                      }
-                    >
-                      {row.amount === undefined
-                        ? "—"
-                        : units
-                          ? row.amount
-                          : cop(row.amount)}
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Acciones de ${row.title}`}
-                        >
-                          <MoreVertical />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuGroup>
-                          <DropdownMenuItem onSelect={() => setSelected(row)}>
-                            Ver detalle
-                          </DropdownMenuItem>
-                          {actions(row).map((a) => (
-                            <DropdownMenuItem key={a.label} onSelect={a.run}>
-                              {a.label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!query.data?.rows.length && (
+        )}
+        {query.isError && (
+          <Alert variant="destructive">
+            <AlertTitle>{query.error.message}</AlertTitle>
+            <Button variant="outline" onClick={() => query.refetch()}>
+              Reintentar
+            </Button>
+          </Alert>
+        )}
+        {query.isPending ? (
+          <Skeleton className="h-40" />
+        ) : query.isError ? null : (
+          <div className="data-panel">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={showAmount ? 5 : 4} className="p-0">
-                    <DataEmpty
-                      icon={EmptySearchX}
-                      title="Sin registros para esta consulta"
-                      description="Ajusta los filtros para consultar otro período o estado."
-                    />
-                  </TableCell>
+                  {[
+                    ["title", "Registro"],
+                    [
+                      "date",
+                      resource === "assets" ? "Último ingreso" : "Fecha",
+                    ],
+                    ["", resource === "assets" ? "Tipo" : "Estado"],
+                    [
+                      "amount",
+                      units
+                        ? "Cantidad"
+                        : resource === "margins"
+                          ? "Margen (COP)"
+                          : resource === "closures"
+                            ? "Diferencia (COP)"
+                            : resource === "purchases"
+                              ? "Saldo por pagar (COP)"
+                              : "Importe (COP)",
+                    ],
+                  ]
+                    .filter(([key]) => key !== "amount" || showAmount)
+                    .map(([key, label]) => (
+                      <TableHead
+                        key={label}
+                        aria-sort={
+                          key && params.get("orderBy") === key
+                            ? params.get("direction") === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : undefined
+                        }
+                      >
+                        {key && !orderId ? (
+                          <SortButton
+                            active={params.get("orderBy") === key}
+                            direction={params.get("direction")}
+                            onClick={() =>
+                              update({
+                                orderBy: key,
+                                direction:
+                                  params.get("orderBy") === key &&
+                                  params.get("direction") === "asc"
+                                    ? "desc"
+                                    : "asc",
+                              })
+                            }
+                          >
+                            {label}
+                          </SortButton>
+                        ) : (
+                          label
+                        )}
+                      </TableHead>
+                    ))}
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          {
-            <TablePagination
-              total={query.data?.total ?? 0}
-              page={page}
-              pageSize={query.data?.pageSize ?? 10}
-              onPageChange={(next) =>
-                orderId ? setLocalPage(next) : update({ page: String(next) })
-              }
-            />
-          }
-        </div>
-      )}
+              </TableHeader>
+              <TableBody>
+                {query.data?.rows.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <Button variant="link" onClick={() => setSelected(row)}>
+                        {row.title}
+                      </Button>
+                      {["closures", "recurring"].includes(resource) && (
+                        <div>
+                          <RecordStamp id={row.id} />
+                        </div>
+                      )}
+                      <p className="max-w-80 truncate text-xs text-muted-foreground">
+                        {row.subtitle}
+                      </p>
+                    </TableCell>
+                    <TableCell>{dateLabel(row.date)}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          [
+                            "PASS",
+                            "CONFIRMED",
+                            "AVAILABLE",
+                            "ACCEPTED",
+                          ].includes(row.status ?? "")
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
+                        {statusNames[row.status ?? ""] ?? row.status}
+                      </Badge>
+                    </TableCell>
+                    {showAmount && (
+                      <TableCell
+                        className={
+                          Number(row.amount) < 0
+                            ? "text-destructive tabular-nums"
+                            : "tabular-nums"
+                        }
+                      >
+                        {row.amount === undefined
+                          ? "—"
+                          : units
+                            ? row.amount
+                            : cop(row.amount)}
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Acciones de ${row.title}`}
+                          >
+                            <MoreVertical />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuGroup>
+                            <DropdownMenuItem onSelect={() => setSelected(row)}>
+                              Ver detalle
+                            </DropdownMenuItem>
+                            {actions(row).map((a) => (
+                              <DropdownMenuItem key={a.label} onSelect={a.run}>
+                                {a.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!query.data?.rows.length && (
+                  <TableRow>
+                    <TableCell colSpan={showAmount ? 5 : 4} className="p-0">
+                      <DataEmpty
+                        icon={EmptySearchX}
+                        title="Sin registros para esta consulta"
+                        description="Ajusta los filtros para consultar otro período o estado."
+                      />
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            {
+              <TablePagination
+                total={query.data?.total ?? 0}
+                page={page}
+                pageSize={query.data?.pageSize ?? 10}
+                onPageChange={(next) =>
+                  orderId ? setLocalPage(next) : update({ page: String(next) })
+                }
+              />
+            }
+          </div>
+        )}
+      </div>
       <Sheet
         open={!!selected && !dialog}
         onOpenChange={(open) => {

@@ -275,10 +275,12 @@ export function DateField({
           <Button
             {...aria}
             id={id}
+            data-validation-required={required}
+            data-validation-value={current}
+            data-validation-type="date"
             type="button"
             variant="input"
             aria-label={`${label}: ${display(parse(current)) || "Seleccionar fecha"}`}
-            aria-required={required}
             className="date-trigger"
           >
             <CalendarDays data-icon="inline-start" />

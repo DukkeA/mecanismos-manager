@@ -11,7 +11,11 @@ import { assertOrderTransition } from "@/domain/order-lifecycle";
 const memberInput = z.object({
   id: z.uuid().optional(),
   name: z.string().trim().min(2).max(160),
-  email: z.email().transform((v) => v.toLowerCase()),
+  email: z
+    .string()
+    .trim()
+    .pipe(z.email("Escribe un correo completo. Ej. nombre@empresa.com."))
+    .transform((v) => v.toLowerCase()),
   role: z.enum(["ADMIN", "OFFICE", "MECHANIC"]),
   active: z.boolean(),
   compensation: compensationInput.optional(),
@@ -34,18 +38,23 @@ export async function saveMember(actor: Actor, raw: unknown) {
       : null;
     if (
       actor.role === "OFFICE" &&
-      (before
-        ? before.role !== input.role ||
-          before.active !== input.active ||
-          before.email !== input.email
-        : input.role === "ADMIN" || !input.active)
+      (input.role === "ADMIN" ||
+        before?.role === "ADMIN" ||
+        (before ? before.active !== input.active : !input.active))
     )
       throw new DomainError(
-        "Solo administración puede cambiar roles, correos de acceso o desactivar empleados.",
+        "Oficina puede crear y editar personal de oficina y mecánicos. Solo administración puede modificar administradores o cambiar el acceso activo.",
       );
-    if (before?.authSubject && before.email !== input.email)
+    if (
+      await tx.member.findFirst({
+        where: {
+          email: input.email,
+          ...(input.id ? { id: { not: input.id } } : {}),
+        },
+      })
+    )
       throw new DomainError(
-        "Un correo vinculado no puede cambiarse desde este formulario.",
+        "Este correo ya pertenece a otro miembro del equipo.",
       );
     if (
       before?.role === "ADMIN" &&
@@ -58,7 +67,13 @@ export async function saveMember(actor: Actor, raw: unknown) {
         throw new DomainError("Debe quedar un administrador activo.");
     }
     const member = input.id
-      ? await tx.member.update({ where: { id: input.id }, data: input })
+      ? await tx.member.update({
+          where: { id: input.id },
+          data: {
+            ...input,
+            ...(before?.email !== input.email ? { authSubject: null } : {}),
+          },
+        })
       : await tx.member.create({ data: input });
     if (compensation)
       await writeCompensation(tx, actor, member.id, compensation);
@@ -339,6 +354,54 @@ export async function receiveOrder(actor: Actor, raw: unknown) {
     });
     return { id: order.id, number: order.number };
   });
+}
+export async function setOrderCoordinator(actor: Actor, raw: unknown) {
+  requirePermission(actor.role, "orders:write");
+  const input = z
+    .object({
+      requestId: z.uuid(),
+      orderId: z.uuid(),
+      version: z.number().int().nonnegative(),
+      responsibleId: z.uuid().nullable(),
+    })
+    .parse(raw);
+  return once(
+    actor,
+    input.requestId,
+    "ORDER_COORDINATOR_SET",
+    input,
+    async (tx) => {
+      const order = await tx.workOrder.findUniqueOrThrow({
+        where: { id: input.orderId },
+      });
+      if (["CLOSED", "CANCELLED"].includes(order.status))
+        throw new DomainError("La orden está cerrada.");
+      if (order.version !== input.version)
+        throw new DomainError(
+          "La orden cambió. Actualiza la ficha y vuelve a intentar.",
+        );
+      if (
+        input.responsibleId &&
+        !(await tx.member.findFirst({
+          where: { id: input.responsibleId, active: true },
+        }))
+      )
+        throw new DomainError("Selecciona un coordinador activo.");
+      await tx.workOrder.update({
+        where: { id: order.id },
+        data: { responsibleId: input.responsibleId, version: { increment: 1 } },
+      });
+      await tx.auditEvent.create({
+        data: {
+          actorId: actor.id,
+          entityId: order.id,
+          action: "ORDER_COORDINATOR_SET",
+          details: { before: order.responsibleId, after: input.responsibleId },
+        },
+      });
+      return { id: order.id };
+    },
+  );
 }
 export async function transitionOrder(actor: Actor, raw: unknown) {
   requirePermission(actor.role, "orders:write");

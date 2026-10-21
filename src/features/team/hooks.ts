@@ -57,7 +57,8 @@ export function useTeamCommand() {
     }) => {
       assertConnected();
       const result = await teamCommand(kind, input);
-      if (!result.ok) throw new Error(result.error);
+      if (!result.ok)
+        throw Object.assign(new Error(result.error), { fields: result.fields });
       return result;
     },
     onSuccess: async () => {

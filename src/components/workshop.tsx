@@ -1,4 +1,7 @@
 "use client";
+import { z } from "zod";
+import { zodErrorMessage } from "@/domain/form-validation";
+import { ValidatedForm } from "@/components/validated-form";
 import {
   ClipboardList as EmptyClipboardList,
   MessageSquare as EmptyMessageSquare,
@@ -16,6 +19,8 @@ import { InventoryWorkspace } from "@/features/inventory/inventory-workspace";
 import { CustomersWorkspace } from "@/features/contacts/customers-workspace";
 import { FormSheet } from "./form-sheet";
 import { ObservationHistory } from "@/features/orders/observation-history";
+import { OrderTeam } from "@/features/orders/order-team";
+import { OrderWork } from "@/features/orders/order-work";
 import { OrderAgreement } from "@/features/commerce/order-agreement";
 import {
   ProfitabilityDetail,
@@ -24,6 +29,7 @@ import {
 import { OrderExpense } from "@/features/cash/order-expense";
 import { Attachments } from "@/features/control/attachments";
 import { ControlPanel } from "@/features/control/control-panel";
+import { QuickPurchases } from "@/features/control/quick-purchases";
 import { AssetSelector } from "@/features/control/asset-selector";
 import { CommerceWorkspace } from "@/features/commerce/commerce-workspace";
 import { MoneyWorkspace } from "@/features/cash/money-workspace";
@@ -204,7 +210,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
 
     const body = String(form.get("body") ?? "").trim();
 
-    if (!body) return;
+    if (!z.string().trim().min(1).safeParse(body).success) return;
 
     setError("");
 
@@ -233,7 +239,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
 
     const key = String(form.get("requestKey"));
     const note = String(form.get("note"));
-    if (!form.get("workedOn")) {
+    if (!z.iso.date().safeParse(form.get("workedOn")).success) {
       setError("Selecciona la fecha del trabajo.");
       return;
     }
@@ -305,16 +311,24 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
       locationId: String(form.get("locationId")),
     };
 
-    if (!demo && !input.businessCategoryId) {
-      setError("Selecciona la categoría del trabajo.");
-      return;
-    }
-    if (
-      input.initialTasks.some((task: { memberId?: string }) => !task.memberId)
-    ) {
-      setError(
-        "Selecciona un empleado para cada tarea o un responsable de la orden.",
-      );
+    const planning = z
+      .object({
+        businessCategoryId: demo
+          ? z.string().optional()
+          : z.uuid("Selecciona la categoría del trabajo."),
+        initialTasks: z.array(
+          z.object({
+            title: z.string().trim().min(3),
+            memberId: z.uuid(
+              "Selecciona un mecánico para la tarea o un coordinador de la orden.",
+            ),
+            plannedMinutes: z.number().int().min(1).max(43200).optional(),
+          }),
+        ),
+      })
+      .safeParse(input);
+    if (!planning.success) {
+      setError(zodErrorMessage(planning.error));
       return;
     }
     setError("");
@@ -537,7 +551,9 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               role={actor.role}
               openOrder={setSelectedId}
             />
-          ) : ["Compras", "Garantías"].includes(section) ? (
+          ) : section === "Compras" ? (
+            <QuickPurchases data={operations} />
+          ) : ["Garantías"].includes(section) ? (
             <ControlPanel
               key={section}
               data={operations}
@@ -592,6 +608,16 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               <Badge variant="secondary" data-status={selected.status}>
                 {statusLabels[selected.status]}
               </Badge>
+              <OrderTeam
+                key={`${selected.id}-${selected.responsibleId}`}
+                order={selected}
+                members={operations.members}
+                editable={
+                  !demo &&
+                  actor.role !== "MECHANIC" &&
+                  !["CLOSED", "CANCELLED"].includes(selected.status)
+                }
+              />
               {actor.role !== "MECHANIC" && (
                 <OrderControls order={selected} run={runOperation} />
               )}
@@ -606,7 +632,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   <dd>{selected.customer}</dd>
                 </div>
                 <div>
-                  <dt>Responsable</dt>
+                  <dt>Equipo asignado</dt>
                   <dd>{selected.responsible}</dd>
                 </div>
                 <div>
@@ -645,6 +671,13 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                 />
               )}
               {!demo && actor.role !== "MECHANIC" && (
+                <OrderWork
+                  order={selected}
+                  data={operations}
+                  locations={locations}
+                />
+              )}
+              {!demo && actor.role !== "MECHANIC" && (
                 <OrderAgreement
                   key={`agreement-${selected.id}`}
                   order={selected}
@@ -671,7 +704,18 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                         <ClipboardList aria-hidden="true" />
                         <span>
                           {task.title}
-                          <small>{task.minutes} min registrados</small>
+                          <small>
+                            {task.memberIds
+                              ?.map(
+                                (id) =>
+                                  operations.members.find(
+                                    (member) => member.id === id,
+                                  )?.name,
+                              )
+                              .filter(Boolean)
+                              .join(", ") || "Sin asignar"}{" "}
+                            · {task.minutes} min registrados
+                          </small>
                         </span>
                         <TaskBadge status={task.status} />
                       </li>
@@ -722,7 +766,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               <section>
                 <h3>Observaciones</h3>
                 {!["CLOSED", "CANCELLED"].includes(selected.status) && (
-                  <form
+                  <ValidatedForm
                     onSubmit={(e) => {
                       e.preventDefault();
                       saveNote(new FormData(e.currentTarget), e.currentTarget);
@@ -745,7 +789,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                         {pending ? "Guardando…" : "Guardar observación"}
                       </Button>
                     </FieldGroup>
-                  </form>
+                  </ValidatedForm>
                 )}
                 {!demo ? (
                   <ObservationHistory
@@ -825,7 +869,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               }}
             />
           ) : (
-            <form
+            <ValidatedForm
               className="sheet-body"
               onChange={() => {
                 orderRequest.current = null;
@@ -1033,7 +1077,7 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   <Plus data-icon="inline-end" />
                 </Button>
               </FieldGroup>
-            </form>
+            </ValidatedForm>
           )}
         </SheetContent>
       </FormSheet>
@@ -1062,7 +1106,7 @@ function TimeForm({
   useEffect(() => setRequestKey(crypto.randomUUID()), []);
 
   return (
-    <form
+    <ValidatedForm
       onReset={() => setRequestKey(crypto.randomUUID())}
       onSubmit={(e) => {
         e.preventDefault();
@@ -1154,6 +1198,6 @@ function TimeForm({
           <Clock3 data-icon="inline-end" />
         </Button>
       </FieldGroup>
-    </form>
+    </ValidatedForm>
   );
 }

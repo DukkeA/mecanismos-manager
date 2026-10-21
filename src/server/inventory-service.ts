@@ -4,7 +4,8 @@ import "server-only";
 import { z } from "zod";
 import Decimal from "decimal.js";
 import { db } from "./db";
-import { once, type Actor } from "./commands";
+import { once, type Actor, type Tx } from "./commands";
+import { postStock } from "./commercial-ledger";
 import { requirePermission } from "@/domain/permissions";
 import { catalogLabelKey, cleanCatalogLabel } from "@/domain/catalog-label";
 import { serializable } from "./commands";
@@ -23,6 +24,16 @@ export async function saveItem(actor: Actor, raw: unknown) {
   const input = z
     .object({
       id: z.uuid().optional(),
+      requestId: z.uuid().optional(),
+      initialQuantity: z
+        .string()
+        .regex(
+          /^\d{1,10}(\.\d{1,3})?$/,
+          "Escribe una cantidad válida, desde cero.",
+        )
+        .default("0"),
+      locationId: z.uuid().optional(),
+      condition: z.enum(["NEW", "USED", "REBUILT"]).default("NEW"),
       businessCategoryId: z.uuid().nullable().optional(),
       code: z.string().trim().min(1).max(80),
       name: z.string().trim().min(3).max(200),
@@ -39,7 +50,20 @@ export async function saveItem(actor: Actor, raw: unknown) {
     input.name = cleanCatalogLabel(input.name);
     input.purchasePrice = null;
   }
-  return serializable(async (tx) => {
+  const save = async (tx: Tx) => {
+    const {
+      requestId: _requestId,
+      initialQuantity,
+      locationId,
+      condition,
+      ...itemData
+    } = input;
+    if (input.id && new Decimal(initialQuantity).gt(0))
+      throw new DomainError(
+        "Añade unidades desde Registrar movimiento para conservar el historial.",
+      );
+    if (input.kind === "SERVICE" && new Decimal(initialQuantity).gt(0))
+      throw new DomainError("Los servicios no tienen existencias.");
     if (input.kind === "SERVICE") {
       const duplicate = await tx.$queryRaw<{ id: string; name: string }[]>`
         SELECT id, name FROM workshop."CatalogItem"
@@ -68,8 +92,35 @@ export async function saveItem(actor: Actor, raw: unknown) {
         : null,
     );
     const item = input.id
-      ? await tx.catalogItem.update({ where: { id: input.id }, data: input })
-      : await tx.catalogItem.create({ data: input });
+      ? await tx.catalogItem.update({ where: { id: input.id }, data: itemData })
+      : await tx.catalogItem.create({ data: itemData });
+    if (!input.id && item.kind === "PART") {
+      const location = locationId
+        ? await tx.location.findUniqueOrThrow({ where: { id: locationId } })
+        : await tx.location.findFirst({ orderBy: { name: "asc" } });
+      if (!location)
+        throw new DomainError(
+          "Configura una sede antes de registrar el repuesto.",
+        );
+      if (new Decimal(initialQuantity).gt(0)) {
+        await postStock(tx, actor, {
+          itemId: item.id,
+          locationId: location.id,
+          condition,
+          quantity: initialQuantity,
+          kind: "RECEIPT",
+          reason: "Existencias iniciales al crear el repuesto",
+          materialAmount: new Decimal(initialQuantity)
+            .mul(input.purchasePrice ?? "0")
+            .toFixed(2),
+          costKnown: input.purchasePrice !== null,
+        });
+      } else {
+        await tx.stockBalance.create({
+          data: { itemId: item.id, locationId: location.id, condition },
+        });
+      }
+    }
     await tx.auditEvent.create({
       data: {
         actorId: actor.id,
@@ -82,11 +133,15 @@ export async function saveItem(actor: Actor, raw: unknown) {
           salePrice: item.salePrice?.toFixed(2) ?? null,
           kind: item.kind,
           businessCategoryId: item.businessCategoryId,
+          initialQuantity: input.id ? undefined : initialQuantity,
         },
       },
     });
     return { id: item.id };
-  });
+  };
+  return input.requestId
+    ? once(actor, input.requestId, "ITEM_SAVED", input, save)
+    : serializable(save);
 }
 
 export async function saveSupplier(actor: Actor, raw: unknown) {

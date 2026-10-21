@@ -75,7 +75,7 @@ export function CompensationSheet({
                   },
                   fields: [
                     { key: "name", label: "Nombre" },
-                    ...(role === "ADMIN"
+                    ...(role === "ADMIN" || member.role !== "ADMIN"
                       ? [
                           {
                             key: "email",
@@ -91,15 +91,8 @@ export function CompensationSheet({
                       options:
                         role === "OFFICE"
                           ? [
-                              {
-                                id: member.role!,
-                                label:
-                                  member.role === "ADMIN"
-                                    ? "Administrador"
-                                    : member.role === "OFFICE"
-                                      ? "Oficina"
-                                      : "Mecánico",
-                              },
+                              { id: "OFFICE", label: "Oficina" },
+                              { id: "MECHANIC", label: "Mecánico" },
                             ]
                           : [
                               { id: "ADMIN", label: "Administrador" },

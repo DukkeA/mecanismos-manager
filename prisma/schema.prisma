@@ -422,6 +422,7 @@ model MoneyAccount {
 }
 
 model Obligation {
+  purchaseDetails Json?
   orderId      String?     @db.Uuid
   order        WorkOrder?  @relation(fields: [orderId], references: [id], onDelete: Restrict)
   salaryPeriod String?     @unique @db.VarChar(7)

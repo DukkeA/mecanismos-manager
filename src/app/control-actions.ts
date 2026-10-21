@@ -1,4 +1,5 @@
 "use server";
+import { zodErrorMessage, zodFieldErrors } from "@/domain/form-validation";
 import { requireMember } from "@/server/auth";
 import {
   createPurchase,
@@ -64,7 +65,10 @@ const commands = {
 export async function controlCommand(
   kind: keyof typeof commands,
   input: unknown,
-): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; id: string }
+  | { ok: false; error: string; fields?: Record<string, string> }
+> {
   try {
     const actor = await requireMember();
     if (!Object.hasOwn(commands, kind))
@@ -74,11 +78,12 @@ export async function controlCommand(
   } catch (e) {
     return {
       ok: false,
+      fields: e instanceof ZodError ? zodFieldErrors(e) : undefined,
       error:
         e instanceof DomainError || e instanceof AccessDenied
           ? e.message
           : e instanceof ZodError
-            ? (e.issues[0]?.message ?? "Revisa los campos.")
+            ? zodErrorMessage(e)
             : "No se pudo guardar. Revisa los datos y vuelve a intentarlo.",
     };
   }

@@ -327,6 +327,7 @@ export async function getOperations(
     })),
     movements: movements.map((m) => ({
       id: m.id,
+      orderId: m.orderId,
       itemId: m.itemId,
       locationId: m.locationId,
       condition: m.condition,

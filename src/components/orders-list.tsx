@@ -208,7 +208,7 @@ export function OrdersList({
                   "Categoría",
                   "Cliente",
                   "Estado",
-                  "Responsable",
+                  "Equipo asignado",
                   "Ingreso",
                   "Entrega prevista",
                   "Salida",

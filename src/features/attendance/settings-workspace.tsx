@@ -1,16 +1,19 @@
 "use client";
+import { TimeField } from "@/components/time-picker";
+import { ValidatedForm } from "@/components/validated-form";
 import { useState } from "react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { timeOfDay, type WorkshopSettings } from "@/domain/workshop-settings";
 import { useSettings, useAttendanceCommand } from "./hooks";
 function ScheduleForm({ settings }: { settings: WorkshopSettings }) {
   const command = useAttendanceCommand();
   return (
-    <form
+    <ValidatedForm
       className="space-y-5"
       onSubmit={async (event) => {
         event.preventDefault();
@@ -35,28 +38,34 @@ function ScheduleForm({ settings }: { settings: WorkshopSettings }) {
       }}
     >
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-2">
-          <Label htmlFor="global-start">Entrada · lunes a viernes</Label>
-          <Input
+        <Field>
+          <FieldLabel htmlFor="global-start">
+            Entrada · lunes a viernes
+          </FieldLabel>
+          <TimeField
             id="global-start"
+            label="Entrada de lunes a viernes"
             name="start"
-            type="time"
+
             required
             defaultValue={timeOfDay(settings.startMinute)}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="global-end">Salida · lunes a viernes</Label>
-          <Input
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="global-end">Salida · lunes a viernes</FieldLabel>
+          <TimeField
             id="global-end"
+            label="Salida de lunes a viernes"
             name="end"
-            type="time"
+
             required
             defaultValue={timeOfDay(settings.endMinute)}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="global-grace">Tolerancia de llegada (min)</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="global-grace">
+            Tolerancia de llegada (min)
+          </FieldLabel>
           <Input
             id="global-grace"
             name="graceMinutes"
@@ -67,29 +76,31 @@ function ScheduleForm({ settings }: { settings: WorkshopSettings }) {
             required
             defaultValue={settings.graceMinutes}
           />
-        </div>
+        </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-2">
-          <Label htmlFor="saturday-start">Entrada · sábado</Label>
-          <Input
+        <Field>
+          <FieldLabel htmlFor="saturday-start">Entrada · sábado</FieldLabel>
+          <TimeField
             id="saturday-start"
+            label="Entrada del sábado"
             name="saturdayStart"
-            type="time"
+
             required
             defaultValue={timeOfDay(settings.saturdayStartMinute)}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="saturday-end">Salida · sábado</Label>
-          <Input
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="saturday-end">Salida · sábado</FieldLabel>
+          <TimeField
             id="saturday-end"
+            label="Salida del sábado"
             name="saturdayEnd"
-            type="time"
+
             required
             defaultValue={timeOfDay(settings.saturdayEndMinute)}
           />
-        </div>
+        </Field>
       </div>
       <p className="text-sm text-muted-foreground">
         Se aplica a todo el equipo de lunes a sábado. Los domingos no tienen
@@ -110,7 +121,7 @@ function ScheduleForm({ settings }: { settings: WorkshopSettings }) {
       <Button type="submit" disabled={command.isPending}>
         Guardar horario
       </Button>
-    </form>
+    </ValidatedForm>
   );
 }
 function DeviceSetup({ location }: { location: { id: string; name: string } }) {

@@ -1,4 +1,5 @@
 "use client";
+import { ValidatedForm } from "@/components/validated-form";
 import { Paperclip as EmptyPaperclip } from "lucide-react";
 import { DataEmpty } from "@/components/data-empty";
 import { useState } from "react";
@@ -80,7 +81,7 @@ export function Attachments({
       {query.isError && (
         <p className="text-sm text-destructive">{query.error.message}</p>
       )}
-      <form
+      <ValidatedForm
         onSubmit={async (e) => {
           e.preventDefault();
           if (upload.isPending) return;
@@ -123,7 +124,7 @@ export function Attachments({
             {upload.isPending ? "Subiendo…" : "Adjuntar archivo"}
           </Button>
         </FieldGroup>
-      </form>
+      </ValidatedForm>
       {upload.isError && (
         <Alert variant="destructive">
           <AlertTitle>{upload.error.message}</AlertTitle>

@@ -175,12 +175,12 @@ it("rolls back automatic work and stock when a mixed checkout fails", async () =
 it("retains revisions and uses approved prices despite a changed catalog or submitted price", async () => {
   const first = await saveQuote(office, {
     ...base(),
-    validUntil: "2026-09-30",
+    validUntil: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
   });
   const second = await saveQuote(office, {
     ...base(),
     previousId: first.id,
-    validUntil: "2026-09-30",
+    validUntil: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
     title: "Revisión de alcance aprobada",
   });
   await expect(
@@ -218,7 +218,7 @@ it("snapshots catalog cost and keeps the quoted labor assignment and selling rat
   const quote = await saveQuote(office, {
     ...base(),
     requestId: uuid(),
-    validUntil: "2026-09-30",
+    validUntil: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
     lines: [
       {
         itemId,

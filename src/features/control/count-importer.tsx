@@ -1,4 +1,5 @@
 "use client";
+import { ValidatedForm } from "@/components/validated-form";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { assertConnected, useWorkshopScope } from "@/features/workshop/query";
@@ -44,7 +45,7 @@ export function CountImporter({
     },
   });
   return (
-    <form
+    <ValidatedForm
       className="sheet-body operation-form"
       onSubmit={(e) => {
         e.preventDefault();
@@ -109,6 +110,6 @@ export function CountImporter({
           {command.isPending ? "Revisando archivo…" : "Preparar vista previa"}
         </Button>
       </div>
-    </form>
+    </ValidatedForm>
   );
 }

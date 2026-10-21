@@ -1010,7 +1010,7 @@ export function CommercePanel({
                   : "Nueva cotización"}
             </SheetTitle>
             <SheetDescription>
-              Repuestos, servicios y condiciones del trabajo.
+              Revisa los conceptos, precios y condiciones antes de guardar.
             </SheetDescription>
           </SheetHeader>
           {editor && (

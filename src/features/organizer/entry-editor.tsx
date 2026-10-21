@@ -1,4 +1,6 @@
 "use client";
+import { TimeField } from "@/components/time-picker";
+import { ValidatedForm } from "@/components/validated-form";
 import { useState } from "react";
 import { useOrganizerCommand } from "./hooks";
 import {
@@ -57,7 +59,7 @@ export function EntryEditor({
   const [imageBusy, setImageBusy] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   return (
-    <form
+    <ValidatedForm
       className="sheet-body"
       onChange={() => setRequestId(crypto.randomUUID())}
       onSubmit={async (e) => {
@@ -202,10 +204,11 @@ export function EntryEditor({
             </Field>
             <Field>
               <FieldLabel htmlFor="entry-time">Hora (Bogotá)</FieldLabel>
-              <Input
+              <TimeField
                 id="entry-time"
+                label="Hora de inicio"
                 name="time"
-                type="time"
+
                 required={calendar}
                 defaultValue={timeOf(entry.startsAt)}
               />
@@ -226,9 +229,10 @@ export function EntryEditor({
                   <FieldLabel htmlFor="entry-end-time">
                     Hora de finalización
                   </FieldLabel>
-                  <Input
+                  <TimeField
                     id="entry-end-time"
-                    type="time"
+                    label="Hora de finalización"
+
                     name="endTime"
                     defaultValue={timeOf(entry.endsAt)}
                   />
@@ -261,6 +265,6 @@ export function EntryEditor({
           </Button>
         </div>
       </FieldGroup>
-    </form>
+    </ValidatedForm>
   );
 }
