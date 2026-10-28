@@ -4,6 +4,7 @@ import type { OrderView } from "./workshop-view";
 import { assertOrderTransition } from "./order-lifecycle";
 import { cashKinds } from "./cash";
 import { accountNames } from "./accounts";
+import { catalogLabelKey } from "./catalog-label";
 
 export function applyDemoOperation(
   kind: string,
@@ -62,14 +63,14 @@ export function applyDemoOperation(
     }
     case "item": {
       const currentId = text("id") || id;
-      if (data.items.some((i) => i.code === text("code") && i.id !== currentId))
-        throw new Error("Esa referencia ya existe.");
+      if (data.items.some((i) => i.kind === text("kind") && catalogLabelKey(i.name) === catalogLabelKey(text("name")) && i.id !== currentId))
+        throw new Error("Ya existe un repuesto o servicio con ese nombre.");
       const currentItem = data.items.find((item) => item.id === currentId);
       const value = {
         id: currentId,
         businessCategoryId: text("businessCategoryId") || null,
         businessCategory: currentItem?.businessCategory,
-        code: text("code"),
+        code: text("code") || currentItem?.code || `PART-${id}`,
         name: text("name"),
         brand: text("brand"),
         kind: text("kind"),

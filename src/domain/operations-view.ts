@@ -38,6 +38,7 @@ export type OperationsView = {
     phone: string;
     email: string;
     orders: number;
+    sales?: number;
   }[];
   members: {
     id: string;

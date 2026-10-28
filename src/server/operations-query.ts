@@ -159,7 +159,7 @@ export async function getOperations(
       db().customer.findMany({
         where: subset("customers"),
         orderBy: { name: "asc" },
-        include: { _count: { select: { orders: true } } },
+        include: { _count: { select: { orders: true, sales: true } } },
       }),
       db().catalogItem.findMany({
         include: { businessCategory: true },
@@ -280,6 +280,7 @@ export async function getOperations(
       phone: c.phone ?? "",
       email: c.email ?? "",
       orders: c._count.orders,
+      sales: c._count.sales,
       deletedAt: c.deletedAt?.toISOString(),
     })),
     items: items.map((i) => ({

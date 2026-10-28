@@ -24,6 +24,7 @@ import {
 } from "@/server/inventory-service";
 import { DomainError } from "@/domain/errors";
 import { ZodError } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 import {
   createAccount,
   createObligation,
@@ -125,6 +126,16 @@ export async function executeOperation(
     if (error instanceof DomainError || error instanceof AccessDenied)
       return { ok: false, error: error.message };
     if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      JSON.stringify(error.meta?.target ?? "").includes("code")
+    )
+      return {
+        ok: false,
+        error: "Ese código de servicio ya está registrado.",
+        fields: { code: "Usa otro código o edita el servicio existente." },
+      };
+    if (
       error &&
       typeof error === "object" &&
       "code" in error &&
@@ -133,11 +144,13 @@ export async function executeOperation(
       return {
         ok: false,
         error:
-          "Ya existe un registro con ese código o correo. Revisa los datos.",
+          kind === "item"
+            ? "Ya existe un repuesto o servicio con ese nombre. Revisa el catálogo."
+            : "Ya existe un registro con esos datos.",
         ...(kind === "item"
           ? {
               fields: {
-                code: "Este código ya existe. Usa otro o edita el repuesto existente.",
+                name: "Este nombre ya existe. Abre la ficha existente para añadir existencias.",
               },
             }
           : {}),

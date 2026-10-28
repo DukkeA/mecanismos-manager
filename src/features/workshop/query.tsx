@@ -163,6 +163,7 @@ export function useOperationMutation(feature: string) {
               "team",
               "activity",
               "purchases",
+              "inventory-history",
             ] as const
           ).map((feature) =>
             client.invalidateQueries({ queryKey: [feature, scope.actorId] }),

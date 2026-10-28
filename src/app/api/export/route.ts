@@ -75,7 +75,8 @@ export async function GET(request: Request) {
           { status: 400 },
         );
     }
-    const headers = [...new Set(rows.flatMap((r) => Object.keys(r)))];
+    const inventory = ["items", "balances", "offers", "movements"].includes(params.get("table") ?? "");
+    const headers = [...new Set(rows.flatMap((r) => Object.keys(r)))].filter((key) => !inventory || key !== "code");
     const csv =
       "\ufeff" +
       [

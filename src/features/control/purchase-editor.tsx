@@ -151,7 +151,7 @@ export function PurchaseEditor({
                     .filter((v) => v.kind === "PART")
                     .map((v) => ({
                       id: v.id,
-                      label: `${v.name} · ${v.reference || v.code}`,
+                      label: `${v.name}${v.reference ? ` · ${v.reference}` : ""}`,
                     })),
                 ]}
               />

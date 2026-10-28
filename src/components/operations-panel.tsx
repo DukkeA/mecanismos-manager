@@ -189,7 +189,10 @@ export function OperationsPanel({
 
   const itemOptions = source.items
     .filter((i) => i.kind === "PART")
-    .map((i) => ({ id: i.id, label: `${i.code} · ${i.name}` }));
+    .map((i) => ({
+      id: i.id,
+      label: `${i.name}${i.reference ? ` · ${i.reference}` : ""}`,
+    }));
 
   const locationOptions = locations.map((l) => ({ id: l.id, label: l.name }));
 
@@ -197,7 +200,7 @@ export function OperationsPanel({
     source.items.find((i) => i.id === id)?.name ?? "Repuesto";
   const itemSearch = (id: string) => {
     const i = source.items.find((i) => i.id === id);
-    return `${i?.code ?? ""} ${i?.reference ?? ""} ${i?.notes ?? ""}`;
+    return `${i?.reference ?? ""} ${i?.notes ?? ""}`;
   };
 
   const locationName = (id: string) =>
@@ -254,10 +257,14 @@ export function OperationsPanel({
     title: "Nuevo repuesto",
     extra: { kind: "PART", unit: "unidad", initialQuantity: "0" },
     fields: [
-      { key: "code", label: "Código interno" },
       categoryField,
-      { key: "reference", label: "Referencia", optional: true },
-      { key: "name", label: "Nombre del repuesto" },
+      { key: "reference", label: "Referencia del fabricante", optional: true },
+      {
+        key: "name",
+        label: "Nombre del repuesto",
+        minLength: 3,
+        maxLength: 200,
+      },
       { key: "brand", label: "Marca", optional: true },
       { key: "unit", label: "Unidad de medida", hint: "Unidad, litro, kit…" },
       {
@@ -511,7 +518,7 @@ export function OperationsPanel({
           key.startsWith("page-")
         )
           query.delete(key);
-      query.set("q", String(input.code).trim());
+      query.set("q", String(input.name).trim());
       if (input.kind === "PART") query.set("tab", "own");
       window.history.replaceState(null, "", `?${query}`);
     }
@@ -811,7 +818,14 @@ export function OperationsPanel({
       {section === "Clientes" && (
         <DataTable
           tableKey="customers"
-          headers={["Cliente", "Documento", "Contacto", "Órdenes", "Acciones"]}
+          headers={[
+            "Cliente",
+            "Documento",
+            "Contacto",
+            "Órdenes",
+            "Ventas",
+            "Acciones",
+          ]}
           empty="No hay clientes con esos datos."
           renderRow={(row) => {
             const c = row as OperationsView["customers"][number];
@@ -832,11 +846,27 @@ export function OperationsPanel({
                       const query = new URLSearchParams({
                         view: "Órdenes",
                         q: c.name,
+                        customerId: c.id,
                       });
                       window.history.pushState(null, "", `?${query}`);
                     }}
                   >
-                    {c.orders} órdenes
+                    {c.orders} {c.orders === 1 ? "orden" : "órdenes"}
+                  </Button>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="link"
+                    onClick={() => {
+                      const query = new URLSearchParams({
+                        view: "Ventas",
+                        customerId: c.id,
+                        q: c.name,
+                      });
+                      window.history.pushState(null, "", `?${query}`);
+                    }}
+                  >
+                    {c.sales ?? 0} {c.sales === 1 ? "venta" : "ventas"}
                   </Button>
                 </TableCell>
                 <TableCell>
@@ -1204,9 +1234,6 @@ export function OperationsPanel({
                       <small className="cell-detail text-muted-foreground">
                         {item?.businessCategory ?? "Sin categoría"}
                       </small>
-                      <small className="cell-detail">
-                        Código interno: {item?.code}
-                      </small>
                     </TableCell>
                     <TableCell>{item?.reference || "—"}</TableCell>
                     <TableCell>{locationName(b.locationId)}</TableCell>
@@ -1397,9 +1424,6 @@ export function OperationsPanel({
                       >
                         {i.name}
                       </Button>
-                      <small className="cell-detail">
-                        Código interno: {i.code}
-                      </small>
                     </TableCell>
                     <TableCell>{i.brand || "Sin marca"}</TableCell>
                     <TableCell>{i.unit}</TableCell>

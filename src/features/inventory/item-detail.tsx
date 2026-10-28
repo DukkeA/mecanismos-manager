@@ -12,6 +12,7 @@ import { DataTable } from "@/components/data-table";
 import { TableRow, TableCell } from "@/components/ui/table";
 import { dateLabel } from "@/components/workshop-controls";
 import type { OperationsView } from "@/domain/operations-view";
+import { PriceHistory } from "./price-history";
 const money = (v: string) =>
   new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -47,8 +48,9 @@ export function ItemDetail({
         <SheetHeader>
           <SheetTitle>{item?.name ?? "Detalle del repuesto"}</SheetTitle>
           <SheetDescription>
-            {service ? "Servicio del taller" : "Ficha del repuesto"} ·{" "}
-            {item?.code}
+            {service
+              ? `Servicio del taller · ${item?.code}`
+              : "Ficha del repuesto"}
           </SheetDescription>
         </SheetHeader>
         {item && (
@@ -66,14 +68,16 @@ export function ItemDetail({
                 <dt>Categoría</dt>
                 <dd>{item.businessCategory ?? "Sin categoría"}</dd>
               </div>
-              <div>
-                <dt>Código interno</dt>
-                <dd>{item.code}</dd>
-              </div>
+              {service && (
+                <div>
+                  <dt>Código del servicio</dt>
+                  <dd>{item.code}</dd>
+                </div>
+              )}
               {!service && (
                 <>
                   <div>
-                    <dt>Referencia</dt>
+                    <dt>Referencia del fabricante</dt>
                     <dd>{item.reference || "Sin referencia registrada"}</dd>
                   </div>
                   <div>
@@ -124,11 +128,18 @@ export function ItemDetail({
             </section>
             {!service && (
               <Tabs defaultValue="stock">
-                <TabsList aria-label="Detalle de inventario">
+                <TabsList
+                  aria-label="Detalle de inventario"
+                  className="h-auto w-full flex-wrap"
+                >
                   <TabsTrigger value="stock">Existencias</TabsTrigger>
                   <TabsTrigger value="offers">Proveedores</TabsTrigger>
                   <TabsTrigger value="movements">Movimientos</TabsTrigger>
+                  <TabsTrigger value="prices">Precios</TabsTrigger>
                 </TabsList>
+                <TabsContent value="prices">
+                  <PriceHistory itemId={item.id} />
+                </TabsContent>
                 <TabsContent value="stock">
                   <DataTable
                     tableKey="stockDetail"

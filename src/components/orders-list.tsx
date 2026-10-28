@@ -48,6 +48,7 @@ export function OrdersList({
   );
   const [layout, setLayout] = useQueryState("orderLayout", "list");
   const [q, setQ] = useQueryState("q");
+  const [customerId, setCustomerId] = useQueryState("customerId");
   const [status, setStatus] = useQueryState("status", "ALL");
   const [kind, setKind] = useQueryState("kind", "ALL");
   const [from, setFrom] = useQueryState("from");
@@ -64,6 +65,7 @@ export function OrdersList({
           ? !["CLOSED", "CANCELLED"].includes(o.status)
           : o.status === status)) &&
       (kind === "ALL" || o.kind === kind) &&
+      (!customerId || o.customerId === customerId) &&
       (location === "ALL" || o.location === location) &&
       inDates(o.receivedAt, from, to),
   );
@@ -87,6 +89,13 @@ export function OrdersList({
           <TabsTrigger value="kanban">Kanban</TabsTrigger>
         </TabsList>
       </Tabs>
+      {customerId && (
+        <p className="text-sm">
+          Cliente:{" "}
+          {orders.find((order) => order.customerId === customerId)?.customer ??
+            "Cliente seleccionado"}
+        </p>
+      )}
       <FilterBar>
         <CategoryFilter />
         <label className="search-filter">
@@ -154,6 +163,7 @@ export function OrdersList({
           active={
             !!(
               q ||
+              customerId ||
               from ||
               to ||
               status !== "ALL" ||
@@ -164,6 +174,7 @@ export function OrdersList({
           }
           onClear={() => {
             setQ("");
+            setCustomerId("");
             setStatus("ALL");
             setKind("ALL");
             setBusinessCategoryId("ALL");

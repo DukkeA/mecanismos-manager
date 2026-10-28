@@ -17,7 +17,7 @@ export const tableColumns = {
     "closedAt",
   ],
   tasks: ["title", "order", "members", "status", "dueAt", null],
-  customers: ["name", "document", "contact", "orders", null],
+  customers: ["name", "document", "contact", "orders", "sales", null],
   members: ["name", "email", "role", "active", "monthlySalary", null],
   suppliers: ["name", "phone", "email", "address", "businessCategory", null],
   items: [

@@ -25,11 +25,14 @@ export const documentInput = z.object({
   requestId: z.uuid(),
   customerId: z.uuid(),
   orderId: z.uuid().optional(),
-  title: z.string().trim().min(3).max(250),
+  title: z.string().trim().max(250).default(""),
   terms: z.string().trim().max(5000).default(""),
   lines: z.array(documentLine).min(1).max(60),
 });
 export type DocumentLineInput = z.infer<typeof documentLine>;
+export function documentTitle(title: string, lines: { description: string }[]) {
+  return title || lines.map((line) => line.description).join(", ").slice(0, 250);
+}
 export function lineTotal(
   line: Pick<DocumentLineInput, "quantity" | "unitPrice" | "discount">,
 ) {

@@ -7,6 +7,7 @@ import { requirePermission } from "@/domain/permissions";
 import { DomainError } from "@/domain/errors";
 import {
   documentInput,
+  documentTitle,
   lineTotal,
   type DocumentLineInput,
 } from "@/domain/commercial";
@@ -108,7 +109,7 @@ export async function saveQuote(actor: Actor, raw: unknown) {
         revision: (previous?.revision ?? 0) + 1,
         customerId: input.customerId,
         orderId: input.orderId,
-        title: input.title,
+        title: documentTitle(input.title, lines),
         terms: input.terms,
         validUntil: day(input.validUntil),
         total: total.toFixed(2),

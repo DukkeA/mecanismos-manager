@@ -19,7 +19,16 @@ import {
 import { recordCash } from "@/server/cash-service";
 import { getOrders } from "@/server/workshop-query";
 import { recordsPage } from "@/server/records-query";
-import { issueSale } from "@/server/sales-service";
+import { issueSale, voidSale } from "@/server/sales-service";
+import {
+  createPurchase,
+  receivePurchase,
+  returnPurchase,
+} from "@/server/purchase-service";
+import { inventoryPriceHistory } from "@/server/inventory-history";
+import { commercialPage } from "@/server/commercial-query";
+import { saveQuote } from "@/server/quote-service";
+import { previewCount, applyCount } from "@/server/stock-workflows";
 
 // Exercise the real services and database without leaving test data in the workshop.
 async function rollback(run: (tx: Tx) => Promise<void>) {
@@ -141,6 +150,7 @@ it("creates initial stock atomically once and shows both available and zero-stoc
     ]);
     const zero = await saveItem(office, {
       ...input,
+      name: `Repuesto sin saldo ${uuid()}`,
       requestId: uuid(),
       code: uuid(),
       initialQuantity: "0",
@@ -152,6 +162,7 @@ it("creates initial stock atomically once and shows both available and zero-stoc
     ).toBe("0");
     const unknown = await saveItem(office, {
       ...input,
+      name: `Repuesto sin costo ${uuid()}`,
       requestId: uuid(),
       code: uuid(),
       purchasePrice: "",
@@ -358,6 +369,292 @@ it("supports parts and labor from the same workflow in customer and own repairs"
         await tx.stockBalance.findFirstOrThrow({ where: { itemId: part.id } })
       ).quantity.toString(),
     ).toBe("2");
+  }));
+
+it("accepts reference-free parts without a code and prevents equivalent names on create and edit", () =>
+  rollback(async (tx) => {
+    const { office, admin, location } = await fixture(tx);
+    const name = `Arandelas de presión ${uuid()}`;
+    const part = await saveItem(office, {
+      name,
+      kind: "PART",
+      initialQuantity: "2",
+      locationId: location.id,
+    });
+    const saved = await tx.catalogItem.findUniqueOrThrow({
+      where: { id: part.id },
+    });
+    expect(saved.reference).toBe("");
+    expect(saved.code).toBeTruthy();
+    await expect(
+      saveItem(office, {
+        name: `  ${name.toUpperCase().replace("PRESIÓN", "PRESION")}  `,
+        kind: "PART",
+      }),
+    ).rejects.toThrow("Ya existe el repuesto");
+    const otherName = `Otra arandela ${uuid()}`;
+    const other = await saveItem(office, {
+      name: otherName,
+      kind: "PART",
+      locationId: location.id,
+    });
+    await expect(
+      saveItem(office, { id: other.id, name, kind: "PART" }),
+    ).rejects.toThrow("Ya existe el repuesto");
+    const count = await previewCount(admin, {
+      requestId: uuid(),
+      locationId: location.id,
+      note: "Conteo sin códigos",
+      rows: [
+        {
+          name: otherName.toUpperCase(),
+          condition: "NEW",
+          quantity: "3",
+          unitCost: "100",
+        },
+      ],
+    });
+    await applyCount(admin, { requestId: uuid(), countId: count.id });
+    expect(
+      await tx.catalogItem.count({
+        where: { name: { equals: name, mode: "insensitive" } },
+      }),
+    ).toBe(1);
+    expect(
+      (
+        await tx.stockBalance.findFirstOrThrow({ where: { itemId: other.id } })
+      ).quantity.toString(),
+    ).toBe("3");
+  }));
+
+it("keeps receipt and sale prices per transaction, optional descriptions and exact customer sales links", () =>
+  rollback(async (tx) => {
+    const { office, location } = await fixture(tx);
+    const name = `Bomba Dmax ${uuid()}`;
+    const part = await saveItem(office, {
+      name,
+      kind: "PART",
+      initialQuantity: "1",
+      purchasePrice: "1000000",
+      locationId: location.id,
+    });
+    await moveStock(office, {
+      requestId: uuid(),
+      itemId: part.id,
+      locationId: location.id,
+      condition: "NEW",
+      quantity: "2",
+      unitCost: "1300000",
+      kind: "RECEIPT",
+      reason: "Segunda compra a precio diferente",
+    });
+    const customer = await tx.customer.create({
+      data: { name: `Cliente ${uuid()}` },
+    });
+    const sameName = await tx.customer.create({
+      data: { name: customer.name },
+    });
+    for (const [unitPrice, discount] of [
+      ["1500000", "0"],
+      ["1700000", "100000"],
+    ]) {
+      await issueSale(office, {
+        requestId: uuid(),
+        kind: "COUNTER",
+        customerId: customer.id,
+        locationId: location.id,
+        issuedOn: "2026-10-28",
+        dueOn: "2026-10-28",
+        lines: [
+          {
+            itemId: part.id,
+            description: name,
+            quantity: "1",
+            unitPrice,
+            discount,
+          },
+        ],
+      });
+    }
+    const purchases = await inventoryPriceHistory(
+      office,
+      new URLSearchParams({ itemId: part.id, kind: "PURCHASE" }),
+    );
+    expect(purchases.rows.map((r) => r.unitPrice).sort()).toEqual([
+      "1000000.00",
+      "1300000.00",
+    ]);
+    const sales = await inventoryPriceHistory(
+      office,
+      new URLSearchParams({ itemId: part.id, kind: "SALE" }),
+    );
+    expect(sales.rows.map((r) => r.unitPrice).sort()).toEqual(
+      ["1500000", "1700000"].map((v) => `${v}.00`),
+    );
+    expect(sales.rows.map((r) => r.netUnitPrice).sort()).toEqual([
+      "1500000.00",
+      "1600000.00",
+    ]);
+    expect(
+      (
+        await commercialPage(
+          office,
+          new URLSearchParams({ resource: "sales", customerId: customer.id }),
+        )
+      ).rows,
+    ).toHaveLength(2);
+    expect(
+      (
+        await commercialPage(
+          office,
+          new URLSearchParams({ resource: "sales", customerId: sameName.id }),
+        )
+      ).total,
+    ).toBe(0);
+    const customers = await recordsPage(
+      office,
+      new URLSearchParams({ table: "customers", q: customer.name }),
+    );
+    expect(
+      customers.rows.find((row) => (row as { id: string }).id === customer.id),
+    ).toMatchObject({ sales: 2 });
+    expect(
+      (await tx.sale.findFirstOrThrow({ where: { customerId: customer.id } }))
+        .title,
+    ).toBe(name);
+    const order = await receiveOrder(office, {
+      requestId: uuid(),
+      title: name,
+      kind: "COMPONENT",
+      purpose: "CUSTOMER_REPAIR",
+      customerId: customer.id,
+      locationId: location.id,
+      reference: "",
+    });
+    expect(
+      (await tx.workOrder.findUniqueOrThrow({ where: { id: order.id } }))
+        .reportedProblem,
+    ).toBe("");
+    expect(
+      (
+        await recordsPage(
+          office,
+          new URLSearchParams({ table: "orders", customerId: sameName.id }),
+        )
+      ).total,
+    ).toBe(0);
+    const quote = await saveQuote(office, {
+      requestId: uuid(),
+      customerId: customer.id,
+      validUntil: "2099-01-01",
+      lines: [
+        {
+          itemId: part.id,
+          description: name,
+          quantity: "1",
+          unitPrice: "1700000",
+        },
+      ],
+    });
+    expect(
+      (await tx.quote.findUniqueOrThrow({ where: { id: quote.id } })).title,
+    ).toBe(name);
+  }));
+
+it("shows received supplier prices, marks returns and void sales, and denies mechanics access to prices", () =>
+  rollback(async (tx) => {
+    const { office, admin, first, location } = await fixture(tx);
+    const part = await saveItem(office, {
+      name: `Repuesto de historial ${uuid()}`,
+      kind: "PART",
+      locationId: location.id,
+    });
+    const supplier = await tx.supplier.create({
+      data: { name: "Proveedor de historial", phone: "" },
+    });
+    const purchase = await createPurchase(office, {
+      requestId: uuid(),
+      supplierId: supplier.id,
+      locationId: location.id,
+      orderedOn: "2026-10-01",
+      dueOn: "2026-10-28",
+      lines: [
+        {
+          itemId: part.id,
+          quantity: "3",
+          unitCost: "1300000",
+          condition: "USED",
+        },
+      ],
+    });
+    const line = await tx.purchaseLine.findFirstOrThrow({
+      where: { purchaseId: purchase.id },
+    });
+    const receipt = await receivePurchase(office, {
+      requestId: uuid(),
+      lineId: line.id,
+      quantity: "3",
+      occurredOn: "2026-10-02",
+      reason: "Recibido para historial",
+    });
+    await returnPurchase(admin, {
+      requestId: uuid(),
+      receiptId: receipt.id,
+      quantity: "1",
+      occurredOn: "2026-10-03",
+      reason: "Devolución de una unidad",
+    });
+    const history = await inventoryPriceHistory(
+      office,
+      new URLSearchParams({ itemId: part.id, kind: "PURCHASE" }),
+    );
+    expect(history.rows).toEqual([
+      expect.objectContaining({
+        date: "2026-10-02",
+        counterparty: supplier.name,
+        unitPrice: "1300000.00",
+        status: "PARTIAL_RETURN",
+        condition: "USED",
+      }),
+    ]);
+    const customer = await tx.customer.create({
+      data: { name: "Cliente del historial" },
+    });
+    const sale = await issueSale(office, {
+      requestId: uuid(),
+      customerId: customer.id,
+      locationId: location.id,
+      issuedOn: "2026-10-28",
+      dueOn: "2026-10-28",
+      lines: [
+        {
+          itemId: part.id,
+          description: "Venta de prueba",
+          quantity: "1",
+          unitPrice: "1700000",
+          condition: "USED",
+        },
+      ],
+    });
+    await voidSale(admin, {
+      requestId: uuid(),
+      saleId: sale.id,
+      reason: "Anulación de la prueba",
+    });
+    expect(
+      (
+        await inventoryPriceHistory(
+          office,
+          new URLSearchParams({ itemId: part.id, kind: "SALE" }),
+        )
+      ).rows[0],
+    ).toMatchObject({ unitPrice: "1700000.00", status: "VOID" });
+    await expect(
+      inventoryPriceHistory(
+        first,
+        new URLSearchParams({ itemId: part.id, kind: "SALE" }),
+      ),
+    ).rejects.toThrow("permiso");
   }));
 
 it("rejects labor in counter sales while allowing it in customer repairs", () =>

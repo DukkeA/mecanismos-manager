@@ -113,6 +113,7 @@ export function CommercePanel({
     "from",
     "to",
     "recordId",
+    "customerId",
   ])
     if (params.get(key)) queryParams.set(key, params.get(key)!);
   if (receivables) {
@@ -515,6 +516,14 @@ export function CommercePanel({
           ))}
         </dl>
       )}
+      {params.get("customerId") && (
+        <p className="text-sm">
+          Cliente:{" "}
+          {data.customers.find(
+            (customer) => customer.id === params.get("customerId"),
+          )?.name ?? "Cliente seleccionado"}
+        </p>
+      )}
       <div
         className="commercial-filters"
         role="search"
@@ -572,6 +581,7 @@ export function CommercePanel({
           />
         </label>
         {(params.get("businessCategoryId") ||
+          params.get("customerId") ||
           params.get("q") ||
           params.get("recordId") ||
           params.get("status") ||
@@ -587,6 +597,7 @@ export function CommercePanel({
                 to: "",
                 recordId: "",
                 businessCategoryId: "",
+                customerId: "",
               })
             }
           >

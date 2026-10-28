@@ -1,5 +1,6 @@
 import "server-only";
-import { catalogLabelKey } from "@/domain/catalog-label";
+import { catalogLabelKey, cleanCatalogLabel } from "@/domain/catalog-label";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import Decimal from "decimal.js";
 import { once, type Actor } from "./commands";
@@ -193,9 +194,12 @@ export async function transferStock(actor: Actor, raw: unknown) {
 export const countRow = z.object({
   categoryName: z.string().trim().max(100).optional(),
   businessCategoryId: z.uuid().optional(),
-  code: z.string().trim().min(1).max(80),
+  code: z.string().trim().min(1).max(80).optional(),
   reference: z.string().trim().max(200).default(""),
-  name: z.string().trim().min(3).max(200),
+  name: z
+    .string()
+    .transform(cleanCatalogLabel)
+    .pipe(z.string().min(3).max(200)),
   condition,
   quantity: z.string().regex(/^\d{1,10}(\.\d{1,3})?$/),
   unitCost: money.optional(),
@@ -213,20 +217,35 @@ export async function previewCount(actor: Actor, raw: unknown) {
   return once(actor, input.requestId, "COUNT_PREVIEWED", input, async (tx) => {
     const errors: string[] = [];
     const seen = new Set<string>(),
-      refs = new Map<string, string>();
+      refs = new Map<string, string>(),
+      codes = new Map<string, string>();
     for (const [i, r] of input.rows.entries()) {
-      const key = `${r.code.toUpperCase()}-${r.condition}`,
+      const nameKey = catalogLabelKey(r.name),
+        key = `${nameKey}-${r.condition}`,
         ref = r.reference.toUpperCase();
       if (seen.has(key))
-        errors.push(`Fila ${i + 1}: código y condición repetidos.`);
+        errors.push(`Fila ${i + 1}: nombre y condición repetidos.`);
       seen.add(key);
-      if (ref && refs.has(ref) && refs.get(ref) !== r.code.toUpperCase())
-        errors.push(`Fila ${i + 1}: referencia asociada a dos códigos.`);
-      if (ref) refs.set(ref, r.code.toUpperCase());
-      const item = await tx.catalogItem.findFirst({
-        where: { code: { equals: r.code, mode: "insensitive" } },
-      });
-      if (item) r.code = item.code;
+      if (ref && refs.has(ref) && refs.get(ref) !== nameKey)
+        errors.push(`Fila ${i + 1}: referencia asociada a dos repuestos.`);
+      if (ref) refs.set(ref, nameKey);
+      const [found] = await tx.$queryRaw<
+        { id: string }[]
+      >`SELECT id FROM workshop."CatalogItem" WHERE kind='PART' AND workshop.catalog_label_key(name)=${nameKey} LIMIT 1`;
+      const item = found
+        ? await tx.catalogItem.findUniqueOrThrow({ where: { id: found.id } })
+        : r.code
+          ? await tx.catalogItem.findFirst({
+              where: { code: { equals: r.code, mode: "insensitive" } },
+            })
+          : null;
+      r.code =
+        item?.code ?? codes.get(nameKey) ?? r.code ?? `PART-${randomUUID()}`;
+      codes.set(nameKey, r.code);
+      if (item && catalogLabelKey(item.name) !== nameKey)
+        errors.push(
+          `Fila ${i + 1}: el nombre no coincide con el catálogo. Revisa el repuesto.`,
+        );
       if (r.categoryName) {
         const category = await tx.businessCategory.findFirst({
           where: {
@@ -253,7 +272,7 @@ export async function previewCount(actor: Actor, raw: unknown) {
       }
       if (item && (item.kind !== "PART" || item.serialized))
         errors.push(
-          `Fila ${i + 1}: el código pertenece a un servicio o unidad serializada.`,
+          `Fila ${i + 1}: el registro pertenece a un servicio o unidad serializada.`,
         );
       if (
         ref &&
@@ -264,7 +283,9 @@ export async function previewCount(actor: Actor, raw: unknown) {
           },
         }))
       )
-        errors.push(`Fila ${i + 1}: esa referencia ya existe con otro código.`);
+        errors.push(
+          `Fila ${i + 1}: esa referencia ya existe en otro repuesto.`,
+        );
     }
     if (errors.length) throw new DomainError(errors.slice(0, 20).join("\n"));
     const count = await tx.inventoryCount.create({
@@ -306,18 +327,24 @@ export async function applyCount(actor: Actor, raw: unknown) {
         throw new DomainError(
           "Una categoría cambió. Prepara una vista previa nueva.",
         );
-      const item = await tx.catalogItem.upsert({
-        where: { code: row.code },
-        create: {
-          code: row.code,
-          name: row.name,
-          reference: row.reference,
-          businessCategoryId: row.businessCategoryId,
-          kind: "PART",
-          unit: "unidad",
-        },
-        update: {},
-      });
+      const [matching] = await tx.$queryRaw<
+        { id: string }[]
+      >`SELECT id FROM workshop."CatalogItem" WHERE kind='PART' AND workshop.catalog_label_key(name)=${catalogLabelKey(row.name)} LIMIT 1`;
+      const code = row.code ?? `PART-${randomUUID()}`;
+      const item = matching
+        ? await tx.catalogItem.findUniqueOrThrow({ where: { id: matching.id } })
+        : await tx.catalogItem.upsert({
+            where: { code },
+            create: {
+              code,
+              name: row.name,
+              reference: row.reference,
+              businessCategoryId: row.businessCategoryId,
+              kind: "PART",
+              unit: "unidad",
+            },
+            update: {},
+          });
       if (
         row.businessCategoryId &&
         item.businessCategoryId !== row.businessCategoryId
@@ -325,7 +352,11 @@ export async function applyCount(actor: Actor, raw: unknown) {
         throw new DomainError(
           "La categoría del repuesto cambió. Prepara una vista previa nueva.",
         );
-      if (item.kind !== "PART" || item.serialized)
+      if (
+        item.kind !== "PART" ||
+        item.serialized ||
+        catalogLabelKey(item.name) !== catalogLabelKey(row.name)
+      )
         throw new DomainError(
           "El catálogo cambió. Prepara una vista previa nueva.",
         );
@@ -339,7 +370,7 @@ export async function applyCount(actor: Actor, raw: unknown) {
         })
       )
         throw new DomainError(
-          `Hubo movimientos de ${row.code} después de la vista previa. Repite el conteo.`,
+          `Hubo movimientos de ${row.name} después de la vista previa. Repite el conteo.`,
         );
       const key = {
         itemId: item.id,
@@ -355,7 +386,7 @@ export async function applyCount(actor: Actor, raw: unknown) {
         delta = qty.minus(stock.quantity.toString());
       if (qty.lt(stock.reserved.toString()))
         throw new DomainError(
-          `${row.code}: el conteo es menor que las reservas activas.`,
+          `${row.name}: el conteo es menor que las reservas activas.`,
         );
       const amount =
         row.unitCost !== undefined

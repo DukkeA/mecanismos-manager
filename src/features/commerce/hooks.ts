@@ -43,6 +43,7 @@ export function useCommercialCommand() {
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: ["commerce", actorId] }),
+        client.invalidateQueries({ queryKey: ["inventory-history", actorId] }),
         client.invalidateQueries({ queryKey: ["control", actorId] }),
         client.invalidateQueries({ queryKey: snapshotKey(actorId) }),
         client.invalidateQueries({ queryKey: ["records", actorId] }),

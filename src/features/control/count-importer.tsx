@@ -55,7 +55,7 @@ export function CountImporter({
       <FieldGroup>
         <p className="text-sm">
           Descarga la plantilla, cuenta los repuestos por sede y completa una
-          fila por código y condición. Un costo vacío queda sin valorar; cero
+          fila por nombre y condición. La referencia del fabricante es opcional. Un costo vacío queda sin valorar; cero
           significa costo conocido de $0.
         </p>
         <Button asChild variant="outline">
