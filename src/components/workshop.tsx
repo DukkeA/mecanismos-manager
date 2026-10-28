@@ -652,7 +652,9 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
               </section>
               <section>
                 <h3>Motivo de ingreso</h3>
-                <p>{selected.problem}</p>
+                <p>
+                  {selected.problem || "Sin detalles de ingreso registrados."}
+                </p>
               </section>
               <Separator />
               {!demo && (
@@ -1052,14 +1054,10 @@ function WorkshopContent({ demo = false, localTesting = false, actor }: Props) {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="problem">Motivo de ingreso</FieldLabel>
-                  <Textarea
-                    id="problem"
-                    name="problem"
-                    required
-                    minLength={5}
-                    maxLength={5000}
-                  />
+                  <FieldLabel htmlFor="problem">
+                    Motivo de ingreso (opcional)
+                  </FieldLabel>
+                  <Textarea id="problem" name="problem" maxLength={5000} />
                 </Field>
 
                 {error && (

@@ -42,8 +42,10 @@ export async function POST(request: Request) {
       throw new DomainError(
         "El archivo debe tener una hoja con hasta 2.000 filas.",
       );
+    const legacy =
+      sheet.getRow(1).getCell(1).text.trim().toLowerCase() === "codigo";
     const headers = [
-      "codigo",
+      ...(legacy ? ["codigo"] : []),
       "referencia",
       "nombre",
       "condicion",
@@ -59,10 +61,14 @@ export async function POST(request: Request) {
     );
     if (headers.some((h, i) => h !== found[i]))
       throw new DomainError(
-        "Usa los encabezados de la plantilla: codigo, referencia, nombre, condicion, cantidad, costo_unitario.",
+        "Usa los encabezados de la plantilla: referencia, nombre, condicion, cantidad, costo_unitario, categoria.",
       );
     const hasCategory =
-      sheet.getRow(1).getCell(7).text.trim().toLowerCase() === "categoria";
+      sheet
+        .getRow(1)
+        .getCell(headers.length + 1)
+        .text.trim()
+        .toLowerCase() === "categoria";
     const rows = [];
     const conditions: Record<string, string> = {
       nuevo: "NEW",
@@ -75,15 +81,15 @@ export async function POST(request: Request) {
     for (let n = 2; n <= sheet.rowCount; n++) {
       const row = sheet.getRow(n);
       if (!row.hasValues) continue;
-      for (let c = 1; c <= (hasCategory ? 7 : 6); c++)
+      for (let c = 1; c <= headers.length + Number(hasCategory); c++)
         if (row.getCell(c).type === ExcelJS.ValueType.Formula)
           throw new DomainError(
             `Fila ${n}: convierte las fórmulas a valores antes de importar.`,
           );
-      const value = (c: number) => row.getCell(c).text.trim();
+      const value = (c: number) => row.getCell(c - Number(!legacy)).text.trim();
       rows.push({
         categoryName: hasCategory ? value(7) || undefined : undefined,
-        code: value(1),
+        code: legacy ? value(1) : undefined,
         reference: value(2),
         name: value(3),
         condition: conditions[value(4).toLowerCase()] ?? value(4),
@@ -122,7 +128,6 @@ export async function GET() {
   const book = new ExcelJS.Workbook(),
     sheet = book.addWorksheet("Conteo");
   sheet.addRow([
-    "codigo",
     "referencia",
     "nombre",
     "condicion",

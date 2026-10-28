@@ -4,7 +4,12 @@ import Decimal from "decimal.js";
 import { once, type Actor, type Tx } from "./commands";
 import { requirePermission } from "@/domain/permissions";
 import { DomainError } from "@/domain/errors";
-import { documentInput, quantity, positiveMoney } from "@/domain/commercial";
+import {
+  documentInput,
+  documentTitle,
+  quantity,
+  positiveMoney,
+} from "@/domain/commercial";
 import {
   day,
   postStock,
@@ -129,7 +134,7 @@ export async function issueSale(actor: Actor, raw: unknown) {
           locationId: input.locationId,
           purpose: "CUSTOMER_REPAIR",
           status: "IN_PROGRESS",
-          title: quote?.title ?? input.title,
+          title: quote?.title ?? documentTitle(input.title, lines),
           receivedAt: day(input.issuedOn),
           reportedProblem: "Trabajo creado al registrar la venta de servicios.",
           businessCategoryId: lines.find((l) => l.kind === "SERVICE")
@@ -167,7 +172,7 @@ export async function issueSale(actor: Actor, raw: unknown) {
         quoteId: input.quoteId,
         locationId: input.locationId,
         kind: orderId ? "REPAIR" : "COUNTER",
-        title: quote?.title ?? input.title,
+        title: quote?.title ?? documentTitle(input.title, lines),
         terms: quote?.terms ?? input.terms,
         total: total.toFixed(2),
         issuedOn: day(input.issuedOn),

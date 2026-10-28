@@ -10,7 +10,7 @@ import { tableColumns } from "@/domain/table-sort";
 import type { OperationsView } from "@/domain/operations-view";
 const sql = Prisma.sql;
 const sources = {
-  customers: sql`SELECT c.id::text id,concat_ws(' ',c.name,c.document,c.phone,c.email) search,to_jsonb(c)||jsonb_build_object('contact',concat_ws(' ',c.phone,c.email),'orders',(SELECT count(*) FROM workshop."WorkOrder" WHERE "customerId"=c.id)) attrs FROM workshop."Customer" c`,
+  customers: sql`SELECT c.id::text id,concat_ws(' ',c.name,c.document,c.phone,c.email) search,to_jsonb(c)||jsonb_build_object('contact',concat_ws(' ',c.phone,c.email),'orders',(SELECT count(*) FROM workshop."WorkOrder" WHERE "customerId"=c.id),'sales',(SELECT count(*) FROM workshop."Sale" WHERE "customerId"=c.id)) attrs FROM workshop."Customer" c`,
   suppliers: sql`SELECT s.id::text id,concat_ws(' ',s.name,s.phone,s.email,s.address) search,to_jsonb(s)||jsonb_build_object('categoryIds',COALESCE((SELECT jsonb_agg("categoryId") FROM workshop."SupplierCategory" WHERE "supplierId"=s.id),'[]'::jsonb),'businessCategory',(SELECT string_agg(c.name,', ' ORDER BY c.name) FROM workshop."SupplierCategory" sc JOIN workshop."BusinessCategory" c ON c.id=sc."categoryId" WHERE sc."supplierId"=s.id)) attrs FROM workshop."Supplier" s`,
   members: sql`SELECT m.id::text id,concat_ws(' ',m.name,m.email,m.role) search,to_jsonb(m)||jsonb_build_object('monthlySalary',r."monthlySalary") attrs FROM workshop."Member" m LEFT JOIN LATERAL (SELECT "monthlySalary" FROM workshop."LaborRate" WHERE "memberId"=m.id AND "effectiveOn"<=(now() AT TIME ZONE 'America/Bogota')::date ORDER BY "effectiveOn" DESC LIMIT 1)r ON true`,
   items: sql`SELECT i.id::text id,concat_ws(' ',i.code,i.name,i.reference,i.brand,i.notes) search,to_jsonb(i)||jsonb_build_object('businessCategory',(SELECT name FROM workshop."BusinessCategory" WHERE id=i."businessCategoryId")) attrs FROM workshop."CatalogItem" i WHERE kind='PART'`,
@@ -34,6 +34,7 @@ export async function recordsPage(actor: Actor, params: URLSearchParams) {
         .number()
         .pipe(z.union([z.literal(10), z.literal(25), z.literal(50)]))
         .default(10),
+      customerId: z.uuid().optional(),
       q: z.string().max(200).default(""),
       status: z.string().max(30).default("ALL"),
       archive: z.enum(["active", "deleted"]).default("active"),
@@ -118,6 +119,8 @@ export async function recordsPage(actor: Actor, params: URLSearchParams) {
       sql`(v.attrs->'memberIds') @> ${JSON.stringify([input.responsible])}::jsonb`,
     );
   if (input.kind !== "ALL") filters.push(sql`${attr("kind")}=${input.kind}`);
+  if (input.customerId && table === "orders")
+    filters.push(sql`${attr("customerId")}=${input.customerId}`);
   const status = input.status;
   if (status !== "ALL") {
     if (table === "balances")
@@ -182,7 +185,9 @@ export async function recordsPage(actor: Actor, params: URLSearchParams) {
         : ["customers", "suppliers", "members", "accounts"].includes(table)
           ? "name"
           : ["items", "services"].includes(table)
-            ? "code"
+            ? table === "items"
+              ? "name"
+              : "code"
             : dateField);
   if (
     input.orderBy &&
@@ -193,6 +198,7 @@ export async function recordsPage(actor: Actor, params: URLSearchParams) {
       "number",
       "order",
       "orders",
+      "sales",
       "quantity",
       "available",
       "materialCost",

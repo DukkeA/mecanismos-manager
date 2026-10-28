@@ -3,6 +3,7 @@ import { DomainError } from "@/domain/errors";
 import "server-only";
 import { z } from "zod";
 import Decimal from "decimal.js";
+import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { once, type Actor, type Tx } from "./commands";
 import { postStock } from "./commercial-ledger";
@@ -35,11 +36,14 @@ export async function saveItem(actor: Actor, raw: unknown) {
       locationId: z.uuid().optional(),
       condition: z.enum(["NEW", "USED", "REBUILT"]).default("NEW"),
       businessCategoryId: z.uuid().nullable().optional(),
-      code: z.string().trim().min(1).max(80),
-      name: z.string().trim().min(3).max(200),
+      code: z.string().trim().min(1).max(80).optional(),
+      name: z
+        .string()
+        .transform(cleanCatalogLabel)
+        .pipe(z.string().min(3).max(200)),
       brand: z.string().trim().max(100).default(""),
       kind: z.enum(["PART", "SERVICE"]),
-      unit: z.string().trim().min(1).max(30).default("servicio"),
+      unit: z.string().trim().min(1).max(30).optional(),
       reference: z.string().trim().max(200).default(""),
       purchasePrice: optionalPrice,
       salePrice: optionalPrice,
@@ -64,15 +68,22 @@ export async function saveItem(actor: Actor, raw: unknown) {
       );
     if (input.kind === "SERVICE" && new Decimal(initialQuantity).gt(0))
       throw new DomainError("Los servicios no tienen existencias.");
-    if (input.kind === "SERVICE") {
+    {
       const duplicate = await tx.$queryRaw<{ id: string; name: string }[]>`
         SELECT id, name FROM workshop."CatalogItem"
-        WHERE kind = 'SERVICE' AND workshop.catalog_label_key(name) = ${catalogLabelKey(input.name)}
+        WHERE kind::text = ${input.kind} AND workshop.catalog_label_key(name) = ${catalogLabelKey(input.name)}
           AND id <> ${input.id ?? "00000000-0000-0000-0000-000000000000"}::uuid LIMIT 1`;
       if (duplicate.length)
-        throw new DomainError(
-          `Ya existe el servicio «${duplicate[0].name}». Puedes editarlo desde Servicios.`,
-        );
+        throw new z.ZodError([
+          {
+            code: "custom",
+            path: ["name"],
+            message:
+              input.kind === "SERVICE"
+                ? `Ya existe el servicio «${duplicate[0].name}». Puedes editarlo desde Servicios.`
+                : `Ya existe el repuesto «${duplicate[0].name}». Abre su ficha para añadir existencias.`,
+          },
+        ]);
     }
     if (input.id) {
       const current = await tx.catalogItem.findUniqueOrThrow({
@@ -93,7 +104,13 @@ export async function saveItem(actor: Actor, raw: unknown) {
     );
     const item = input.id
       ? await tx.catalogItem.update({ where: { id: input.id }, data: itemData })
-      : await tx.catalogItem.create({ data: itemData });
+      : await tx.catalogItem.create({
+          data: {
+            ...itemData,
+            code: input.code ?? `PART-${randomUUID()}`,
+            unit: input.unit ?? (input.kind === "PART" ? "unidad" : "servicio"),
+          },
+        });
     if (!input.id && item.kind === "PART") {
       const location = locationId
         ? await tx.location.findUniqueOrThrow({ where: { id: locationId } })

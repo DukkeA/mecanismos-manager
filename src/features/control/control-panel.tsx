@@ -276,7 +276,7 @@ export function ControlPanel({
         .filter((i) => i.kind === "PART")
         .map((i) => ({
           id: i.id,
-          label: `${i.name} · ${i.reference || i.code}`,
+          label: `${i.name}${i.reference ? ` · ${i.reference}` : ""}`,
         })),
     ),
     condition = choose("condition", "Condición", [
@@ -349,7 +349,6 @@ export function ControlPanel({
         form("unit", "Registrar unidad propia", [
           item,
           location,
-          text("code", "Código interno"),
           { ...text("serial", "Número de serie"), optional: true },
           order,
           m("coreCost", "Costo del casco (COP)"),
@@ -1044,7 +1043,7 @@ export function ControlPanel({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Código</TableHead>
+                      <TableHead>Referencia del fabricante</TableHead>
                       <TableHead>Repuesto</TableHead>
                       <TableHead>Cantidad</TableHead>
                       <TableHead>Costo unitario</TableHead>
@@ -1053,14 +1052,14 @@ export function ControlPanel({
                   <TableBody>
                     {(
                       JSON.parse(selected.data.rows) as {
-                        code: string;
+                        reference?: string;
                         name: string;
                         quantity: string;
                         unitCost?: string;
                       }[]
                     ).map((r, i) => (
                       <TableRow key={i}>
-                        <TableCell>{r.code}</TableCell>
+                        <TableCell>{r.reference || "Sin referencia"}</TableCell>
                         <TableCell>{r.name}</TableCell>
                         <TableCell>{r.quantity}</TableCell>
                         <TableCell>

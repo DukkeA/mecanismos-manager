@@ -150,7 +150,7 @@ const orderInput = z
     purpose: z
       .enum(["CUSTOMER_REPAIR", "OWN_REBUILD"])
       .default("CUSTOMER_REPAIR"),
-    problem: z.string().trim().min(5).max(5000),
+    problem: z.string().trim().max(5000).default(""),
     authorization: z.string().trim().max(5000).default(""),
     locationId: z.uuid(),
   })

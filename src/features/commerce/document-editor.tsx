@@ -255,16 +255,19 @@ export function DocumentEditor({
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="document-title">Descripción</FieldLabel>
+          <FieldLabel htmlFor="document-title">
+            Descripción (opcional)
+          </FieldLabel>
           <Input
             id="document-title"
             readOnly={fromQuote}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            required
-            minLength={3}
             maxLength={250}
           />
+          <FieldDescription>
+            Si la dejas vacía, se usarán los conceptos del documento.
+          </FieldDescription>
         </Field>
         {mode === "sale" && (
           <p className="text-sm text-muted-foreground">

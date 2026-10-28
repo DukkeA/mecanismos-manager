@@ -28,6 +28,7 @@ export function useRecordPage<T>(table: TableKey | undefined) {
     "location",
     "responsible",
     "kind",
+    "customerId",
     "period",
     "from",
     "to",
